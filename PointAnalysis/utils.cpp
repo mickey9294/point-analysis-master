@@ -337,7 +337,7 @@ PCModel * Utils::loadPointCloud_CGAL_SDF(const char *filename)
 		std::ifstream off_in(filename);    /* Input file stream to read model from off file */
 		char off_buffer[128];     /* Line buffer to store a line in off file */
 
-		QString sdf_filename = "../data/original_coseg_chairs_sdf/" + Utils::getModelName(QString(filename)) + ".sdff";
+		QString sdf_filename = "../data/sdf/coseg_chairs_3/" + Utils::getModelName(QString(filename)) + ".sdff";
 		std::ifstream sdf_in(sdf_filename.toStdString().c_str());    /* Input file stream to read sdf value of each vertex */
 		char sdf_buffer[50];    /* Line buffer to store a sdf value */
 

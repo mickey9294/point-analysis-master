@@ -38,6 +38,8 @@ PointAnalysis::PointAnalysis(QWidget *parent)
 	normalizeThread = NULL;
 	sdfThread = NULL;
 	trainThread = NULL;
+	
+	m_modelClassName = "coseg_chairs_3";
 }
 
 PointAnalysis::~PointAnalysis()
@@ -179,7 +181,7 @@ void PointAnalysis::trainPointClassifier()
 		trainThread = NULL;
 	}
 
-	trainThread = new TrainThread(this);
+	trainThread = new TrainThread(m_modelClassName, this);
 	connect(trainThread, SIGNAL(finished()), this, SLOT(onTrainingCompleted()));
 	connect(trainThread, SIGNAL(reportStatus(QString)), this, SLOT(setStatMessage(QString)));
 	connect(trainThread, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
@@ -221,7 +223,7 @@ void PointAnalysis::onTestCompleted(QVector<int> labels)
 
 void PointAnalysis::computeSdf()
 {
-	sdfThread = new SdfThread(this);
+	sdfThread = new SdfThread(m_modelClassName, this);
 	connect(sdfThread, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
 	connect(sdfThread, SIGNAL(computeSdfCompleted()), this, SLOT(onComputeSdfDone()));
 	sdfThread->execute();
@@ -246,7 +248,7 @@ void PointAnalysis::normalizeMeshes()
 		"../data",
 		tr("Model List File (*.txt)"));
 
-	normalizeThread = new NormalizeThread(this);
+	normalizeThread = new NormalizeThread(m_modelClassName, this);
 	connect(normalizeThread, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
 	connect(normalizeThread, SIGNAL(finished()), this, SLOT(onNormalizeDone()));
 	normalizeThread->start();

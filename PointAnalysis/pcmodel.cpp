@@ -88,10 +88,10 @@ PCModel::PCModel(int nvertices, QVector<float> data, QVector<int> labels)
 	}
 
 	normalize();
-	/*QMatrix4x4 rot_mat;
-	rot_mat.setToIdentity();
-	rot_mat.rotate(-90, 1, 0, 0);
-	transform(rot_mat);*/
+	//QMatrix4x4 rot_mat;
+	//rot_mat.setToIdentity();
+	//rot_mat.rotate(-90, 1, 0, 0);
+	//transform(rot_mat);
 
 	/* Set the labels for each point */
 	std::memcpy(m_labels.data(), labels.data(), nvertices * sizeof(int));

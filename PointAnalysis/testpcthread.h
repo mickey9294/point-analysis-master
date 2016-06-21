@@ -4,6 +4,7 @@
 #include <QThread>
 #include <QVector>
 #include <QStringList>
+#include <QList>
 #include <QMap>
 #include <fstream>
 #include <string>
@@ -21,6 +22,7 @@ class TestPCThread : public QThread
 public:
 	TestPCThread(QObject *parent = 0);
 	TestPCThread(QString name, QObject *parent = 0);
+	TestPCThread(QString name, std::string modelClassName, QObject *parent = 0);
 	~TestPCThread();
 
 	void setPcName(QString name);
@@ -39,11 +41,12 @@ private:
 	shark::Data<shark::RealVector> dataTest;
 	QString pcname;
 	bool modelLoaded;
+	std::string m_modelClassName;
 
 	void test();
 	int loadTestPoints();
 	void initializeClassifier();
-	//QString getModelName(int id);
+	void loadLabelNames(QList<int> &label_names);
 };
 
 #endif // TESTPCTHREAD_H

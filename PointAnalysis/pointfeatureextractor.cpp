@@ -6,6 +6,22 @@ PointFeatureExtractor::PointFeatureExtractor(QObject *parent)
 	qRegisterMetaType<PAPointCloud *>("PAPointCloudPointer");
 	qRegisterMetaType<PCModel *>("PCModelPointer");
 
+	m_modelClassName = "coseg_chairs_3";
+
+	connect(&loadThread, SIGNAL(loadPointsCompleted(PCModel *)), this, SLOT(receiveModel(PCModel *)));
+	connect(&fe, SIGNAL(estimateCompleted(PAPointCloud *)), this, SLOT(oneEstimateCompleted(PAPointCloud *)));
+	connect(&loadThread, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
+	connect(&fe, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
+	fe.setPhase(FeatureEstimator::PHASE::TRAINING);
+	loadThread.setPhase(LoadThread::PHASE::TRAINING);
+}
+
+PointFeatureExtractor::PointFeatureExtractor(std::string modelClassName, QObject *parent)
+	: QObject(parent), currentId(0), m_modelClassName(modelClassName)
+{
+	qRegisterMetaType<PAPointCloud *>("PAPointCloudPointer");
+	qRegisterMetaType<PCModel *>("PCModelPointer");
+
 	connect(&loadThread, SIGNAL(loadPointsCompleted(PCModel *)), this, SLOT(receiveModel(PCModel *)));
 	connect(&fe, SIGNAL(estimateCompleted(PAPointCloud *)), this, SLOT(oneEstimateCompleted(PAPointCloud *)));
 	connect(&loadThread, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
@@ -28,7 +44,7 @@ using namespace std;
 void PointFeatureExtractor::estimateFeatures()
 {
 	/* Specify the list of models to be estimated */
-	std::string filelist = "../data/original_coseg_chairs_list.txt";
+	std::string filelist = "../data/" + m_modelClassName + "_list.txt";
 	ifstream in(filelist.c_str());
 	if (in.is_open())
 	{
@@ -53,7 +69,7 @@ void PointFeatureExtractor::estimateFeatures()
 
 string PointFeatureExtractor::getOutFilename(int index)
 {
-	string filename = "..\\data\\original_features\\" + getModelName(index).toStdString() + ".csv";
+	string filename = "..\\data\\features\\" + m_modelClassName + "\\" + getModelName(index).toStdString() + ".csv";
 	return filename;
 }
 
@@ -74,6 +90,16 @@ void PointFeatureExtractor::receiveModel(PCModel *pcModel)
 	std::string file = fileList.at(currentId);
 	pcModel->setInputFilename(file);
 	emit showModel(pcModel);
+
+	/* Check the label names, add the new label names to the list m_label_names */
+	QList<int> label_names = pcModel->getLabelNames();
+	QList<int>::iterator it;
+	for (it = label_names.begin(); it != label_names.end(); it++)
+	{
+		if (!m_label_names.contains(*it))
+			m_label_names.push_back(*it);
+	}
+
 	/* Set point cloud to be estimated to pcModel */
 	fe.reset(pcModel);
 	stat_msg = "Estimating Features of " + modelname + "...";
@@ -109,7 +135,25 @@ void PointFeatureExtractor::oneEstimateCompleted(PAPointCloud *cloud)
 		loadThread.start();
 	}
 	else    /* If it is the last model */
+	{
 		emit reportStatus("Point features estimation done.");
+
+		/* Sort the label names in m_label_names */
+		qSort(m_label_names);
+
+		/* Write the label names to local file */
+		std::string label_names_path = "../data/label_names/" + m_modelClassName + "_labelnames.txt";
+		ofstream label_names_out(label_names_path.c_str());
+
+		if (label_names_out.is_open())
+		{
+			QList<int>::iterator it;
+			for (it = m_label_names.begin(); it != m_label_names.end(); ++it)
+				label_names_out << *it << endl;
+
+			label_names_out.close();
+		}
+	}
 }
 
 void PointFeatureExtractor::onDebugTextAdded(QString text)

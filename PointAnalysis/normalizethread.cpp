@@ -3,7 +3,7 @@
 NormalizeThread::NormalizeThread(QObject *parent)
 	: QThread(parent)
 {
-
+	m_modelClassName = "coseg_chairs_3";
 }
 
 NormalizeThread::NormalizeThread(std::string modelClassName, QObject *parent)
@@ -26,19 +26,11 @@ void NormalizeThread::run()
 	std::string normalized_filelist_path;
 	ofstream normalized_filelist_out;
 
-	if (m_modelClassName.length() < 1)
-	{
-		in.open("../data/coseg_chairs_3_list.txt");
-		normalized_filelist_path = "../data/coseg_chairs_3_normalized.txt";
-		normalized_filelist_out.open(normalized_filelist_path.c_str());
-	}
-	else
-	{
-		std::string path = "../data/" + m_modelClassName + "_list.txt";
-		in.open(path.c_str());
-		normalized_filelist_path = "../data/" + m_modelClassName + "_normalized.txt";
-		normalized_filelist_out.open(normalized_filelist_path.c_str());
-	}
+	std::string path = "../data/" + m_modelClassName + "_list.txt";
+	in.open(path.c_str());
+	normalized_filelist_path = "../data/" + m_modelClassName + "_normalized.txt";
+	normalized_filelist_out.open(normalized_filelist_path.c_str());
+
 	if (in.is_open())
 	{
 		char buffer[128];

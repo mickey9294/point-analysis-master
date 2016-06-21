@@ -18,6 +18,7 @@ class TrainThread : public QThread
 
 public:
 	TrainThread(QObject *parent = 0);
+	TrainThread(std::string modelClassName, QObject *parent = 0);
 	~TrainThread();
 
 signals:
@@ -31,6 +32,7 @@ protected:
 private:
 	shark::ClassificationDataset data;
 	shark::ClassificationDataset dataTest;
+	std::string m_modelClassName;
 
 	void loadPoints();
 	void loadTestPoints();

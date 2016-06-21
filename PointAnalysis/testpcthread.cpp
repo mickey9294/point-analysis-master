@@ -4,10 +4,17 @@ TestPCThread::TestPCThread(QString name, QObject *parent)
 	: QThread(parent), modelLoaded(false)
 {
 	pcname = name;
+	m_modelClassName = "coseg_chairs_3";
 }
 
 TestPCThread::TestPCThread(QObject *parent)
 	: QThread(parent), modelLoaded(false)
+{
+	m_modelClassName = "coseg_chairs_3";
+}
+
+TestPCThread::TestPCThread(QString name, std::string modelClassName, QObject *parent)
+	: QThread(parent), modelLoaded(false), m_modelClassName(modelClassName)
 {
 
 }
@@ -37,6 +44,10 @@ void TestPCThread::test()
 	int numOfPoints = loadTestPoints();
 	predictions.resize(numOfPoints);
 
+	/* Load the label names from file */
+	QList<int> label_names;
+	loadLabelNames(label_names);
+
 	if (dataTest.numberOfBatches() > 0){
 		emit reportStatus("Testing " + pcname + "...");
 		emit addDebugText("Testing " + pcname + "...");
@@ -61,7 +72,7 @@ void TestPCThread::test()
 			double max = -1;
 			for (int j = 0; j < distribution.size(); j++)
 			{
-				predictions[li].insert(j, distribution[j]);    /* Set the probability of part label j for point-li */
+				predictions[li].insert(label_names[j], distribution[j]);    /* Set the probability of part label j for point-li */
 				if (distribution[j] > max)
 				{
 					idx = j;
@@ -69,7 +80,7 @@ void TestPCThread::test()
 				}
 			}
 			/* Set the label to labels vector */
-			labels[li++] = idx;
+			labels[li++] = label_names[idx];
 		}
 		emit setPCLabels(labels);
 		emit classifyProbabilityDistribution(predictions);
@@ -92,13 +103,26 @@ int TestPCThread::loadTestPoints()
 	return dataTest.numberOfElements();
 }
 
-//QString TestPCThread::getModelName(int index)
-//{
-//	QStringList namelist = filenamelist.at(index).split("\\");
-//	int size = namelist.size();
-//	QString modelname = namelist[size - 1].section('.', 0, 0);
-//	return modelname;
-//}
+void TestPCThread::loadLabelNames(QList<int> &label_names)
+{
+	string label_names_path = "../data/label_names/" + m_modelClassName + "_labelnames.txt";
+	ifstream label_names_in(label_names_path.c_str());
+
+	if (label_names_in.is_open())
+	{
+		char buffer[8];
+
+		while (!label_names_in.eof())
+		{
+			label_names_in.getline(buffer, 8);
+
+			if (strlen(buffer) > 0)
+				label_names.push_back(atoi(buffer));
+		}
+
+		label_names_in.close();
+	}
+}
 
 void TestPCThread::setPcName(QString name)
 {
@@ -113,7 +137,8 @@ void TestPCThread::initializeClassifier()
 		emit addDebugText("Loading random forest model from model file...");
 		emit reportStatus("Loading random forest model from model file...");
 
-		ifstream ifs("../data/classifier/original_coseg_chairs_rfmodel.model");
+		std::string rfmodel_path = "../data/classifier/" + m_modelClassName + "_rfmodel.model"; 
+		ifstream ifs(rfmodel_path.c_str());
 		boost::archive::polymorphic_text_iarchive ia(ifs);
 		rfmodel.read(ia);
 		ifs.close();

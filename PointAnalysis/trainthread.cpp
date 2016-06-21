@@ -3,6 +3,12 @@
 TrainThread::TrainThread(QObject *parent)
 	: QThread(parent)
 {
+	m_modelClassName = "coseg_chairs_3";
+}
+
+TrainThread::TrainThread(std::string modelClassName, QObject *parent)
+	: QThread(parent), m_modelClassName(modelClassName)
+{
 
 }
 
@@ -27,7 +33,8 @@ void TrainThread::loadPoints()
 	emit addDebugText("Loading points features from features files...");
 	emit reportStatus("Loading points features from features files...");
 
-	ifstream in("../data/original_coseg_chairs_featslist.txt");
+	string list_file_path = "../data/" + m_modelClassName + "_featslist.txt";
+	ifstream in(list_file_path.c_str());
 	if (in.is_open())
 	{
 		const int BUFFER_SIZE = 256;
@@ -131,7 +138,8 @@ void TrainThread::train()
 	emit reportStatus("Saving the classifier into file...");
 	emit addDebugText("Saving the classifier into file...");
 
-	ofstream fout("../data/classifier/original_coseg_chairs_rfmodel.model");
+	string rfmodel_path = "../data/classifier/" + m_modelClassName + "_rfmodel.model";
+	ofstream fout(rfmodel_path.c_str());
 	boost::archive::polymorphic_text_oarchive oa(fout);
 	model.write(oa);
 	fout.close();
