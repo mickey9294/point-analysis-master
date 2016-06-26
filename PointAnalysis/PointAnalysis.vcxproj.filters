@@ -275,6 +275,9 @@
     <ClCompile Include="treeProbabilities.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="energyfunctions.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="pointanalysis.h">
@@ -424,6 +427,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="typeTruncatedQuadratic2D.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="energyfunctions.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

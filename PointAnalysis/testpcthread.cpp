@@ -4,13 +4,13 @@ TestPCThread::TestPCThread(QString name, QObject *parent)
 	: QThread(parent), modelLoaded(false)
 {
 	pcname = name;
-	m_modelClassName = "coseg_chairs_3";
+	m_modelClassName = "coseg_chairs_8";
 }
 
 TestPCThread::TestPCThread(QObject *parent)
 	: QThread(parent), modelLoaded(false)
 {
-	m_modelClassName = "coseg_chairs_3";
+	m_modelClassName = "coseg_chairs_8";
 }
 
 TestPCThread::TestPCThread(QString name, std::string modelClassName, QObject *parent)
@@ -79,6 +79,10 @@ void TestPCThread::test()
 					max = distribution[j];
 				}
 			}
+
+			/* Add a null part and set its the probability to 0.1 */
+			predictions[li].insert(label_names.last() + 1, 0.1);
+
 			/* Set the label to labels vector */
 			labels[li++] = label_names[idx];
 		}

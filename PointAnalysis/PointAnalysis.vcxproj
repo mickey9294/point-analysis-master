@@ -139,6 +139,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="displayglwidget.cpp" />
+    <ClCompile Include="energyfunctions.cpp" />
     <ClCompile Include="featureestimator.cpp" />
     <ClCompile Include="featurethread.cpp" />
     <ClCompile Include="gencandidatesthread.cpp" />
@@ -407,6 +408,7 @@
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="energyfunctions.h" />
     <ClInclude Include="typeBinary.h" />
     <ClInclude Include="typeBinaryFast.h" />
     <ClInclude Include="typeGeneral.h" />
