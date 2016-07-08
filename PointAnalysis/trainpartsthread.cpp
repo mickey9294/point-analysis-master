@@ -6,15 +6,14 @@ TrainPartsThread::TrainPartsThread(QObject *parent)
 	: QThread(parent), currentId(0)
 {
 	qRegisterMetaType<QVector<PAPart>>("QVector<PAPart>");
-	qDebug("TrainPartsThread is created.");
-	emit addDebugText("TrainPartsThread is created.");
+	cout << "TrainPartsThread is created." << endl;
 
 	loadThread.setPhase(LoadThread::PHASE::TRAINING);
 	
 	connect(&loadThread, SIGNAL(loadPointsCompleted(PCModel *)), this, SLOT(receiveModel(PCModel *)));
 	connect(&pcaThread, SIGNAL(estimatePartsDone(QVector<PAPart>)), this, SLOT(receiveParts(QVector<PAPart>)));
 
-	ifstream list_in("../data/coseg_chairs_list.txt");
+	ifstream list_in("../data/coseg_chairs_8_list.txt");
 	if (list_in.is_open())
 	{
 		const int BUFFER_SIZE = 128;
@@ -36,7 +35,7 @@ TrainPartsThread::TrainPartsThread(QObject *parent)
 		}
 	}
 
-	qDebug() << "Load point cloud from" << QString::fromStdString(file_list[currentId]);
+	cout << "Load point cloud from" << file_list[currentId] << endl;
 	loadThread.setLoadFileName(file_list[currentId]);
 	loadThread.start();
 }
@@ -64,24 +63,43 @@ void TrainPartsThread::receiveModel(PCModel *pc)
 
 void TrainPartsThread::receiveParts(QVector<PAPart> parts)
 {
-	qDebug() << "Receive parts vectors of point cloud" << QString::fromStdString(file_list[currentId]);
+	cout << "Receive parts vectors of point cloud " << file_list[currentId] << endl;
 
-	QVector<int> labels(parts.size());
-	QMap<int, int> labels_indices;
+	QVector<int> labels(parts.size());    /* the i-th component of the vector represents the label of the i-th part */
+	QMap<int, int> labels_indices;    /* the label-index map showing the index of the part with the label */
 	for (int i = 0; i < parts.size(); i++)
 	{
 		labels[i] = parts[i].getLabel();
 		labels_indices.insert(labels[i], i);
 	}
 
-	QVector<QPair<int, int>> part_pairs = Utils::getCombinations(labels);
-	for (int i = 0; i < part_pairs.size(); i++)
+	//QVector<QPair<int, int>> part_pairs = Utils::getCombinations(labels);
+	//for (int i = 0; i < part_pairs.size(); i++)
+	//{
+	//	QPair<int, int> part_pair = part_pairs[i];
+	//	PAPartRelation relation(parts[labels_indices.value(part_pair.first)], parts[labels_indices.value(part_pair.second)]);
+	//	if (!partRelations.contains(part_pair))
+	//		partRelations.insert(part_pair, QList<PAPartRelation>());
+	//	partRelations[part_pair].push_back(relation);
+	//}
+
+	for (QMap<int, int>::iterator label_it_1 = labels_indices.begin(); label_it_1 != labels_indices.end(); label_it_1++)
 	{
-		QPair<int, int> part_pair = part_pairs[i];
-		PAPartRelation relation(parts[labels_indices.value(part_pair.first)], parts[labels_indices.value(part_pair.second)]);
-		if (!partRelations.contains(part_pair))
-			partRelations.insert(part_pair, QList<PAPartRelation>());
-		partRelations[part_pair].push_back(relation);
+		int label1 = label_it_1.key();
+		int part_index1 = label_it_1.value();
+		for (QMap<int, int>::iterator label_it_2 = labels_indices.begin(); label_it_2 != labels_indices.end(); label_it_2++)
+		{
+			int label2 = label_it_2.key();
+			if (label1 != label2)
+			{
+				int part_index2 = label_it_2.value();
+				PAPartRelation relation(parts[part_index1], parts[part_index2]);
+				QPair<int, int> part_pair(label1, label2);
+				if (!partRelations.contains(part_pair))
+					partRelations.insert(part_pair, QList<PAPartRelation>());
+				partRelations[part_pair].push_back(relation);
+			}
+		}
 	}
 
 	currentId++;
@@ -91,7 +109,7 @@ void TrainPartsThread::receiveParts(QVector<PAPart> parts)
 		/* Load the next point cloud */
 		if (loadThread.isRunning())
 			loadThread.terminate();
-		qDebug() << "Load point cloud from" << QString::fromStdString(file_list[currentId]);
+		cout << "Load point cloud from " <<  file_list[currentId] << endl;
 		loadThread.setLoadFileName(file_list[currentId]);
 		loadThread.start();
 	}
@@ -119,11 +137,11 @@ void TrainPartsThread::analyseProbPartModel()
 	for (it = partRelations.begin(); it != partRelations.end(); ++it)
 	{
 		QPair<int, int> label_pair = it.key();    /* Part labels of the parts pair */
-		emit addDebugText("Computing mean and covariance of part pair " + QString::number(label_pair.first) + "-" + QString::number(label_pair.second));
+		std::cout << "Computing mean and covariance of part pair " <<  label_pair.first << "-" << label_pair.second << std::endl;
 		QList<PAPartRelation> relations = it.value();    /* The relation vectors of all pairwise parts with the labels above */
 
 		mlpack::distribution::GaussianDistribution normalDistribution(32);
-		qDebug() << "partRelations.size() =" << relations.size();
+		std::cout << "partRelations.size() =" << relations.size() << endl;
 		arma::mat matrix(32, relations.size());
 		int index = 0;
 		QList<PAPartRelation>::iterator relation_it;
@@ -131,7 +149,7 @@ void TrainPartsThread::analyseProbPartModel()
 		{
 			std::vector<double> feat_vector = (*relation_it).getFeatureVector();
 			QVector<double> feat_qvector = QVector<double>::fromStdVector(feat_vector);
-			qDebug() << feat_qvector;
+			//qDebug() << feat_qvector;
 			arma::vec feat(feat_vector);
 			arma::rowvec featt((*relation_it).getFeatureVector());
 
@@ -139,7 +157,7 @@ void TrainPartsThread::analyseProbPartModel()
 		}
 
 		/* Train a normal distribution of all parts pairs */
-		qDebug("Features matrix is %d x %d.", matrix.n_rows, matrix.n_cols);
+		//qDebug("Features matrix is %d x %d.", matrix.n_rows, matrix.n_cols);
 		normalDistribution.Train(matrix);
 		
 		/* Obtain the mean vector and the covariance matrix of the data */
@@ -157,7 +175,7 @@ void TrainPartsThread::analyseProbPartModel()
 		mean_vecs.insert(label_pair, mean_vector);
 		cov_mats.insert(label_pair, covariance_matrix);
 
-		emit addDebugText("Computing done.");
+		cout << "Computing done." << endl;
 	}
 }
 
@@ -175,8 +193,7 @@ void TrainPartsThread::savePartRelationPriors()
 		mean_it++, cov_it++)
 	{
 		QPair<int, int> label_pair = mean_it.key();
-		qDebug("Write part pair %d-%d to file.", label_pair.first, label_pair.second);
-		emit addDebugText("Write mean and covariance of part pair" + QString::number(label_pair.first) + "-" + QString::number(label_pair.second));
+		cout << "Write mean and covariance of part pair" << label_pair.first << "-" << label_pair.second << endl;
 		/* Output the label pair names*/
 		mean_out << label_pair.first << " " << label_pair.second << std::endl;
 		cov_out << label_pair.first << " " << label_pair.second << std::endl;
@@ -200,4 +217,6 @@ void TrainPartsThread::savePartRelationPriors()
 
 	mean_out.close();
 	cov_out.close();
+
+	cout << "Writting part relations done." << endl;
 }

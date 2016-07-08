@@ -278,6 +278,15 @@
     <ClCompile Include="energyfunctions.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="pairwisetermthread.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneratedFiles\Debug\moc_pairwisetermthread.cpp">
+      <Filter>Generated Files\Debug</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneratedFiles\Release\moc_pairwisetermthread.cpp">
+      <Filter>Generated Files\Release</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="pointanalysis.h">
@@ -356,6 +365,9 @@
       <Filter>Header Files</Filter>
     </CustomBuild>
     <CustomBuild Include="predictionthread.h">
+      <Filter>Header Files</Filter>
+    </CustomBuild>
+    <CustomBuild Include="pairwisetermthread.h">
       <Filter>Header Files</Filter>
     </CustomBuild>
   </ItemGroup>

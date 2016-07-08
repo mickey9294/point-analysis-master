@@ -7,8 +7,17 @@ PAPartRelation::PAPartRelation()
 
 }
 
+PAPartRelation::PAPartRelation(const PAPartRelation &relation)
+{
+	std::memcpy(m_feature, relation.getFeatureArray(), 32 * sizeof(float));
+	m_part_label_1 = relation.getFirstLabel();
+	m_part_label_2 = relation.getSecondLabel();
+}
+
 PAPartRelation::PAPartRelation(PAPart part1, PAPart part2)
 {
+	Utils::savePartsPairToFile(part1, part2);
+
 	m_part_label_1 = part1.getLabel();
 	m_part_label_2 = part2.getLabel();
 
@@ -47,13 +56,17 @@ PAPartRelation::PAPartRelation(PAPart part1, PAPart part2)
 
 	Matrix<float, 3, 4> T21 = left21 * med21 * right21;
 
+	Utils::saveRelationToFile(T12, part1.getHeight(), T21, part2.getHeight());
+
 	std::memcpy(m_feature, T12.data(), 12 * sizeof(float));
 	std::memcpy(m_feature + 12, part1.getHeight().data(), 4 * sizeof(float));
 	std::memcpy(m_feature + 16, T21.data(), 12 * sizeof(float));
 	std::memcpy(m_feature + 28, part2.getHeight().data(), 4 * sizeof(float));
 
+	//Utils::saveFeatureToFile(m_feature);
+
 	//VectorXf feat(m_feature);
-	qDebug() << "done.";
+	//qDebug() << "done.";
 }
 
 
@@ -67,16 +80,29 @@ QPair<int, int> PAPartRelation::getLabelPair()
 	return pair;
 }
 
-std::vector<double> PAPartRelation::getFeatureVector()
-{
+std::vector<double> PAPartRelation::getFeatureVector() const 
+{	
 	std::vector<double> feat(32);
 	for (int i = 0; i < 32; i++)
 		feat[i] = (double)m_feature[i];
-	//feat[32] = 0;
+
 	return feat;
 }
 
-float * PAPartRelation::getFeatureArray()
+std::vector<float> PAPartRelation::getFeatureVector_Float() const
 {
-	return m_feature;
+	std::vector<float> feat(32);
+	for (int i = 0; i < 32; i++)
+		feat[i] = m_feature[i];
+
+	//Utils::saveFeatureToFile(feat);
+
+	return feat;
+}
+
+float * PAPartRelation::getFeatureArray() const
+{
+	float features[32];
+	std::memcpy(features, m_feature, 32 * sizeof(float));
+	return features;
 }

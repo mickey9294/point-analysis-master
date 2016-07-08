@@ -34,32 +34,49 @@ OBB::OBB(QVector3D xAxis, QVector3D yAxis, QVector3D zAxis, QVector3D centroid,
 	}
 }
 
+OBB::OBB(const OBB &obb)
+{
+	x_axis = obb.getXAxis();
+	y_axis = obb.getYAxis();
+	z_axis = obb.getZAxis();
+	QVector3D scale = obb.getScale();
+	x_length = scale.x();
+	y_length = scale.y();
+	z_length = scale.z();
+	m_centroid = obb.getCentroid();
+	m_color = obb.getColor();
+	m_count = obb.count();
+	std::memcpy(m_data.data(), obb.constData(), m_count * sizeof(float));
+	m_label = obb.getLabel();
+	m_vertices = QVector<QVector3D>(obb.getVertices());
+}
+
 OBB::~OBB()
 {
 
 }
 
-QVector3D OBB::getXAxis()
+QVector3D OBB::getXAxis() const
 {
 	return QVector3D(x_axis);
 }
 
-QVector3D OBB::getYAxis()
+QVector3D OBB::getYAxis() const
 {
 	return QVector3D(y_axis);
 }
 
-QVector3D OBB::getZAxis()
+QVector3D OBB::getZAxis() const
 {
 	return QVector3D(z_axis);
 }
 
-QVector3D OBB::getScale()
+QVector3D OBB::getScale() const
 {
 	return QVector3D(x_length, y_length, z_length);
 }
 
-QVector<QVector3D> OBB::getAxes()
+QVector<QVector3D> OBB::getAxes() const
 {
 	QVector<QVector3D> axes(3);
 	axes[0] = QVector3D(x_axis);
@@ -71,6 +88,8 @@ QVector<QVector3D> OBB::getAxes()
 
 void OBB::triangulate()
 {
+	m_vertices.resize(8);
+
 	QMatrix4x4 translate_matrices[8];
 	translate_matrices[0].setToIdentity();
 	translate_matrices[0].translate(x_length / 2.0 * x_axis);
@@ -105,9 +124,8 @@ void OBB::triangulate()
 	translate_matrices[7].translate(-y_length / 2.0  * y_axis);
 	translate_matrices[7].translate(-z_length / 2.0  * z_axis);
 
-	QVector3D vertices[8];
 	for (int i = 0; i < 8; i++)
-		vertices[i] = translate_matrices[i] * m_centroid;
+		m_vertices[i] = translate_matrices[i] * m_centroid;
 
 	QVector3D face_normals[6] = {
 		x_axis, y_axis, z_axis, -x_axis, -y_axis, -z_axis
@@ -115,18 +133,18 @@ void OBB::triangulate()
 
 	m_data.resize(192);
 
-	add(vertices[0], vertices[1], vertices[3], face_normals[2]);
-	add(vertices[1], vertices[2], vertices[3], face_normals[2]);
-	add(vertices[0], vertices[3], vertices[7], face_normals[0]);
-	add(vertices[0], vertices[7], vertices[4], face_normals[0]);
-	add(vertices[0], vertices[4], vertices[1], face_normals[1]);
-	add(vertices[1], vertices[4], vertices[5], face_normals[1]);
-	add(vertices[4], vertices[7], vertices[6], face_normals[5]);
-	add(vertices[4], vertices[6], vertices[5], face_normals[5]);
-	add(vertices[1], vertices[5], vertices[2], face_normals[3]);
-	add(vertices[2], vertices[5], vertices[6], face_normals[3]);
-	add(vertices[2], vertices[7], vertices[3], face_normals[4]);
-	add(vertices[2], vertices[6], vertices[7], face_normals[4]);
+	add(m_vertices[0], m_vertices[1], m_vertices[3], face_normals[2]);
+	add(m_vertices[1], m_vertices[2], m_vertices[3], face_normals[2]);
+	add(m_vertices[0], m_vertices[3], m_vertices[7], face_normals[0]);
+	add(m_vertices[0], m_vertices[7], m_vertices[4], face_normals[0]);
+	add(m_vertices[0], m_vertices[4], m_vertices[1], face_normals[1]);
+	add(m_vertices[1], m_vertices[4], m_vertices[5], face_normals[1]);
+	add(m_vertices[4], m_vertices[7], m_vertices[6], face_normals[5]);
+	add(m_vertices[4], m_vertices[6], m_vertices[5], face_normals[5]);
+	add(m_vertices[1], m_vertices[5], m_vertices[2], face_normals[3]);
+	add(m_vertices[2], m_vertices[5], m_vertices[6], face_normals[3]);
+	add(m_vertices[2], m_vertices[7], m_vertices[3], face_normals[4]);
+	add(m_vertices[2], m_vertices[6], m_vertices[7], face_normals[4]);
 }
 
 void OBB::add(QVector3D v0, QVector3D v1, QVector3D v2, QVector3D normal)
@@ -150,4 +168,9 @@ void OBB::add(QVector3D v0, QVector3D v1, QVector3D v2, QVector3D normal)
 	triangle[11] = normal.z();
 
 	m_count += 12;
+}
+
+QVector<QVector3D> OBB::getVertices() const
+{
+	return m_vertices;
 }

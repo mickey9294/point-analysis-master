@@ -1,5 +1,7 @@
  #include "utils.h"
 
+int Utils::mat_no = 19;
+
 Utils::Utils(QObject *parent)
 	: QObject(parent)
 {
@@ -121,8 +123,8 @@ PCModel * Utils::loadPointCloud(const char *filename)
 			}
 			outModel = new PCModel(nvertices, points_data);
 		}
-
 	}
+	outModel->setInputFilename(filename);
 	return outModel;
 }
 
@@ -800,4 +802,114 @@ QVector<QPair<int, int>> Utils::getCombinations(QVector<int> nums)
 	qDebug() << "done.";
 
 	return combs;
+}
+
+std::string Utils::vectorToString(Eigen::VectorXf vec)
+{
+	std::string vec_str;
+	for (int i = 0; i < vec.size() - 1; i++)
+		vec_str.append(std::to_string(vec(i)) + " ");
+	vec_str.append(std::to_string(vec(vec.size() - 1)));
+	return vec_str;
+}
+
+std::string Utils::matrixToString(Eigen::MatrixXf mat)
+{
+	std::string mat_str;
+	for (int i = 0; i < mat.rows(); i++)
+	{
+		for (int j = 0; j < mat.cols() - 1; j++)
+			mat_str.append(std::to_string(mat(i, j)) + " ");
+		mat_str.append(std::to_string(mat(i, mat.cols() - 1)) + "\n");
+	}
+	return mat_str;
+}
+
+void Utils::saveMatrixToFile(Eigen::MatrixXf mat, Eigen::VectorXf relation, Eigen::VectorXf mean, Eigen::VectorXf vec)
+{
+	std::string output_path = "../data/covariance_" + std::to_string(mat_no) + ".txt";
+	std::ofstream mat_out(output_path.c_str());
+	if (mat_out.is_open())
+	{
+		mat_out << mat << std::endl << std::endl;
+		mat_out << relation << std::endl << std::endl;
+		mat_out << mean << std::endl << std::endl;
+		mat_out << vec << std::endl;
+		mat_out.close();
+	}
+
+	mat_no++;
+}
+
+void Utils::savePartsPairToFile(PAPart part1, PAPart part2)
+{
+	using namespace std;
+	string out_path1 = "../data/debug/part1_" + std::to_string(mat_no) + ".txt";
+	ofstream out1(out_path1.c_str());
+	string out_path2 = "../data/debug/part2_" + std::to_string(mat_no) + ".txt";
+	ofstream out2(out_path2.c_str());
+
+	if (out1.is_open() && out2.is_open())
+	{
+		out1 << part1.getRotMat() << endl << endl;
+		out1 << part1.getTransVec() << endl << endl;
+		out1 << part1.getScale() << endl;
+
+		out2 << part2.getRotMat() << endl << endl;
+		out2 << part2.getTransVec() << endl << endl;
+		out2 << part2.getScale() << endl;
+
+		out1.close();
+		out2.close();
+	}
+}
+
+void Utils::saveRelationToFile(Eigen::Matrix<float, 3, 4> T12, Eigen::Vector4f h1, Eigen::Matrix<float, 3, 4> T21, Eigen::Vector4f h2)
+{
+	using namespace std;
+	using namespace Eigen;
+	string out_path = "../data/debug/relation_" + to_string(mat_no) + ".txt";
+	ofstream out(out_path.c_str());
+	
+	if (out.is_open())
+	{
+		out << T12 << endl << endl;
+		out << h1 << endl << endl;
+		out << T21 << endl << endl;
+		out << h2 << endl;
+
+		out.close();
+	}
+}
+
+void Utils::saveFeatureToFile(float feature[32])
+{
+	using namespace std;
+	string out_path = "../data/debug/feature_" + to_string(mat_no) + ".txt";
+	ofstream out(out_path.c_str());
+
+	if (out.is_open())
+	{
+		for (int i = 0; i < 32; i++)
+			out << feature[i] << endl;
+
+		out.close();
+	}
+}
+
+using namespace std;
+void Utils::saveFeatureToFile(vector<float> feature)
+{
+	string out_path = "../data/debug/feature_" + to_string(mat_no) + ".txt";
+	ofstream out(out_path.c_str());
+
+	if (out.is_open())
+	{
+		for (vector<float>::iterator it = feature.begin(); it != feature.end(); ++it)
+		{
+			out << *it << endl;
+		}
+
+		out.close();
+	}
 }

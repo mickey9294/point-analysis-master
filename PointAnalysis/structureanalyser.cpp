@@ -1,22 +1,29 @@
 #include "structureanalyser.h"
 
 StructureAnalyser::StructureAnalyser(QObject *parent)
-	: QObject(parent), m_fe(NULL), classifier_loaded(false), m_testPCThread(NULL), m_genCandThread(NULL), m_pointcloud(NULL)
+	: QObject(parent), m_fe(NULL), classifier_loaded(false), m_testPCThread(NULL), m_genCandThread(NULL), m_pointcloud(NULL),
+	m_predictionThread(NULL)
 {
 	qRegisterMetaType<PAPointCloud *>("PAPointCloudPointer");
 	qRegisterMetaType<QVector<QMap<int, float>>>("ClassificationDistribution");
 	qRegisterMetaType<PAPart>("PAPart");
 	qRegisterMetaType<Part_Candidates>("PartCandidates");
+
+	m_modelClassName = "coseg_chairs_8";
+	m_energy_functions = new EnergyFunctions(m_modelClassName);
 }
 
 StructureAnalyser::StructureAnalyser(PCModel *pcModel, QObject * parent)
-	: QObject(parent), m_fe(NULL), classifier_loaded(false), m_testPCThread(NULL), m_genCandThread(NULL), m_pointcloud(NULL)
+	: QObject(parent), m_fe(NULL), classifier_loaded(false), m_testPCThread(NULL), m_genCandThread(NULL), m_pointcloud(NULL),
+	m_predictionThread(NULL)
 {
 	qRegisterMetaType<PAPointCloud *>("PAPointCloudPointer");
 	qRegisterMetaType<QVector<QMap<int, float>>>("ClassificationDistribution");
 	qRegisterMetaType<PAPart>("PAPart");
 	qRegisterMetaType<Part_Candidates>("PartCandidates");
 	m_pcModel = pcModel;
+	m_modelClassName = "coseg_chairs_8";
+	m_energy_functions = new EnergyFunctions(m_modelClassName);
 }
 
 StructureAnalyser::~StructureAnalyser()
@@ -43,9 +50,18 @@ StructureAnalyser::~StructureAnalyser()
 		m_genCandThread = NULL;
 	}
 
+	if (m_predictionThread != NULL)
+	{
+		if (m_predictionThread->isRunning())
+			m_predictionThread->terminate();
+		delete(m_predictionThread);
+		m_predictionThread = NULL;
+	}
+
 	if (m_pointcloud != NULL)
 		delete(m_pointcloud);
 
+	delete(m_energy_functions);
 }
 
 void StructureAnalyser::execute()
@@ -151,11 +167,30 @@ void StructureAnalyser::classifyPoints(PAPointCloud *pointcloud)
 		m_pointcloud->setRadius(m_pcModel->getRadius());
 	}
 
+	/* Set the point cloud to EnergyFunctions object */
+	m_energy_functions->setPointCloud(m_pointcloud);
+
 	/* Create a thread to do the points classification */
-	m_testPCThread = new TestPCThread(model_file_name, this);
-	connect(m_testPCThread, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
-	connect(m_testPCThread, SIGNAL(classifyProbabilityDistribution(QVector<QMap<int, float>>)), this, SLOT(onClassificationDone(QVector<QMap<int, float>>)));
-	connect(m_testPCThread, SIGNAL(setPCLabels(QVector<int>)), this, SLOT(onPointLabelsGot(QVector<int>)));
+	if (m_testPCThread == NULL)
+	{
+		/* Check whether the point cloud has been classified */
+		std::string prediction_path = "../data/predictions/" + model_file_name.toStdString() + ".txt";
+		ifstream prediction_in(prediction_path.c_str());
+		if (prediction_in.is_open())    /* If the point cloud has been classified */
+		{
+			m_testPCThread = new TestPCThread(0, prediction_path, this);
+			prediction_in.close();
+		}
+		else
+			m_testPCThread = new TestPCThread(model_file_name, this);
+
+		connect(m_testPCThread, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
+		connect(m_testPCThread, SIGNAL(classifyProbabilityDistribution(QVector<QMap<int, float>>)), this, SLOT(onClassificationDone(QVector<QMap<int, float>>)));
+		connect(m_testPCThread, SIGNAL(setPCLabels(QVector<int>)), this, SLOT(onPointLabelsGot(QVector<int>)));
+	}
+	else
+		m_testPCThread->setPcName(model_file_name);
+
 	m_testPCThread->start();
 }
 
@@ -163,8 +198,13 @@ using namespace pcl;
 
 void StructureAnalyser::onClassificationDone(QVector<QMap<int, float>> distribution)
 {
+	m_label_names = distribution[0].keys();
+	/* Set the classification probability distribution to EnergyFunctions object */
+	m_energy_functions->setDistributions(distribution);
+
 	/* Create a thread to generate the part candidates */
-	m_genCandThread = new GenCandidatesThread(m_pointcloud, distribution, this);
+	//m_genCandThread = new GenCandidatesThread(m_pointcloud, distribution, this);
+	m_genCandThread = new GenCandidatesThread(144, this);    /* Directly load candidates from local files */
 	connect(m_genCandThread, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
 	connect(m_genCandThread, SIGNAL(genCandidatesDone(int, Part_Candidates)), this, SLOT(onGenCandidatesDone(int, Part_Candidates)));
 	m_genCandThread->start();
@@ -180,14 +220,37 @@ void StructureAnalyser::onGenCandidatesDone(int num_of_candidates, Part_Candidat
 	onDebugTextAdded("Genarating parts candidates has finished.");
 	qDebug() << "Generating parts candidates has finished.";
 
-	Part_Candidates::iterator cand_it;
-	for (cand_it = part_candidates.begin(); cand_it != part_candidates.end(); ++cand_it)
+	m_parts_candidates = part_candidates;
+
+	onDebugTextAdded("There are " + QString::number(part_candidates.size()) + " part candidates in total.");
+	qDebug("Threre are %d part candidates in total.", part_candidates.size());
+
+	/* Do part labels and orientations prediction */
+	onDebugTextAdded("Predict part labels and orientations.");
+	qDebug() << "Predict part labels and orientations.";
+
+	m_predictionThread = new PredictionThread(m_energy_functions, part_candidates, m_label_names, this);
+	connect(m_predictionThread, SIGNAL(predictionDone(QMap<int, int>)), this, SLOT(onPredictionDone(QMap<int, int>)));
+	m_predictionThread->start();
+}
+
+void StructureAnalyser::onPredictionDone(QMap<int, int> parts_picked)
+{
+	qDebug() << "Part labels and orientations prediction done.";
+
+	int numLabels = m_label_names.size();
+	QVector<OBB *> obbs(parts_picked.size());
+	int i = 0;
+	for (QMap<int, int>::iterator it = parts_picked.begin(); it != parts_picked.end(); ++it)
 	{
-		int label = cand_it.key();
-		QVector<PAPart> candidates = cand_it.value();
-		onDebugTextAdded("Part-" + QString::number(label) + " has totally " + QString::number(candidates.size()) + " candidates parts.");
-		qDebug("Part-%d has totally %d candidates parts.", label, candidates.size());
+		int label = it.key();
+		int candidate_idx = it.value();
+		PAPart part = m_parts_candidates[candidate_idx];
+		OBB * obb = part.generateOBB();
+		obbs[i++] = obb;
 	}
+
+	emit sendOBBs(obbs);
 }
 
 void StructureAnalyser::setPointCloud(PCModel *pcModel)

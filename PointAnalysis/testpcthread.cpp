@@ -16,6 +16,12 @@ TestPCThread::TestPCThread(QObject *parent)
 TestPCThread::TestPCThread(QString name, std::string modelClassName, QObject *parent)
 	: QThread(parent), modelLoaded(false), m_modelClassName(modelClassName)
 {
+	pcname = name;
+}
+
+TestPCThread::TestPCThread(int flag, std::string prediction_path, QObject *parent)
+	: QThread(parent), m_prediction_path(prediction_path)
+{
 
 }
 
@@ -27,8 +33,13 @@ TestPCThread::~TestPCThread()
 
 void TestPCThread::run()
 {
-	initializeClassifier();
-	test();
+	if (pcname.length() > 0)
+	{
+		initializeClassifier();
+		test();
+	}
+	else
+		loadPredictionFromFile();
 }
 
 using namespace std;
@@ -88,6 +99,8 @@ void TestPCThread::test()
 		}
 		emit setPCLabels(labels);
 		emit classifyProbabilityDistribution(predictions);
+		std::string out_path = "D:\\Projects\\point-analysis-master\\data\\predictions\\" + pcname.toStdString() + ".txt";
+		saveClassification(out_path, predictions);
 		emit addDebugText("Testing point clouds done.");
 	}
 	else
@@ -130,6 +143,8 @@ void TestPCThread::loadLabelNames(QList<int> &label_names)
 
 void TestPCThread::setPcName(QString name)
 {
+	if (isRunning())
+		terminate();
 	pcname = name;
 }
 
@@ -153,3 +168,76 @@ void TestPCThread::initializeClassifier()
 	}
 }
 	
+void TestPCThread::saveClassification(std::string path, QVector<QMap<int, float>> distributions)
+{
+	std::ofstream out(path.c_str());
+
+	if (out.is_open())
+	{
+		for (QVector<QMap<int, float>>::iterator point_it = distributions.begin(); point_it != distributions.end(); ++point_it)
+		{
+			QMap<int, float> distribution = *point_it;
+			QList<int> label_names = distribution.keys();
+			int numLabels = label_names.size();
+			int i = 0;
+			for (QList<int>::iterator prob_it = label_names.begin(); prob_it != label_names.end() && i < numLabels - 1; ++prob_it, i++)
+			{
+				int label = *prob_it;
+				float prob = distribution.value(label);
+				out << label << "_" << prob << " ";
+			}
+			out << label_names.last() << "_" << distribution.last() << std::endl;
+		}
+
+		out.close();
+	}
+}
+
+void TestPCThread::loadPredictionFromFile()
+{
+	std::ifstream in(m_prediction_path.c_str());
+
+	if (in.is_open())
+	{
+		QVector<QMap<int, float>> predictions;
+		QVector<int> labels;
+
+		char buffer[128];
+
+		while (!in.eof())
+		{
+			in.getline(buffer, 128);
+
+			if (strlen(buffer) > 0)
+			{
+				QMap<int, float> prediction;
+				
+				float max_prob = 0;
+				int max_label = 0;
+
+				QStringList distribution_str = QString(buffer).split(' ');
+				for (QStringList::iterator dis_it = distribution_str.begin(); dis_it != distribution_str.end(); ++dis_it)
+				{
+					QString prob_str = *dis_it;
+					int label = prob_str.section('_', 0, 0).toInt();
+					float prob = prob_str.section('_', 1, 1).toFloat();
+					prediction.insert(label, prob);
+
+					if (prob > max_prob)
+					{
+						max_prob = prob;
+						max_label = label;
+					}
+				}
+				labels.push_back(max_label);
+				predictions.push_back(prediction);
+			}
+		}
+
+		emit setPCLabels(labels);
+		emit classifyProbabilityDistribution(predictions);
+		emit addDebugText("Load prediction from file done.");
+
+		in.close();
+	}
+}

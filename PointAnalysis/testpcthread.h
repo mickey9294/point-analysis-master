@@ -22,6 +22,7 @@ class TestPCThread : public QThread
 public:
 	TestPCThread(QObject *parent = 0);
 	TestPCThread(QString name, QObject *parent = 0);
+	TestPCThread(int flag, std::string m_prediction_path, QObject *parent = 0);
 	TestPCThread(QString name, std::string modelClassName, QObject *parent = 0);
 	~TestPCThread();
 
@@ -42,11 +43,14 @@ private:
 	QString pcname;
 	bool modelLoaded;
 	std::string m_modelClassName;
+	std::string m_prediction_path;
 
 	void test();
 	int loadTestPoints();
 	void initializeClassifier();
 	void loadLabelNames(QList<int> &label_names);
+	void saveClassification(std::string path, QVector<QMap<int, float>> distributions);
+	void loadPredictionFromFile();
 };
 
 #endif // TESTPCTHREAD_H

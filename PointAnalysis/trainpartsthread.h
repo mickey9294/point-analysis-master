@@ -2,6 +2,7 @@
 #define TRAINPARTSTHREAD_H
 
 #include <QThread>
+#include <iostream>
 #include <QVector>
 #include <QDebug>
 #include <QMap>

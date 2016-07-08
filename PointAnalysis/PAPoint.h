@@ -40,6 +40,7 @@ public:
 	float x() const;
 	float y() const;
 	float z() const;
+	Eigen::Vector3f getPosition() const;
 
 private:
 	double features[DIMEN];

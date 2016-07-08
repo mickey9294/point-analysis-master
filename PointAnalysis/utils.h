@@ -28,6 +28,7 @@
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics.hpp>
 #include <cmath>
+#include "papart.h"
 
 typedef CGAL::Cartesian_d<double>              K;
 typedef CGAL::Min_sphere_annulus_d_traits_d<K> Traits;
@@ -72,12 +73,20 @@ public:
 	static QString getModelName(QString filepath);
 	static int comb(int n, int i);
 	static QVector<QPair<int, int>> getCombinations(QVector<int> nums);
+	static std::string vectorToString(Eigen::VectorXf vec);
+	static std::string matrixToString(Eigen::MatrixXf mat);
+	static void saveMatrixToFile(Eigen::MatrixXf mat, Eigen::VectorXf relation, Eigen::VectorXf mean, Eigen::VectorXf vec);
+	static void savePartsPairToFile(PAPart part1, PAPart part2);
+	static void saveRelationToFile(Eigen::Matrix<float, 3, 4> T12, Eigen::Vector4f h1, Eigen::Matrix<float, 3, 4> T21, Eigen::Vector4f h2);
+	static void saveFeatureToFile(float feature[32]);
+	static void saveFeatureToFile(std::vector<float> featrue);
 
 private:
 	static void sort(QList<double> &lens, QList<int> &indices, int low, int high);
 	static int partition(QList<double> &subs, QList<int> &indices, int low, int high);
 	static int searchPoint(Point3 searchPoint, PointList points);
 	static QVector<int> searchPoints(Point3 sps[3], PointList points);
+	static int mat_no;
 };
 
 #endif // UTILS_H

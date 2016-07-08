@@ -28,6 +28,7 @@ PointAnalysis::PointAnalysis(QWidget *parent)
 	connect(ui.actionTrain_Parts_Relations, SIGNAL(triggered()), this, SLOT(trainPartRelations()));
 	connect(ui.actionStructure_Inference, SIGNAL(triggered()), this, SLOT(inferStructure()));
 	connect(&m_analyser, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
+	connect(&m_analyser, SIGNAL(sendOBBs(QVector<OBB *>)), ui.displayGLWidget, SLOT(setOBBs(QVector<OBB *>)));
 
 	fe = NULL;
 	trainThread = NULL;
@@ -59,7 +60,7 @@ void PointAnalysis::load()
 
 	/* User choose a model file by FileDialog */
 	QString filepath = QFileDialog::getOpenFileName(this, tr("Load"), 
-		"../../Data", 
+		"../../Data/LabeledDB/Chair", 
 		tr("Object File Format (*.off);;XYZ Point Cloud (*.xyz)"));
 
 	if (filepath.length() > 0){    /* If the user choose a valid model file path */

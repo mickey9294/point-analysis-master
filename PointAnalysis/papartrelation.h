@@ -7,20 +7,23 @@
 #include <qdebug.h>
 #include <QPair>
 #include <vector>
+#include "utils.h"
 
 class PAPartRelation
 {
 public:
 	PAPartRelation();
+	PAPartRelation(const PAPartRelation & relation);
 	PAPartRelation(PAPart part1, PAPart part2);
 	~PAPartRelation();
 
 	QPair<int, int> getLabelPair();
-	int getFirstLabel() { return m_part_label_1; }
-	int getSecondLabel(){ return m_part_label_2; }
-	std::vector<double> getFeatureVector();
-	float * getFeatureArray();
-	int getDimension() { return 32; }
+	int getFirstLabel() const { return m_part_label_1; }
+	int getSecondLabel() const { return m_part_label_2; }
+	std::vector<double> getFeatureVector() const;
+	std::vector<float> getFeatureVector_Float() const;
+	float * getFeatureArray() const;
+	int getDimension() const { return 32; }
 
 private:
 	float m_feature[32];

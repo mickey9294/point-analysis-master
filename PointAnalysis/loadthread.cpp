@@ -40,7 +40,10 @@ void LoadThread::loadPointCloud()
 	if (m_phase == PHASE::TRAINING)
 		model = Utils::loadPointCloud_CGAL_SDF(filename.c_str());
 	else
-		model = Utils::loadPointCloud_CGAL(filename.c_str());
+	{
+		//model = Utils::loadPointCloud_CGAL(filename.c_str());
+		model = Utils::loadPointCloud(filename.c_str());
+	}
 	emit loadPointsCompleted(model);
 }
 

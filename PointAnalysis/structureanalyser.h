@@ -5,6 +5,7 @@
 #include <QList>
 #include <QMap>
 #include <QVector>
+#include <string>
 #include <QDebug>
 #include <shark/Data/Csv.h>
 #include <shark/Data/Dataset.h> //importing the file
@@ -25,6 +26,8 @@
 #include "obbestimator.h"
 #include "testpcthread.h"
 #include "gencandidatesthread.h"
+#include "energyfunctions.h"
+#include "predictionthread.h"
 
 typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS> Graph;
 
@@ -46,17 +49,24 @@ public:
 	void onClassificationDone(QVector<QMap<int, float>> distribution);
 	void onPointLabelsGot(QVector<int> labels);
 	void onGenCandidatesDone(int num_of_candidates, Part_Candidates part_candidates);
+	void onPredictionDone(QMap<int, int> part_picked);
 
 signals:
 	void addDebugText(QString text);
+	void sendOBBs(QVector<OBB *> obbs);
 
 private:
+	std::string m_modelClassName;
+	Part_Candidates m_parts_candidates;
+	QList<int> m_label_names;
 	PCModel * m_pcModel;
 	PAPointCloud *m_pointcloud;
 	FeatureEstimator * m_fe;
 	TestPCThread *m_testPCThread;
 	bool classifier_loaded;
 	GenCandidatesThread *m_genCandThread;
+	EnergyFunctions *m_energy_functions;
+	PredictionThread *m_predictionThread;
 
 	void classifyPoints(PAPointCloud *pointcloud);
 	

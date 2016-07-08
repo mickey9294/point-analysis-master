@@ -108,3 +108,8 @@ float PAPoint::z() const
 {
 	return m_position.z();
 }
+
+Eigen::Vector3f PAPoint::getPosition() const
+{
+	return Eigen::Vector3f(m_position);
+}
