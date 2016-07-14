@@ -231,7 +231,8 @@ void StructureAnalyser::onGenCandidatesDone(int num_of_candidates, Part_Candidat
 
 	m_predictionThread = new PredictionThread(m_energy_functions, part_candidates, m_label_names, this);
 	connect(m_predictionThread, SIGNAL(predictionDone(QMap<int, int>)), this, SLOT(onPredictionDone(QMap<int, int>)));
-	m_predictionThread->start();
+	//connect(m_predictionThread, SIGNAL(predictionDone()), this, SLOT(onPredictionDone()));
+	m_predictionThread->execute();
 }
 
 void StructureAnalyser::onPredictionDone(QMap<int, int> parts_picked)
@@ -252,6 +253,12 @@ void StructureAnalyser::onPredictionDone(QMap<int, int> parts_picked)
 
 	emit sendOBBs(obbs);
 }
+
+//void StructureAnalyser::onPredictionDone()
+//{
+//	qDebug() << "onPredictionDone().";
+//}
+
 
 void StructureAnalyser::setPointCloud(PCModel *pcModel)
 {

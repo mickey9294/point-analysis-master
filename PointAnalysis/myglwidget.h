@@ -8,7 +8,8 @@
 #include <QtGui>
 #include "pcmodel.h"
 #include "obb.h"
-//#include <GL/glut.h>
+#include <Windows.h>
+#include <GL/glu.h>
 
 #ifndef PI
 #define PI 3.1415926536
@@ -61,6 +62,7 @@ private:
 	void normalizeAngle(int &angle);
 	void drawSphere(GLfloat xx, GLfloat yy, GLfloat zz, GLfloat radius, GLfloat M, GLfloat N);
 	void ProcessPicks(GLint nPicks, GLuint pickBuffer[]);
+	void drawCylinder(float x0, float y0, float z0, float x1, float y1, float z1, double radius);
 
 	static GLint _colorList[12][3];
 

@@ -50,6 +50,7 @@ public:
 	void onPointLabelsGot(QVector<int> labels);
 	void onGenCandidatesDone(int num_of_candidates, Part_Candidates part_candidates);
 	void onPredictionDone(QMap<int, int> part_picked);
+	//void onPredictionDone();
 
 signals:
 	void addDebugText(QString text);

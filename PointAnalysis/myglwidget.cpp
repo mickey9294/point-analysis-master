@@ -126,7 +126,7 @@ void MyGLWidget::draw()
 	glRotatef(m_zRot, 0.0, 0.0, 1.0);
 	glTranslatef(-m_model->getCenter().x(), -m_model->getCenter().y(), -m_model->getCenter().z());
 
-	
+
 
 	/* Draw the point cloud model m_model */
 	glPointSize(2.0);
@@ -149,7 +149,7 @@ void MyGLWidget::draw()
 		//glMaterialfv(GL_FRONT, GL_DIFFUSE, color);
 		glColor4f(cr, cg, cb, 1.0);
 		glNormal3f(nx, ny, nz);
-		
+
 		glVertex3f(m * x, m* y, m * z);
 	}
 	glEnd();
@@ -180,9 +180,9 @@ void MyGLWidget::draw()
 			GLfloat nz = data[11];
 
 			//glMaterialfv(GL_FRONT, GL_DIFFUSE, color);
-			
+
 			glNormal3f(nx, ny, nz);
-			
+
 			glVertex3f(m * v0x, m * v0y, m * v0z);
 			glVertex3f(m * v1x, m * v1y, m * v1z);
 			glVertex3f(m * v2x, m * v2y, m * v2z);
@@ -191,6 +191,8 @@ void MyGLWidget::draw()
 		glEnd();
 	}
 
+	//glColor4f(1.0, 0.0, 0.0, 0.5);
+	//drawCylinder(0, 0.5, 0.0, 0, -0.5, 0, 0.7);
 	glPopMatrix();
 }
 
@@ -297,17 +299,71 @@ void MyGLWidget::setOBBs(QVector<OBB *> obbs)
 	int i = 0;
 	for (QVector<OBB *>::iterator it = obbs.begin(); it != obbs.end(); it++)
 		m_OBBs[i++] = *it;
-	
+
 	update();
 }
 
 void MyGLWidget::onDebugTextAdded(QString text)
 {
-	emit addDebugText(text); 
+	emit addDebugText(text);
 }
 
 void MyGLWidget::updateLabels()
 {
 	emit addDebugText("Update the labels of points in GLWidget.");
 	update();
+}
+
+void MyGLWidget::drawCylinder(float x0, float y0, float z0, float x1, float y1, float z1, double radius)
+{
+	GLdouble  dir_x = x1 - x0;
+	GLdouble  dir_y = y1 - y0;
+	GLdouble  dir_z = z1 - z0;
+	GLdouble  bone_length = sqrt(dir_x*dir_x + dir_y*dir_y + dir_z*dir_z);
+	static GLUquadricObj *  quad_obj = NULL;
+	if (quad_obj == NULL)
+		quad_obj = gluNewQuadric();
+	gluQuadricDrawStyle(quad_obj, GLU_LINE);
+	gluQuadricNormals(quad_obj, GLU_SMOOTH);
+	glPushMatrix();
+
+	glTranslated(x0, y0, z0);
+	//Calculate length. 
+	double  length;
+	length = sqrt(dir_x*dir_x + dir_y*dir_y + dir_z*dir_z);
+	if (length < 0.0001) {
+		dir_x = 0.0; dir_y = 0.0; dir_z = 1.0;  length = 1.0;
+	}
+	dir_x /= length;  dir_y /= length;  dir_z /= length;
+	GLdouble  up_x, up_y, up_z;
+	up_x = 0.0;
+	up_y = 1.0;
+	up_z = 0.0;
+	double side_x, side_y, side_z;
+	side_x = up_y * dir_z - up_z * dir_y;
+	side_y = up_z * dir_x - up_x * dir_z;
+	side_z = up_x * dir_y - up_y * dir_x;
+	length = sqrt(side_x*side_x + side_y*side_y + side_z*side_z);
+	if (length < 0.0001) {
+		side_x = 1.0; side_y = 0.0; side_z = 0.0;  length = 1.0;
+	}
+	side_x /= length;  side_y /= length;  side_z /= length;
+	up_x = dir_y * side_z - dir_z * side_y;
+	up_y = dir_z * side_x - dir_x * side_z;
+	up_z = dir_x * side_y - dir_y * side_x;
+
+	//Transformation matrix  
+	GLdouble  m[16] = { side_x, side_y, side_z, 0.0,
+		up_x, up_y, up_z, 0.0,
+		dir_x, dir_y, dir_z, 0.0,
+		0.0, 0.0, 0.0, 1.0 };
+	glMultMatrixd(m);
+
+	//Param for cylinder
+	GLdouble slices = 8.0;
+	GLdouble stack = 128.0;
+
+	//gluQuadricDrawStyle(GLU_FILL);
+	gluCylinder(quad_obj, radius, radius, bone_length, slices, stack);
+	glPopMatrix();
 }

@@ -1,13 +1,13 @@
 #include "predictionthread.h"
 
 PredictionThread::PredictionThread(QObject *parent)
-	: QThread(parent)
+	: QThread(parent), m_is_clean(true)
 {
 	qRegisterMetaType<QMap<int, int>>("PartsPicked");
 }
 
 PredictionThread::PredictionThread(EnergyFunctions *energy_functions, Part_Candidates part_candidates, QList<int> label_names, QObject *parent)
-	: QThread(parent)
+	: QThread(parent), m_is_clean(true)
 {
 	m_energy_functions = energy_functions;
 	m_ncandidates = part_candidates.size();
@@ -15,89 +15,73 @@ PredictionThread::PredictionThread(EnergyFunctions *energy_functions, Part_Candi
 	m_label_names = label_names;
 
 	qRegisterMetaType<QMap<int, int>>("PartsPicked");
+
+	const int nodeNum = m_ncandidates;   /* the number of nodes */
+	connect(this, SIGNAL(testSignal), this, SLOT(onGetTest()));
 }
 
 PredictionThread::~PredictionThread()
 {
+	clean();
+	for (QVector<UnaryTermThread *>::iterator it = m_unary_threads.begin(); it != m_unary_threads.end(); ++it)
+	{
+		UnaryTermThread * thread = *it;
+		if (thread != NULL)
+		{
+			if (thread->isRunning())
+				thread->terminate();
+			delete(thread);
+			thread = NULL;
+		}
+	}
+	m_unary_threads.clear();
 
+	for (QVector<PairwiseTermThread *>::iterator it = m_pairwise_threads.begin(); it != m_pairwise_threads.end(); ++it)
+	{
+		PairwiseTermThread * thread = *it;
+		if (thread != NULL)
+		{
+			if (thread->isRunning())
+				thread->terminate();
+			delete(thread);
+			thread = NULL;
+		}
+	}
+	m_pairwise_threads.clear();
+}
+
+void PredictionThread::clean()
+{
+	if (mrf != NULL)
+	{
+		delete(mrf);
+		mrf = NULL;
+	}
+	if (nodes != NULL)
+	{
+		delete(nodes);
+		nodes = NULL;
+	}
+
+	m_is_clean = true;
 }
 
 void PredictionThread::run()
 {
 	predictLabelsAndOrientations();
+	clean();
 }
 
 void PredictionThread::predictLabelsAndOrientations()
 {
-	MRFEnergy<TypeGeneral>* mrf;
-	MRFEnergy<TypeGeneral>::NodeId* nodes;
 	MRFEnergy<TypeGeneral>::Options options;
 	TypeGeneral::REAL energy, lowerBound;
 
 	const int nodeNum = m_ncandidates;   /* the number of nodes */
 	const int labelNum = m_label_names.size();   /* the number of labels */
 
-	TypeGeneral::REAL *D = new TypeGeneral::REAL[labelNum];
-	TypeGeneral::REAL *V = new TypeGeneral::REAL[labelNum * labelNum];
-	
-	mrf = new MRFEnergy<TypeGeneral>(TypeGeneral::GlobalSize());
-	nodes = new MRFEnergy<TypeGeneral>::NodeId[nodeNum];
-
-	/* Construct energy */
-	int num_of_classes = labelNum - 1;    /* '-1' is to remove the null label */
-
-	/* Set the unary potentials of the nodes, where each node is a candidate part */
-	int count = 0;
-	for (QVector<PAPart>::iterator cand_it = m_part_candidates.begin(); cand_it != m_part_candidates.end(); ++cand_it)
-	{
-		PAPart cand = *cand_it;
-		for (int i = 0; i < labelNum; i++)
-			D[i] = m_energy_functions->Epnt(cand, m_label_names[i]);
-
-		nodes[count++] = mrf->AddNode(TypeGeneral::LocalSize(labelNum), TypeGeneral::NodeData(D));
-		QString unary_potential = "Add Node_" + QString::number(count) + ": ";
-		for (int j = 0; j < labelNum - 1; j++)
-			unary_potential.append(QString::number(D[j]) + " ");
-		unary_potential.append(QString::number(D[labelNum - 1]));
-		qDebug() << unary_potential;
-	}
-
-	/* Set the pairwise potentials, each pairwise term is an edge between two nodes */
-	std::cout << "Setting pairwise potentials..." << std::endl;
-	for (int i = 0; i < nodeNum; i++)
-	{
-		PAPart cand1 = m_part_candidates[i];
-		for (int j = i + 1; j < nodeNum; j++)
-		{
-			PAPart cand2 = m_part_candidates[j];
-			int label1, label2;
-
-			/* For each label pair of the two candidates, compute a energy value. 
-			 * Note that the last label in label_names is null label 
-			 */
-			for (int l_idx_1 = 0; l_idx_1 < labelNum; l_idx_1++)    
-			{
-				label1 = m_label_names[l_idx_1];
-				for (int l_idx_2 = 0; l_idx_2 < labelNum; l_idx_2++)
-				{
-					label2 = m_label_names[l_idx_2];
-					/* Compute the energy of certain assumed labels. 
-					 * Note that Epair() function would deal with the issues of null labels and same labels
-					 */
-					V[l_idx_1 + l_idx_2 * labelNum] = m_energy_functions->Epair(cand1, cand2, label1, label2);
-					//qDebug("Node_%d - Node_%d: V(%d, %d) = %f.", i, j, label1, label2, V[l_idx_1 + l_idx_2 * labelNum]);
-				}
-			}
-
-			/* Set the pairwise potential to the MRF */
-			mrf->AddEdge(nodes[i], nodes[j], TypeGeneral::EdgeData(TypeGeneral::GENERAL, V));
-
-			qDebug();
-		}
-	}
-
 	/* Function below is optional - it may help if, for example, nodes are added in a random order */
-	//mrf->SetAutomaticOrdering();
+	mrf->SetAutomaticOrdering();
 
 	/* Execute TRW-S algorithm */
 	options.m_iterMax = 100; // maximum number of iterations
@@ -122,12 +106,162 @@ void PredictionThread::predictLabelsAndOrientations()
 				qDebug() << "parts_picked.contains(labels[i])!";
 			else
 				parts_picked.insert(labels[i], i);
-			std::cout << "Part label " << labels[i] << " corresponds to Candidate-" << i << std:: endl;
+			std::cout << "Part label " << labels[i] << " corresponds to Candidate-" << i << std::endl;
 		}
 	}
 
 	emit predictionDone(parts_picked);
+}
+
+void PredictionThread::execute()
+{
+	if (!m_is_clean)
+		clean();
+
+	/* Construct energy */
+	const int NUM_OF_SUBTHREADS = 8;
+	const int labelNum = m_label_names.size();   /* the number of labels */
+	const int nodeNum = m_ncandidates;   /* the number of nodes */
+	int num_of_classes = labelNum - 1;    /* '-1' is to remove the null label */
+
+	mrf = new MRFEnergy<TypeGeneral>(TypeGeneral::GlobalSize());
+	nodes = new MRFEnergy<TypeGeneral>::NodeId[nodeNum];
+	m_is_clean = false;
+
+	/* Create 8 subthreads to set unary potentials */
+	int num_of_rounds, candidates_num_per_thread;
+	if (nodeNum > NUM_OF_SUBTHREADS)
+	{
+		num_of_rounds = NUM_OF_SUBTHREADS;
+		candidates_num_per_thread = nodeNum / NUM_OF_SUBTHREADS;
+	}
+	else
+	{
+		num_of_rounds = nodeNum;
+		candidates_num_per_thread = 1;
+	}
+
+	m_unary_threads.resize(num_of_rounds);
+	m_unary_threads.fill(NULL);
+	unfinished_unary_threads = num_of_rounds;
+
+	for (int i = 0; i < num_of_rounds; i++)
+	{
+		int start = i * candidates_num_per_thread;
+		int end;
+		if (i < num_of_rounds - 1)
+			end = (i + 1) * candidates_num_per_thread - 1;
+		else
+			end = nodeNum - 1;
+
+		UnaryTermThread *unary_thread = new UnaryTermThread(i, m_part_candidates, start, end, m_energy_functions, m_label_names, this);
+		connect(unary_thread, SIGNAL(computeDone(int, int, Unary_Potentials)), this, SLOT(onGetUnaryPotentials(int, int, Unary_Potentials)));
+		m_unary_threads[i] = unary_thread;
+		unary_thread->start();
+	}
+}
+
+void PredictionThread::onGetUnaryPotentials(int id, int start_idx, Unary_Potentials unary_potentials)
+{
+	qDebug("Received unary potentials of Node-%d to Node-%d from UnaryTermThread-%d.", start_idx, start_idx + unary_potentials.size() - 1, id);
 	
-	delete(D);
-	delete(V);
+	int labelNum = m_label_names.size();
+	int count = 0;
+	for (QVector<double *>::iterator it = unary_potentials.begin(); it != unary_potentials.end(); ++it)
+	{
+		TypeGeneral::REAL *D = *it;
+		int node_idx = start_idx + count;
+		nodes[node_idx] = mrf->AddNode(TypeGeneral::LocalSize(labelNum), TypeGeneral::NodeData(D));
+
+		QString unary_potential_str = "Add Node_" + QString::number(node_idx) + ": ";
+		for (int j = 0; j < labelNum - 1; j++)
+			unary_potential_str.append(QString::number(D[j]) + " ");
+		unary_potential_str.append(QString::number(D[labelNum - 1]));
+		qDebug() << unary_potential_str;
+
+		count++;
+		delete(D);
+	}
+
+	unfinished_unary_threads--;
+
+	/* If it is the last thread to compute unary potentials, then start threads to compute pairwise potentials */
+	if (unfinished_unary_threads == 0)
+	{
+		qDebug() << "The unary potentials setting done.";
+
+		const int NUM_OF_SUBTHREADS = 16;
+		int num_of_cands = m_part_candidates.size();
+		int num_of_units = (int)((1.0 + (float)NUM_OF_SUBTHREADS) * (float)NUM_OF_SUBTHREADS / 2.0);
+		float unit = (float)num_of_cands / (float)num_of_units;
+
+		m_pairwise_threads.resize(NUM_OF_SUBTHREADS);
+		m_pairwise_threads.fill(NULL);
+		unfinished_pairwise_threads = NUM_OF_SUBTHREADS;
+
+		int start_idx = 0;
+		int i;
+		for (i = 0; i < NUM_OF_SUBTHREADS && start_idx < num_of_cands; i++)
+		{
+			int end;
+			if (i != NUM_OF_SUBTHREADS - 1)
+			{
+				int n = (int)((i + 1) * unit);
+				if (n < 1)
+					n = 1;
+
+				end = start_idx + n - 1;
+				if (end > num_of_cands - 1)
+					end = num_of_cands - 1;
+			}
+			else
+				end = num_of_cands - 1;
+
+			PairwiseTermThread *thread = new PairwiseTermThread(i, m_part_candidates, start_idx, end, m_energy_functions, m_label_names, this);
+			connect(thread, SIGNAL(computeDone(int, int, Pairwise_Potentials)), this, SLOT(onGetPairwisePotentials(int, int, Pairwise_Potentials)));
+			m_pairwise_threads[i] = thread;
+			thread->start();
+
+			start_idx = end + 1;
+		}
+		if (i < NUM_OF_SUBTHREADS)
+		{
+			m_pairwise_threads.resize(i);
+			unfinished_pairwise_threads = i;
+		}
+	}
+}
+
+void PredictionThread::onGetPairwisePotentials(int id, int start_idx, Pairwise_Potentials pairwise_potentials)
+{
+	qDebug("Received pairwise potentials of Node-%d to Node-%d from PairwiseTermThread-%d.", start_idx, start_idx + pairwise_potentials.size() - 1, id);
+
+	int outter_count = 0;
+	for (Pairwise_Potentials::iterator outter_it = pairwise_potentials.begin(); outter_it != pairwise_potentials.end(); ++outter_it)
+	{
+		QVector<double *> potentials = *outter_it;
+		int first_cand_idx = start_idx + outter_count;
+
+		int inner_count = 1;
+		for (QVector<double *>::iterator inner_it = potentials.begin(); inner_it != potentials.end(); ++inner_it)
+		{
+			double * V = *inner_it;
+			int second_cand_idx = first_cand_idx + inner_count;
+
+			mrf->AddEdge(nodes[first_cand_idx], nodes[second_cand_idx], TypeGeneral::EdgeData(TypeGeneral::GENERAL, V));
+
+			inner_count++;
+			delete(V);
+		}
+
+		outter_count++;
+	}
+
+	unfinished_pairwise_threads--;
+
+	if (unfinished_pairwise_threads == 0)
+	{
+		qDebug() << "The pairwise potentials setting done.";
+		start();
+	}
 }

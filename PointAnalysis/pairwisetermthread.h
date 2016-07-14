@@ -24,6 +24,7 @@ public:
 
 signals:
 	void computeDone(int id, int first_cand_no, Pairwise_Potentials pairwise_potentials);
+	//void computeDone();
 
 protected:
 	void run();
@@ -35,6 +36,7 @@ private:
 	QList<int> m_label_names;
 	Part_Candidates m_part_candidates;
 	EnergyFunctions *m_energy_functions;
+	//Pairwise_Potentials m_pairwise_potentials;
 
 	void computePairwisePotentials();
 };
