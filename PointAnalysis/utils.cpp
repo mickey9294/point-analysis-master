@@ -913,3 +913,11 @@ void Utils::saveFeatureToFile(vector<float> feature)
 		out.close();
 	}
 }
+
+long Utils::getCurrentTime()
+{
+	boost::posix_time::ptime time = boost::posix_time::microsec_clock::local_time();
+	boost::posix_time::time_duration duration(time.time_of_day());
+	long int time_ms = duration.total_milliseconds();
+	return time_ms;
+}

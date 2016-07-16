@@ -139,15 +139,15 @@ double EnergyFunctions::Epnt(PAPart part, int label)
 	return energy;
 }
 
-double EnergyFunctions::Epair(PAPart part1, PAPart part2, int label1, int label2)
+double EnergyFunctions::Epair(PAPartRelation relation, int cluster_no_1, int cluster_no_2, int label1, int label2)
 {
 	//cout << "Compute Epair of Cand_" << part1.getClusterNo() << " - Cand_" << part2.getClusterNo() 
 		//<< " of label " << label1 << " and " << label2 << endl;
 	/* If two candidate parts belong to the same point cluster */
-	if (part1.getClusterNo() == part2.getClusterNo())
+	if (cluster_no_1 == cluster_no_2)
 	{
 		if (label1 != m_null_label && label2 != m_null_label)
-			return  1e12;
+			return  3.3e33;
 		else
 			return 0;
 	}
@@ -161,22 +161,18 @@ double EnergyFunctions::Epair(PAPart part1, PAPart part2, int label1, int label2
 			return INF;
 
 		/* If the two assumed labels are the labels of real parts */
-		PAPartRelation relation(part1, part2);
+		//PAPartRelation relation(part1, part2);
 		VectorXf relation_vec(relation.getDimension());
-		//std::memcpy(relation_vec.data(), relation.getFeatureArray(), relation.getDimension() * sizeof(float));
+
 		std::vector<float> relation_feature = relation.getFeatureVector_Float();
 		for (int i = 0; i < 32; i++)
 			relation_vec(i) = relation_feature[i];
-		//cout << "Relation vector:\n" << relation_vec.transpose() << endl;
+
 		VectorXf mean_vec = m_mean_vectors.value(QPair<int, int>(label1, label2));
 		MatrixXf covariance = m_covariance_matrices.value(QPair<int, int>(label1, label2));
 		MatrixXf cov_inverse = covariance.inverse();
 		VectorXf std_mean = relation_vec - mean_vec;
-		//cout << "relation_vec - mean_vec:\n" << (relation_vec - mean_vec).transpose() << endl;
-		//cout << "covariance matrix\n" << covariance << endl;
-		//cout << "inverse of covariance matrix:\n" << covariance.inverse() << endl;
-		//cout << "covariance times its inverse:\n" << covariance * covariance.inverse() << endl;
-		//Utils::saveMatrixToFile(cov_inverse, relation_vec, mean_vec, std_mean);
+
 		float energy_square_without_w = std_mean.transpose() * cov_inverse * std_mean;
 		//cout << "energy_square = " << energy_square << endl;
 		float energy = w4 * std::sqrt(energy_square_without_w);

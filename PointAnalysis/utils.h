@@ -27,6 +27,7 @@
 #include <Eigen/Core>
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics.hpp>
+#include <boost/date_time/posix_time/posix_time_types.hpp>
 #include <cmath>
 #include "papart.h"
 
@@ -80,6 +81,7 @@ public:
 	static void saveRelationToFile(Eigen::Matrix<float, 3, 4> T12, Eigen::Vector4f h1, Eigen::Matrix<float, 3, 4> T21, Eigen::Vector4f h2);
 	static void saveFeatureToFile(float feature[32]);
 	static void saveFeatureToFile(std::vector<float> featrue);
+	static long getCurrentTime();
 
 private:
 	static void sort(QList<double> &lens, QList<int> &indices, int low, int high);

@@ -50,6 +50,8 @@ private:
 	int unfinished_unary_threads;
 	int unfinished_pairwise_threads;
 	bool m_is_clean;
+	long start_time;
+	long end_time;
 
 	void predictLabelsAndOrientations();
 	void clean();

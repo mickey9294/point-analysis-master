@@ -19,8 +19,8 @@ TestPCThread::TestPCThread(QString name, std::string modelClassName, QObject *pa
 	pcname = name;
 }
 
-TestPCThread::TestPCThread(int flag, std::string prediction_path, QObject *parent)
-	: QThread(parent), m_prediction_path(prediction_path)
+TestPCThread::TestPCThread(int flag, std::string prediction_path, std::string model_class_name, QObject *parent)
+	: QThread(parent), m_prediction_path(prediction_path), modelLoaded(false), m_modelClassName(model_class_name)
 {
 
 }
@@ -146,6 +146,15 @@ void TestPCThread::setPcName(QString name)
 	if (isRunning())
 		terminate();
 	pcname = name;
+}
+
+void TestPCThread::setPredictionFilePath(std::string prediction_path)
+{
+	if (isRunning())
+		terminate();
+
+	m_prediction_path = prediction_path;
+	pcname.clear();
 }
 
 void TestPCThread::initializeClassifier()

@@ -22,11 +22,12 @@ class TestPCThread : public QThread
 public:
 	TestPCThread(QObject *parent = 0);
 	TestPCThread(QString name, QObject *parent = 0);
-	TestPCThread(int flag, std::string m_prediction_path, QObject *parent = 0);
+	TestPCThread(int flag, std::string m_prediction_path, std::string model_class_name, QObject *parent = 0);
 	TestPCThread(QString name, std::string modelClassName, QObject *parent = 0);
 	~TestPCThread();
 
 	void setPcName(QString name);
+	void setPredictionFilePath(std::string prediction_path);
 
 signals:
 	void addDebugText(QString text);

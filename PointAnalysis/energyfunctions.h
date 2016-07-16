@@ -14,7 +14,7 @@
 #include "gencandidatesthread.h"
 #include "utils.h"
 
-#define INF 1E8 /* The infinite value */
+#define INF 1E9 /* The infinite value */
 
 class EnergyFunctions
 {
@@ -45,7 +45,7 @@ public:
 	 label2 - the assumed label of the second pard.
 	 Return value: the Epair of the two parts with certain assumed labels.
 	 */
-	double Epair(PAPart part1, PAPart part2, int label1, int label2);
+	double Epair(PAPartRelation relation, int cluster_no_1, int cluster_no_2, int label1, int label2);
 
 private:
 	std::string m_modelClassName;

@@ -93,7 +93,8 @@ void StructureAnalyser::execute()
 	
 	/* Check if the point cloud featrues have been estimated before */
 	QString model_file_name = Utils::getModelName(QString::fromStdString(m_pcModel->getInputFilename()));
-	std::string pcFile = "../data/features_test/" + model_file_name.toStdString() + ".csv";
+	m_model_name = model_file_name.toStdString();
+	std::string pcFile = "../data/features_test/" + m_model_name + ".csv";
 	std::ifstream feat_file_in(pcFile.c_str());
 	if (feat_file_in.is_open())    /* If there is already a features file of the point cloud */
 	{
@@ -171,25 +172,35 @@ void StructureAnalyser::classifyPoints(PAPointCloud *pointcloud)
 	m_energy_functions->setPointCloud(m_pointcloud);
 
 	/* Create a thread to do the points classification */
-	if (m_testPCThread == NULL)
+	/* Check whether the point cloud has been classified */
+	std::string prediction_path = "../data/predictions/" + m_model_name + ".txt";
+	ifstream prediction_in(prediction_path.c_str());
+
+	if (prediction_in.is_open())    /* If the point cloud has been classified */
 	{
-		/* Check whether the point cloud has been classified */
-		std::string prediction_path = "../data/predictions/" + model_file_name.toStdString() + ".txt";
-		ifstream prediction_in(prediction_path.c_str());
-		if (prediction_in.is_open())    /* If the point cloud has been classified */
+		prediction_in.close();
+		if (m_testPCThread == NULL)
 		{
-			m_testPCThread = new TestPCThread(0, prediction_path, this);
-			prediction_in.close();
+			m_testPCThread = new TestPCThread(0, prediction_path, m_modelClassName, this);
+			connect(m_testPCThread, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
+			connect(m_testPCThread, SIGNAL(classifyProbabilityDistribution(QVector<QMap<int, float>>)), this, SLOT(onClassificationDone(QVector<QMap<int, float>>)));
+			connect(m_testPCThread, SIGNAL(setPCLabels(QVector<int>)), this, SLOT(onPointLabelsGot(QVector<int>)));
 		}
 		else
-			m_testPCThread = new TestPCThread(model_file_name, this);
-
-		connect(m_testPCThread, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
-		connect(m_testPCThread, SIGNAL(classifyProbabilityDistribution(QVector<QMap<int, float>>)), this, SLOT(onClassificationDone(QVector<QMap<int, float>>)));
-		connect(m_testPCThread, SIGNAL(setPCLabels(QVector<int>)), this, SLOT(onPointLabelsGot(QVector<int>)));
+			m_testPCThread->setPredictionFilePath(prediction_path);
 	}
-	else
-		m_testPCThread->setPcName(model_file_name);
+	else    /* If the point cloud has not been classified */
+	{
+		if (m_testPCThread == NULL)
+		{
+			m_testPCThread = new TestPCThread(QString::fromStdString(m_model_name), m_modelClassName, this);
+			connect(m_testPCThread, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
+			connect(m_testPCThread, SIGNAL(classifyProbabilityDistribution(QVector<QMap<int, float>>)), this, SLOT(onClassificationDone(QVector<QMap<int, float>>)));
+			connect(m_testPCThread, SIGNAL(setPCLabels(QVector<int>)), this, SLOT(onPointLabelsGot(QVector<int>)));
+		}
+		else
+			m_testPCThread->setPcName(QString::fromStdString(m_model_name));
+	}
 
 	m_testPCThread->start();
 }
@@ -203,10 +214,11 @@ void StructureAnalyser::onClassificationDone(QVector<QMap<int, float>> distribut
 	m_energy_functions->setDistributions(distribution);
 
 	/* Create a thread to generate the part candidates */
-	//m_genCandThread = new GenCandidatesThread(m_pointcloud, distribution, this);
-	m_genCandThread = new GenCandidatesThread(144, this);    /* Directly load candidates from local files */
+	m_genCandThread = new GenCandidatesThread(m_pointcloud, m_model_name, distribution, this);
+	//m_genCandThread = new GenCandidatesThread(144, this);    /* Directly load candidates from local files */
 	connect(m_genCandThread, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
 	connect(m_genCandThread, SIGNAL(genCandidatesDone(int, Part_Candidates)), this, SLOT(onGenCandidatesDone(int, Part_Candidates)));
+	//connect(m_genCandThread, SIGNAL(setOBBs(QVector<OBB *>)), this, SLOT(setOBBs(QVector<OBB *>)));
 	m_genCandThread->start();
 }
 
@@ -268,4 +280,10 @@ void StructureAnalyser::setPointCloud(PCModel *pcModel)
 		m_genCandThread->terminate();
 	
 	m_pcModel = pcModel;
+}
+
+void StructureAnalyser::setOBBs(QVector<OBB *> obbs)
+{
+	qDebug() << "StructureAnalyser::setOBBs()";
+	emit sendOBBs(obbs);
 }

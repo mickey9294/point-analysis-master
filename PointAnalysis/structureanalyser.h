@@ -50,6 +50,7 @@ public:
 	void onPointLabelsGot(QVector<int> labels);
 	void onGenCandidatesDone(int num_of_candidates, Part_Candidates part_candidates);
 	void onPredictionDone(QMap<int, int> part_picked);
+	void setOBBs(QVector<OBB *> obbs);
 	//void onPredictionDone();
 
 signals:
@@ -57,6 +58,7 @@ signals:
 	void sendOBBs(QVector<OBB *> obbs);
 
 private:
+	std::string m_model_name;
 	std::string m_modelClassName;
 	Part_Candidates m_parts_candidates;
 	QList<int> m_label_names;

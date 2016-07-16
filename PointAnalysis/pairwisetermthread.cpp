@@ -39,13 +39,17 @@ void PairwiseTermThread::computePairwisePotentials()
 		QVector<double *> potentials(N2);
 
 		PAPart cand1 = m_part_candidates[i];
+		int cluster_no_1 = cand1.getClusterNo();
 
 		int inner_count = 0;
 		for (int j = i + 1; j < num_of_candidates; j++)
 		{
 			double *V = new double[labelNum * labelNum];
 			PAPart cand2 = m_part_candidates[j];
+			int cluster_no_2 = cand2.getClusterNo();
 			int label1, label2;
+
+			PAPartRelation relation(cand1, cand2);
 
 			/* For each label pair of the two candidates, compute a energy value.
 			* Note that the last label in label_names is null label
@@ -59,8 +63,8 @@ void PairwiseTermThread::computePairwisePotentials()
 					/* Compute the energy of certain assumed labels. 
 					 * Note that Epair() function would deal with the issues of null labels and same labels
 					 */
-					V[l_idx_1 + l_idx_2 * labelNum] = m_energy_functions->Epair(cand1, cand2, label1, label2);
-					qDebug("PairwiseTermThread-%d: Node_%d - Node_%d: V(%d, %d) = %f.", m_id, i, j, label1, label2, V[l_idx_1 + l_idx_2 * labelNum]);
+					V[l_idx_1 + l_idx_2 * labelNum] = m_energy_functions->Epair(relation, cluster_no_1, cluster_no_2, label1, label2);
+					//qDebug("PairwiseTermThread-%d: Node_%d - Node_%d: V(%d, %d) = %f.", m_id, i, j, label1, label2, V[l_idx_1 + l_idx_2 * labelNum]);
 				}
 			}
 

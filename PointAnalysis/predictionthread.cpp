@@ -159,6 +159,19 @@ void PredictionThread::execute()
 		m_unary_threads[i] = unary_thread;
 		unary_thread->start();
 	}
+
+	/* Test time of adding pairwise potentials */
+	//long start_time = Utils::getCurrentTime();
+	//PAPart part1 = m_part_candidates.first();
+	//PAPart part2 = m_part_candidates.last();
+	//PAPartRelation relation(part1, part2);
+	//std::cout << "Time test start." << std::endl;
+	//for (int i = 0; i < 1; i++)
+	//{
+	//	double value = m_energy_functions->Epair(relation, part1.getClusterNo(), part2.getClusterNo(), 0, 5);
+	//}
+	//long end_time = Utils::getCurrentTime();
+	//std::cout << "Duration = " << end_time - start_time << " ms." << std::endl;
 }
 
 void PredictionThread::onGetUnaryPotentials(int id, int start_idx, Unary_Potentials unary_potentials)
@@ -201,6 +214,7 @@ void PredictionThread::onGetUnaryPotentials(int id, int start_idx, Unary_Potenti
 
 		int start_idx = 0;
 		int i;
+		start_time = Utils::getCurrentTime();
 		for (i = 0; i < NUM_OF_SUBTHREADS && start_idx < num_of_cands; i++)
 		{
 			int end;
@@ -262,6 +276,9 @@ void PredictionThread::onGetPairwisePotentials(int id, int start_idx, Pairwise_P
 	if (unfinished_pairwise_threads == 0)
 	{
 		qDebug() << "The pairwise potentials setting done.";
+		end_time = Utils::getCurrentTime();
+		int duration = end_time - start_time;
+		qDebug("Time spent: %d ms.", duration);
 		start();
 	}
 }
