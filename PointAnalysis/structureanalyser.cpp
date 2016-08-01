@@ -215,10 +215,10 @@ void StructureAnalyser::onClassificationDone(QVector<QMap<int, float>> distribut
 
 	/* Create a thread to generate the part candidates */
 	m_genCandThread = new GenCandidatesThread(m_pointcloud, m_model_name, distribution, this);
-	//m_genCandThread = new GenCandidatesThread(144, this);    /* Directly load candidates from local files */
+	//m_genCandThread = new GenCandidatesThread(m_model_name, 144, this);    /* Directly load candidates from local files */
 	connect(m_genCandThread, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
 	connect(m_genCandThread, SIGNAL(genCandidatesDone(int, Part_Candidates)), this, SLOT(onGenCandidatesDone(int, Part_Candidates)));
-	//connect(m_genCandThread, SIGNAL(setOBBs(QVector<OBB *>)), this, SLOT(setOBBs(QVector<OBB *>)));
+	connect(m_genCandThread, SIGNAL(setOBBs(QVector<OBB *>)), this, SLOT(setOBBs(QVector<OBB *>)));
 	m_genCandThread->start();
 }
 
@@ -244,7 +244,7 @@ void StructureAnalyser::onGenCandidatesDone(int num_of_candidates, Part_Candidat
 	m_predictionThread = new PredictionThread(m_energy_functions, part_candidates, m_label_names, this);
 	connect(m_predictionThread, SIGNAL(predictionDone(QMap<int, int>)), this, SLOT(onPredictionDone(QMap<int, int>)));
 	//connect(m_predictionThread, SIGNAL(predictionDone()), this, SLOT(onPredictionDone()));
-	m_predictionThread->execute();
+	m_predictionThread->start();
 }
 
 void StructureAnalyser::onPredictionDone(QMap<int, int> parts_picked)
@@ -260,6 +260,7 @@ void StructureAnalyser::onPredictionDone(QMap<int, int> parts_picked)
 		int candidate_idx = it.value();
 		PAPart part = m_parts_candidates[candidate_idx];
 		OBB * obb = part.generateOBB();
+		obb->setColor(QVector3D(COLORS[label][0], COLORS[label][1], COLORS[label][2]));
 		obbs[i++] = obb;
 	}
 

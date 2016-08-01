@@ -26,10 +26,10 @@ PCModel::PCModel(int nvertices, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, pcl::
 	}
 
 	normalize();
-	/*QMatrix4x4 rot_mat;
+	QMatrix4x4 rot_mat;
 	rot_mat.setToIdentity();
 	rot_mat.rotate(-90, 1, 0, 0);
-	transform(rot_mat);*/
+	transform(rot_mat);
 }
 
 PCModel::PCModel(int nvertices, QVector<float> data)
@@ -87,11 +87,14 @@ PCModel::PCModel(int nvertices, QVector<float> data, QVector<int> labels)
 			m_label_names.push_back(label);
 	}
 
+	/* Sort m_label_names to the ascending order */
+	qSort(m_label_names.begin(), m_label_names.end());
+
 	normalize();
-	/*QMatrix4x4 rot_mat;
+	QMatrix4x4 rot_mat;
 	rot_mat.setToIdentity();
 	rot_mat.rotate(-90, 1, 0, 0);
-	transform(rot_mat);*/
+	transform(rot_mat);
 
 	/* Set the labels for each point */
 	std::memcpy(m_labels.data(), labels.data(), nvertices * sizeof(int));
@@ -277,6 +280,9 @@ void PCModel::setLabels(QVector<int> labels)
 		if (!m_label_names.contains(label))
 			m_label_names.push_back(label);
 	}
+
+	/* Sort the m_label_names to the ascending order */
+	qSort(m_label_names.begin(), m_label_names.end());
 
 	emit onLabelsChanged();
 }

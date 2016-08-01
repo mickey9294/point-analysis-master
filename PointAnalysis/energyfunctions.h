@@ -3,6 +3,8 @@
 
 #include <qvector.h>
 #include <qmap.h>
+#include <QSet>
+#include <QList>
 #include <iostream>
 #include <string>
 #include <cmath>
@@ -14,7 +16,7 @@
 #include "gencandidatesthread.h"
 #include "utils.h"
 
-#define INF 1E9 /* The infinite value */
+#define INF 1E8 /* The infinite value */
 
 class EnergyFunctions
 {
@@ -39,7 +41,7 @@ public:
 	 Epair
 	 The function computing the part relations energy.
 	 Parameters:
-	 part1 - the first candidate part.
+	 part1 - the first candida te part.
 	 part2 - the second candidate part.
 	 label1 - the assumed label of the first part.
 	 label2 - the assumed label of the second pard.
@@ -54,6 +56,8 @@ private:
 	QVector<QMap<int, float>> m_distributions;
 	PAPointCloud *m_pointcloud;
 	int m_null_label;
+	QList<QVector<int>> m_symmetry_groups;  /* Symmetry groups, all parts contained in a group are symmetry to each other */
+	QSet<int> m_symmetry_set;    /* The sets of parts which are symmetry to other parts */
 
 	static float w1, w2, w3, w4, w5;
 };

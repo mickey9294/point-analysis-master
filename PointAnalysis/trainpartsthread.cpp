@@ -13,7 +13,7 @@ TrainPartsThread::TrainPartsThread(QObject *parent)
 	connect(&loadThread, SIGNAL(loadPointsCompleted(PCModel *)), this, SLOT(receiveModel(PCModel *)));
 	connect(&pcaThread, SIGNAL(estimatePartsDone(QVector<PAPart>)), this, SLOT(receiveParts(QVector<PAPart>)));
 
-	ifstream list_in("../data/coseg_chairs_8_list.txt");
+	ifstream list_in("../data/test_list.txt");
 	if (list_in.is_open())
 	{
 		const int BUFFER_SIZE = 128;
@@ -66,7 +66,7 @@ void TrainPartsThread::receiveParts(QVector<PAPart> parts)
 	cout << "Receive parts vectors of point cloud " << file_list[currentId] << endl;
 
 	QVector<int> labels(parts.size());    /* the i-th component of the vector represents the label of the i-th part */
-	QMap<int, int> labels_indices;    /* the label-index map showing the index of the part with the label */
+	QMap<int, int> labels_indices;    /* the label-index map showing the index of the part with the particular label */
 	for (int i = 0; i < parts.size(); i++)
 	{
 		labels[i] = parts[i].getLabel();
@@ -141,7 +141,7 @@ void TrainPartsThread::analyseProbPartModel()
 		QList<PAPartRelation> relations = it.value();    /* The relation vectors of all pairwise parts with the labels above */
 
 		mlpack::distribution::GaussianDistribution normalDistribution(32);
-		std::cout << "partRelations.size() =" << relations.size() << endl;
+		//std::cout << "partRelations.size() =" << relations.size() << endl;
 		arma::mat matrix(32, relations.size());
 		int index = 0;
 		QList<PAPartRelation>::iterator relation_it;
@@ -149,7 +149,11 @@ void TrainPartsThread::analyseProbPartModel()
 		{
 			std::vector<double> feat_vector = (*relation_it).getFeatureVector();
 			QVector<double> feat_qvector = QVector<double>::fromStdVector(feat_vector);
-			//qDebug() << feat_qvector;
+			
+			for (std::vector<double>::iterator f_it = feat_vector.begin(); f_it != feat_vector.end(); ++f_it)
+				cout << *f_it << " ";
+			cout << endl;
+
 			arma::vec feat(feat_vector);
 			arma::rowvec featt((*relation_it).getFeatureVector());
 
@@ -163,6 +167,12 @@ void TrainPartsThread::analyseProbPartModel()
 		/* Obtain the mean vector and the covariance matrix of the data */
 		arma::vec mean_vec = normalDistribution.Mean();
 		arma::mat cov_mat = normalDistribution.Covariance();
+
+		/* Print the mean vector and covariance matrix */
+		//cout << "Mean vector:" << endl;
+		//cout << mean_vec << endl;
+		//cout << "Covariance matrix:" << endl;
+		//cout << cov_mat << endl;
 
 		/* Create a Eigen vector to represents the mean vector */
 		Eigen::VectorXd mean_vector(32);
@@ -181,8 +191,8 @@ void TrainPartsThread::analyseProbPartModel()
 
 void TrainPartsThread::savePartRelationPriors()
 {
-	std::string mean_path = "../data/parts_relations/" + class_name + "_mean.txt";
-	std::string cov_path = "../data/parts_relations/" + class_name + "_covariance.txt";
+	std::string mean_path = "../data/parts_relations/" + class_name + "_mean_t.txt";
+	std::string cov_path = "../data/parts_relations/" + class_name + "_covariance_t.txt";
 	ofstream mean_out(mean_path.c_str());
 	ofstream cov_out(cov_path.c_str());
 

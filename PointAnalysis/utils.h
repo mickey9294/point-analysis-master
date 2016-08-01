@@ -10,6 +10,7 @@
 #include "pcmodel.h"
 #include <QDebug>
 #include <QVector>
+#include <QVector3D>
 #include <QPair>
 #include <CGAL/Min_sphere_annulus_d_traits_d.h>
 #include <CGAL/Min_sphere_d.h>
@@ -82,6 +83,7 @@ public:
 	static void saveFeatureToFile(float feature[32]);
 	static void saveFeatureToFile(std::vector<float> featrue);
 	static long getCurrentTime();
+	static QVector3D eigen_vector3f_to_qvector3d(Eigen::Vector3f vec);
 
 private:
 	static void sort(QList<double> &lens, QList<int> &indices, int low, int high);

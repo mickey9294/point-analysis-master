@@ -45,6 +45,7 @@ public:
     QAction *actionCompute_OBB;
     QAction *actionTrain_Parts_Relations;
     QAction *actionStructure_Inference;
+    QAction *actionDebug_Parts_Relations;
     QWidget *centralWidget;
     MyGLWidget *displayGLWidget;
     QProgressBar *mainProgressBar;
@@ -94,6 +95,8 @@ public:
         actionTrain_Parts_Relations->setObjectName(QStringLiteral("actionTrain_Parts_Relations"));
         actionStructure_Inference = new QAction(PointAnalysisClass);
         actionStructure_Inference->setObjectName(QStringLiteral("actionStructure_Inference"));
+        actionDebug_Parts_Relations = new QAction(PointAnalysisClass);
+        actionDebug_Parts_Relations->setObjectName(QStringLiteral("actionDebug_Parts_Relations"));
         centralWidget = new QWidget(PointAnalysisClass);
         centralWidget->setObjectName(QStringLiteral("centralWidget"));
         displayGLWidget = new MyGLWidget(centralWidget);
@@ -115,7 +118,7 @@ public:
         PointAnalysisClass->setCentralWidget(centralWidget);
         menuBar = new QMenuBar(PointAnalysisClass);
         menuBar->setObjectName(QStringLiteral("menuBar"));
-        menuBar->setGeometry(QRect(0, 0, 848, 26));
+        menuBar->setGeometry(QRect(0, 0, 848, 23));
         menuFile = new QMenu(menuBar);
         menuFile->setObjectName(QStringLiteral("menuFile"));
         menuHelp = new QMenu(menuBar);
@@ -152,6 +155,7 @@ public:
         menuFeature->addAction(actionNormalize_Meshes);
         menuFeature->addAction(actionCompute_OBB);
         menuFeature->addAction(actionTrain_Parts_Relations);
+        menuFeature->addAction(actionDebug_Parts_Relations);
         menuTest->addAction(actionTest_Data);
         menuTest->addAction(actionTest_PointCloud);
         menuInference->addAction(actionStructure_Inference);
@@ -179,6 +183,7 @@ public:
         actionCompute_OBB->setText(QApplication::translate("PointAnalysisClass", "Compute OBB", 0));
         actionTrain_Parts_Relations->setText(QApplication::translate("PointAnalysisClass", "Train Parts Relations", 0));
         actionStructure_Inference->setText(QApplication::translate("PointAnalysisClass", "Structure Inference", 0));
+        actionDebug_Parts_Relations->setText(QApplication::translate("PointAnalysisClass", "Debug Parts Relations", 0));
         mainProgressMessage->setText(QApplication::translate("PointAnalysisClass", "<html><head/><body><p align=\"right\"><br/></p></body></html>", 0));
         menuFile->setTitle(QApplication::translate("PointAnalysisClass", "File", 0));
         menuHelp->setTitle(QApplication::translate("PointAnalysisClass", "Help", 0));

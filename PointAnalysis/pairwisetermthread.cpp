@@ -65,6 +65,10 @@ void PairwiseTermThread::computePairwisePotentials()
 					 */
 					V[l_idx_1 + l_idx_2 * labelNum] = m_energy_functions->Epair(relation, cluster_no_1, cluster_no_2, label1, label2);
 					//qDebug("PairwiseTermThread-%d: Node_%d - Node_%d: V(%d, %d) = %f.", m_id, i, j, label1, label2, V[l_idx_1 + l_idx_2 * labelNum]);
+					//std::cout << "PairwiseTermThread-" << m_id << ": Node_" << i << " - Node_" << j << ": V(" << label1 << ", " << label2
+						//<< ") = " << V[l_idx_1 + l_idx_2 * labelNum] << "." << std::endl;
+					//if (i == 48)
+						//std::printf("PairwiseTermThread-%d: Node_%d - Node_%d: V(%d, %d) = %f.\n", m_id, i, j, label1, label2, V[l_idx_1 + l_idx_2 * labelNum]);
 				}
 			}
 

@@ -156,16 +156,17 @@ void MyGLWidget::draw()
 
 	/* Draw the oriented bounding boxes of the parts */
 	int nboxes = m_OBBs.size();
-	for (int i = 0; i < nboxes; i++)
+	for (QVector<OBB *>::iterator obb_it = m_OBBs.begin(); obb_it != m_OBBs.end(); ++obb_it)
 	{
-		int nfaces = m_OBBs[i]->facetCount();
-		QVector3D color = m_OBBs[i]->getColor();
-		glColor4f(color.x(), color.y(), color.z(), 0.5);
+		OBB * obb = *obb_it;
+		int nfaces = obb->facetCount();
+		QVector3D color = obb->getColor();
+		glColor4f(color.x(), color.y(), color.z(), 0.8);
 
 		glBegin(GL_TRIANGLES);
 		for (int j = 0; j < nfaces; j++)
 		{
-			const GLfloat *data = m_OBBs[i]->constData() + j * 12;
+			const GLfloat *data = obb->constData() + j * 12;
 			GLfloat v0x = data[0];
 			GLfloat v0y = data[1];
 			GLfloat v0z = data[2];
@@ -189,6 +190,31 @@ void MyGLWidget::draw()
 		}
 
 		glEnd();
+
+		/* Draw the local coordinates axes */
+		Eigen::Vector3f centroid = obb->getCentroid();
+		QVector<Eigen::Vector3f> axes = obb->getAxes();
+		for (int i = 0; i < 3; i++)
+		{
+			glColor4f(COLORS[i][0], COLORS[i][1], COLORS[i][2], 1.0);
+			glBegin(GL_LINES);
+			Eigen::Vector3f axis_end = centroid + axes[i];
+			glVertex3f(m * centroid.x(), m * centroid.y(), m * centroid.z());
+			glVertex3f(m * axis_end.x(), m * axis_end.y(), m * axis_end.z());
+			glEnd();
+		}
+
+		/* Draw the sample points on the oriented boxes */
+		//QVector<Eigen::Vector3f> sample_points = obb->getSamplePoints();
+		//glColor4f(0.7, 0.7, 0.7, 1.0);
+		//glBegin(GL_POINTS);
+		//glPointSize(2.2);
+		//for (QVector<Eigen::Vector3f>::iterator sample_it = sample_points.begin(); sample_it != sample_points.end(); ++sample_it)
+		//{
+		//	Eigen::Vector3f p = *sample_it;
+		//	glVertex3f(m * p.x(), m * p.y(), m * p.z());
+		//}
+		//glEnd();
 	}
 
 	//glColor4f(1.0, 0.0, 0.0, 0.5);

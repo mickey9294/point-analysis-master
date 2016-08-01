@@ -29,6 +29,7 @@ PointAnalysis::PointAnalysis(QWidget *parent)
 	connect(ui.actionStructure_Inference, SIGNAL(triggered()), this, SLOT(inferStructure()));
 	connect(&m_analyser, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
 	connect(&m_analyser, SIGNAL(sendOBBs(QVector<OBB *>)), ui.displayGLWidget, SLOT(setOBBs(QVector<OBB *>)));
+	connect(ui.actionDebug_Parts_Relations, SIGNAL(triggered()), this, SLOT(debugPartRelations()));
 
 	fe = NULL;
 	trainThread = NULL;
@@ -39,6 +40,7 @@ PointAnalysis::PointAnalysis(QWidget *parent)
 	normalizeThread = NULL;
 	sdfThread = NULL;
 	trainThread = NULL;
+	debugRelationThread = NULL;
 	
 	m_modelClassName = "coseg_chairs_3";
 }
@@ -276,7 +278,7 @@ void PointAnalysis::computeOBB()
 		pcaThread = NULL;
 	}
 
-	pcaThread = new PCAThread(ui.displayGLWidget->getModel());
+	pcaThread = new PCAThread(ui.displayGLWidget->getModel(), PCAThread::PHASE::TRAINING, this);
 	connect(pcaThread, SIGNAL(finished()), this, SLOT(onComputeOBBDone()));
 	connect(pcaThread, SIGNAL(estimateOBBsCompleted(QVector<OBB *>)), ui.displayGLWidget, SLOT(setOBBs(QVector<OBB *>)));
 	connect(pcaThread, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
@@ -310,6 +312,20 @@ void PointAnalysis::trainPartRelations()
 	connect(&trainPartsThread->pcaThread, SIGNAL(estimateOBBsCompleted(QVector<OBB*>)), ui.displayGLWidget, SLOT(setOBBs(QVector<OBB *>)));
 	connect(trainPartsThread, SIGNAL(finish()), this, SLOT(onTrainPartsDone()));
 	/* No need "trainPartsThread->start();", the thread will start itself after construction */
+}
+
+void PointAnalysis::debugPartRelations()
+{
+	if (debugRelationThread != NULL)
+	{
+		if (debugRelationThread->isRunning())
+			debugRelationThread->terminate();
+		delete(debugRelationThread);
+		debugRelationThread = NULL;
+	}
+
+	debugRelationThread = new DebugRelationThread(this);
+	debugRelationThread->execute();
 }
 
 void PointAnalysis::onTrainPartsDone()

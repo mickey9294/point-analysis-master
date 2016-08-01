@@ -3,10 +3,10 @@
 using namespace std;
 using namespace Eigen;
 
-float EnergyFunctions::w1 = 0.0025;
+float EnergyFunctions::w1 = 25;
 float EnergyFunctions::w2 = 1.0;
 float EnergyFunctions::w3 = 1.0;
-float EnergyFunctions::w4 = 1e-4;
+float EnergyFunctions::w4 = 1.0;
 float EnergyFunctions::w5 = 100.0;
 
 EnergyFunctions::EnergyFunctions(string modelClassName) : m_modelClassName(modelClassName), m_null_label(10)
@@ -14,8 +14,11 @@ EnergyFunctions::EnergyFunctions(string modelClassName) : m_modelClassName(model
 	cout << "Consruct EnegerFunctions" << endl;
 	/* Load the part relations priors from file */
 	const int DIMENSION = 32;
-	string covariance_path = "../data/parts_relations/" + m_modelClassName + "_covariance.txt";
-	string mean_path = "../data/parts_relations/" + m_modelClassName + "_mean.txt";
+	//string covariance_path = "../data/parts_relations/" + m_modelClassName + "_covariance.txt";
+	//string mean_path = "../data/parts_relations/" + m_modelClassName + "_mean.txt";
+	string covariance_path = "../data/parts_relations/coseg_chairs_covariance_t.txt";
+	string mean_path = "../data/parts_relations/coseg_chairs_mean_t.txt";
+
 	ifstream cov_in(covariance_path.c_str());
 	ifstream mean_in(mean_path.c_str());
 
@@ -34,7 +37,6 @@ EnergyFunctions::EnergyFunctions(string modelClassName) : m_modelClassName(model
 				label1 = labels.section(' ', 0, 0).toInt();
 				label2 = labels.section(' ', 1, 1).toInt();
 
-
 				/* Read covariance matrix row by row */
 				MatrixXf covariance(DIMENSION, DIMENSION);
 				for (int i = 0; i < DIMENSION; i++)
@@ -48,6 +50,7 @@ EnergyFunctions::EnergyFunctions(string modelClassName) : m_modelClassName(model
 					covariance.row(i) = row;
 				}
 
+				covariance.setIdentity();
 				m_covariance_matrices.insert(QPair<int, int>(label1, label2), covariance);
 			}
 		}
@@ -83,6 +86,30 @@ EnergyFunctions::EnergyFunctions(string modelClassName) : m_modelClassName(model
 		}
 
 		mean_in.close();
+	}
+	
+	/* Load the symmetry groups */
+	/* Load symmetry groups from file */
+	std::ifstream sym_in("../data/symmetry_groups.txt");
+	if (sym_in.is_open())
+	{
+		char buffer[128];
+		while (!sym_in.eof())
+		{
+			sym_in.getline(buffer, 128);
+			if (strlen(buffer) > 0)
+			{
+				QStringList sym_str_list = QString(buffer).split(' ');
+				QVector<int> group(sym_str_list.size());
+				for (int i = 0; i < sym_str_list.size(); i++)
+				{
+					int label = sym_str_list[i].toInt();
+					group[i] = label;
+					m_symmetry_set.insert(label);
+				}
+				m_symmetry_groups.push_back(group);
+			}
+		}
 	}
 }
 
@@ -120,14 +147,39 @@ double EnergyFunctions::Epnt(PAPart part, int label)
 	//	}
 	//}
 
+	/* Decide whether the assumed label is contained in a symmetry group and which group it belongs to */
+	QVector<int> symmetry_group;
+	if (m_symmetry_set.contains(label))    /* The label represents a symmetric part */
+	{
+		for (QList<QVector<int>>::iterator it = m_symmetry_groups.begin(); it != m_symmetry_groups.end(); ++it)
+		{
+			QVector<int> group = *it;
+			if (group.contains(label))
+			{
+				symmetry_group.resize(group.size());
+				std::memcpy(symmetry_group.data(), group.data(), group.size() * sizeof(int));
+			}
+		}
+	}
+
 	for (int i = 0; i < vertices_indices.size(); i++)
 	{
 		PAPoint point = m_pointcloud->at(vertices_indices[i]);
 		QMap<int, float> distribution = m_distributions[vertices_indices[i]];
-		float score = distribution.value(label);
+		float score = 0;    /* The classification score of the assumed label */
+
+		if (symmetry_group.size() > 0)    /* If the label represents a symmetric part */
+		{
+			/* The score equals to the sum of scores of all symmetric parts in the group */
+			for (QVector<int>::iterator it = symmetry_group.begin(); it != symmetry_group.end(); ++it)
+				score += distribution.value(*it);
+		}
+		else    /* If the label rerpresents a umsymmetric part */
+			score = distribution.value(label);    /* The score is just the score of the label */
+
 		double e;
 		if (Utils::float_equal(score, 0.0))
-			e = INF;
+			e = 1e8;
 		else
 			e = -log(score);
 		energy += e;
@@ -147,7 +199,7 @@ double EnergyFunctions::Epair(PAPartRelation relation, int cluster_no_1, int clu
 	if (cluster_no_1 == cluster_no_2)
 	{
 		if (label1 != m_null_label && label2 != m_null_label)
-			return  3.3e33;
+			return  1e8;
 		else
 			return 0;
 	}
@@ -155,10 +207,10 @@ double EnergyFunctions::Epair(PAPartRelation relation, int cluster_no_1, int clu
 	{
 		/* If either of the assumed labels is null label, set the energy value to 0 */
 		if (label1 == m_null_label || label2 == m_null_label)
-			return INF / 2.0;
+			return 1e4;
 		/* If two assumed labels are the same, set the energy value to infinity */
 		if (label1 == label2 || !m_mean_vectors.contains(QPair<int, int>(label1, label2)))
-			return INF;
+			return 1e8;
 
 		/* If the two assumed labels are the labels of real parts */
 		//PAPartRelation relation(part1, part2);

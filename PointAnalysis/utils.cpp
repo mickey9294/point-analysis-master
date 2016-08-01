@@ -339,7 +339,7 @@ PCModel * Utils::loadPointCloud_CGAL_SDF(const char *filename)
 		std::ifstream off_in(filename);    /* Input file stream to read model from off file */
 		char off_buffer[128];     /* Line buffer to store a line in off file */
 
-		QString sdf_filename = "../data/sdf/coseg_chairs_3/" + Utils::getModelName(QString(filename)) + ".sdff";
+		QString sdf_filename = "../data/sdf/coseg_chairs_8/" + Utils::getModelName(QString(filename)) + ".sdff";
 		std::ifstream sdf_in(sdf_filename.toStdString().c_str());    /* Input file stream to read sdf value of each vertex */
 		char sdf_buffer[50];    /* Line buffer to store a sdf value */
 
@@ -470,6 +470,7 @@ PCModel * Utils::loadPointCloud_CGAL_SDF(const char *filename)
 		delete(outModel);    /* Delete the current empty model object */
 		outModel = new PCModel(nvertices, points_data, points_labels);
 		outModel->setSdf(sdfs_current);
+		outModel->setInputFilename(std::string(filename));
 	}
 	return outModel;
 }
@@ -920,4 +921,10 @@ long Utils::getCurrentTime()
 	boost::posix_time::time_duration duration(time.time_of_day());
 	long int time_ms = duration.total_milliseconds();
 	return time_ms;
+}
+
+QVector3D Utils::eigen_vector3f_to_qvector3d(Eigen::Vector3f vec)
+{
+	QVector3D qvec(vec.x(), vec.y(), vec.z());
+	return qvec;
 }

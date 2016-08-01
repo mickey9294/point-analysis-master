@@ -4,13 +4,13 @@ using namespace Eigen;
 PAPart::PAPart(OBB * obb) : m_cluster_no(0)
 {
 	m_label = obb->getLabel();
-	QVector3D centroid = obb->getCentroid();
+	Eigen::Vector3f centroid = obb->getCentroid();
 	m_translate = Vector3f(centroid.x(), centroid.y(), centroid.z());
 	QVector3D scale = obb->getScale();
 	m_scale = Vector3f(scale.x(), scale.y(), scale.z());
-	Vector3f x_axis(obb->getXAxis().x(), obb->getXAxis().y(), obb->getXAxis().z());
-	Vector3f y_axis(obb->getYAxis().x(), obb->getYAxis().y(), obb->getYAxis().z());
-	Vector3f z_axis(obb->getZAxis().x(), obb->getZAxis().y(), obb->getZAxis().z());
+	Vector3f x_axis = obb->getXAxis();
+	Vector3f y_axis = obb->getYAxis();
+	Vector3f z_axis = obb->getZAxis();
 	
 	Matrix3f base_axes = Matrix3f::Identity();
 	m_rotate.col(0) = x_axis;
@@ -29,12 +29,9 @@ PAPart::PAPart(OBB * obb) : m_cluster_no(0)
 	
 	m_height = (gravity.transpose() * Rt * Sb).transpose();
 
-	QVector3D xAxis = obb->getXAxis();
-	QVector3D yAxis = obb->getYAxis();
-	QVector3D zAxis = obb->getZAxis();
-	m_axes.col(0) = Vector3f(xAxis.x(), xAxis.y(), xAxis.z());
-	m_axes.col(1) = Vector3f(yAxis.x(), yAxis.y(), yAxis.z());
-	m_axes.col(2) = Vector3f(zAxis.x(), zAxis.y(), zAxis.z());
+	m_axes.col(0) = x_axis;
+	m_axes.col(1) = y_axis;
+	m_axes.col(2) = z_axis;
 }
 
 PAPart::PAPart(const PAPart &part)
@@ -254,14 +251,11 @@ OBB * PAPart::generateOBB()
 	Vector3f _x_axis = m_axes.col(0);
 	Vector3f _y_axis = m_axes.col(1);
 	Vector3f _z_axis = m_axes.col(2);
-	QVector3D x_axis(_x_axis.x(), _x_axis.y(), _x_axis.z());
-	QVector3D y_axis(_y_axis.x(), _y_axis.y(), _y_axis.z());
-	QVector3D z_axis(_z_axis.x(), _z_axis.y(), _z_axis.z());
-	QVector3D centroid(m_translate.x(), m_translate.y(), m_translate.z());
+
 	float x_length = m_scale.x();
 	float y_length = m_scale.y();
 	float z_length = m_scale.z();
-	OBB *obb = new OBB(x_axis, y_axis, z_axis, centroid, (double)x_length, (double)y_length, (double)z_length, m_label);
+	OBB *obb = new OBB(_x_axis, _y_axis, _z_axis, m_translate, (double)x_length, (double)y_length, (double)z_length, m_label);
 	obb->triangulate();
 	return obb;
 }

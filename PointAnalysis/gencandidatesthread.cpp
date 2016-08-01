@@ -97,7 +97,7 @@ void GenCandidatesThread::generateCandidates()
 			}
 		}
 
-		/* Calculate the number of classes after merge the symmetry groups */
+		/* Calculate the number of classes after merging the symmetry groups */
 		for (int i = 0; i < symmetry_groups.size(); i++)
 		{
 			int group_size = symmetry_groups.at(i).size();
@@ -145,7 +145,7 @@ void GenCandidatesThread::generateCandidates()
 				float score_sum = 0;
 				for (QVector<int>::iterator label_it = group.begin(); label_it != group.end(); label_it++)
 					score_sum += distribution.value(*label_it);
-				if (score_sum > 0.7 || Utils::float_equal(score_sum, 0.7))
+				if (score_sum > 0.7)
 				{
 					parts_clouds[group[0]]->push_back(PointXYZ(point.x(), point.y(), point.z()));
 					vertices_indices[group[0]].push_back(i);
@@ -173,6 +173,7 @@ void GenCandidatesThread::generateCandidates()
 
 		/* Generate part candidates for each part point cloud */
 		int cluster_count = 0;    /* The index of connected component, used to mark which point cluster each candidate stands for */
+		int num_of_components;    /* The number of point clusters */
 		QVector<OBB *> point_clusters_obbs;    /* The OBBs of the point clusters used to display */
 		QMap<int, PointCloud<PointXYZ>::Ptr>::iterator part_cloud_it;
 		for (part_cloud_it = parts_clouds.begin(); part_cloud_it != parts_clouds.end(); ++part_cloud_it)
@@ -226,7 +227,7 @@ void GenCandidatesThread::generateCandidates()
 				qDebug("Part-%d: Compute connected component of the graph.", label_name);
 
 				std::vector<int> components(boost::num_vertices(graph));
-				int num_of_components = boost::connected_components(graph, &components[0]);    /* Calculate the connected components */
+				num_of_components = boost::connected_components(graph, &components[0]);    /* Calculate the connected components */
 				QVector<QList<int>> components_indices(num_of_components);    /* The indices of points which belong to each connected component(point cluster) */
 				/* Create the container cloud for each connected component of the part graph */
 				QVector<pcl::PointCloud<PointXYZ>::Ptr> point_clusters(num_of_components);    /* The point cluster genearted by each connected component */
@@ -253,19 +254,49 @@ void GenCandidatesThread::generateCandidates()
 
 					/* Just compute the connected component with at least 2 vertices in it,
 					* because it will cause an error to compute eigen vectors of the OBB which contains only 1 point */
-					if (point_clusters[j]->size() >= 3)
+					if (point_clusters[j]->size() >= 10)
 					{
 						obbest->reset(label_name, point_clusters[j]);
 						QVector<OBB *> cand_obbs = obbest->computeOBBCandidates();    /* Compute all 24 candidate OBB of the point cluster */
-						OBB * point_cluster_obb = obbest->computeOBB();    /* Compute the OBB of the point cluster to display */
+						OBB * point_cluster_obb = cand_obbs.first();   /* Compute the OBB of the point cluster to display */
+						point_cluster_obb->setColor(QVector3D(COLORS[cluster_count][0], COLORS[cluster_count][1], COLORS[cluster_count][2]));
 						point_cluster_obb->triangulate();
 						point_clusters_obbs.push_back(point_cluster_obb);
 
-						for (int k = 0; k < cand_obbs.size(); k++)
+						/* Check the classification probability distribution of the points in the point cluster */
+						//if (cluster_count >= 1 && cluster_count <= 3)
+						//{
+						//	string out_path = "../data/point_clusters/" + to_string(cluster_count) + ".csv";
+						//	ofstream dout(out_path.c_str());
+						//	dout << ",0,1,2,3,4,5,6,7,8" << endl;
+
+						//	for (int pnt_idx = 0; pnt_idx < point_clusters[j]->size(); pnt_idx++)
+						//	{
+						//		int origin_idx = part_indices[pnt_idx];   /* The index of the point in origin point cloud */
+						//		QMap<int, float> distribution = m_distribution[origin_idx];
+						//		int labelNum = distribution.size();
+						//		int dcount = 0;
+						//		dout << origin_idx << ",";
+
+						//		for (QMap<int, float>::iterator dit = distribution.begin(); dit != distribution.end(); dit++)
+						//		{
+						//			if (dcount < labelNum - 1)
+						//				dout << dit.value() << ",";
+						//			else
+						//				dout << dit.value() << endl;
+						//			dcount++;
+						//		}
+						//	}
+
+						//	dout.close();
+						//}
+
+						//for (int k = 0; k < cand_obbs.size(); k++) 
+						for (int k = 0; k < 2; k++)
 						{
 							/* Create PAPart object from OBB */
-							onDebugTextAdded("Part-" + QString::number(label_name) + ": Create a part for OBB-" + QString::number(j) + "-" + QString::number(k) + " as a candidate.");
-							qDebug("Part-%d: Create a part for OBB-%d-%d as a candidate.", label_name, j, k);
+							onDebugTextAdded("Part-" + QString::number(label_name) + ": Create a part for OBB-" + QString::number(cluster_count) + "-" + QString::number(num_of_candidates) + " as a candidate.");
+							qDebug("Part-%d: Create a part for OBB-%d-%d as a candidate.", label_name, cluster_count, num_of_candidates);
 							PAPart candidate(cand_obbs[k]);
 							candidate.setClusterNo(cluster_count);  /* Set the cluster number to the index of the current connected component */
 							/* Set the indices of points assigned to this part to the PAPart object */
@@ -295,7 +326,8 @@ void GenCandidatesThread::generateCandidates()
 
 		m_num_of_candidates = overall_cand_count;
 		emit genCandidatesDone(num_of_candidates, part_candidates);
-		//emit setOBBs(point_clusters_obbs);
+		/* Show the best candidate of each point cluster(the best means to be closest to the global system */
+		emit setOBBs(point_clusters_obbs);
 
 		onDebugTextAdded("Parts candidates generating done.");
 		qDebug() << "Parts candidates generating done.";
@@ -312,13 +344,30 @@ void GenCandidatesThread::loadCandidatesFromFiles()
 	onDebugTextAdded("Load candidates from local files.");
 	qDebug() << "Load candidates from local files.";
 
-	Part_Candidates candidates(m_num_of_candidates);
-	for (int i = 0; i < m_num_of_candidates; i++)
+	int index = 0;
+	string cand_path = "../data/candidates/" + m_model_name + "/" + to_string(index++) + ".txt";
+	ifstream part_in(cand_path.c_str());
+	Part_Candidates candidates;
+	while (part_in.is_open())
+	{
+		part_in.close();
+
+		PAPart cand(cand_path);
+		candidates.push_back(cand);
+
+		/* Shift to the next candidate part file */
+		cand_path = "../data/candidates/" + m_model_name + "/" + to_string(index++) + ".txt";
+		part_in.open(cand_path.c_str());
+	}
+	/*for (int i = 0; i < m_num_of_candidates; i++)
 	{
 		string cand_path = "../data/candidates/" + m_model_name + "/" + to_string(i) + ".txt";
 		PAPart cand(cand_path);
 		candidates[i] = cand;
-	}
+	}*/
+	m_num_of_candidates = candidates.size();
+	if (candidates.capacity() != m_num_of_candidates)
+		candidates.resize(m_num_of_candidates);
 
 	emit genCandidatesDone(m_num_of_candidates, candidates);
 

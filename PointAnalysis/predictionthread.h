@@ -55,7 +55,7 @@ private:
 
 	void predictLabelsAndOrientations();
 	void clean();
-	
+	void singleThreadOptimize();
 };
 
 #endif // PREDICTIONTHREAD_H

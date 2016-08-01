@@ -68,8 +68,164 @@ void PredictionThread::clean()
 
 void PredictionThread::run()
 {
-	predictLabelsAndOrientations();
-	clean();
+	/*predictLabelsAndOrientations();
+	clean();*/
+	singleThreadOptimize();
+}
+
+void PredictionThread::singleThreadOptimize()
+{
+	using namespace std;
+	ofstream e_out("../data/pairwise_potentials.csv");
+	ofstream u_out("../data/unary_potentials.csv");
+
+	MRFEnergy<TypeGeneral>* mrf_s;
+	MRFEnergy<TypeGeneral> *mrf_bp;
+	MRFEnergy<TypeGeneral>::NodeId* nodes_s;
+	MRFEnergy<TypeGeneral>::NodeId *nodes_bp;
+	MRFEnergy<TypeGeneral>::Options options;
+	MRFEnergy<TypeGeneral>::Options options_bp;
+	TypeGeneral::REAL energy, lowerBound;
+
+	const int labelNum = m_label_names.size();   /* the number of labels */
+	const int nodeNum = m_ncandidates;   /* the number of nodes */
+
+	mrf_s = new MRFEnergy<TypeGeneral>(TypeGeneral::GlobalSize());
+	nodes_s = new MRFEnergy<TypeGeneral>::NodeId[nodeNum];
+	mrf_bp = new MRFEnergy<TypeGeneral>(TypeGeneral::GlobalSize());
+	nodes_bp = new MRFEnergy<TypeGeneral>::NodeId[nodeNum];
+
+	TypeGeneral::REAL *D = new TypeGeneral::REAL[labelNum];
+	TypeGeneral::REAL *V = new TypeGeneral::REAL[labelNum * labelNum];
+
+	cout << "Set unary potentials." << endl;
+	for (int i = 0; i < nodeNum; i++)
+	{
+		u_out << i << endl;
+
+		PAPart cand = m_part_candidates[i];
+		string unary_str = "Node_" + to_string(cand.getClusterNo()) + "_" + to_string(i) + ": ";
+
+		Eigen::VectorXf unary_vec(labelNum);
+		for (int j = 0; j < labelNum; j++)
+		{
+			D[j] = m_energy_functions->Epnt(cand, j);
+			unary_vec[j] = D[j];
+
+			if (j < labelNum - 1)
+				u_out << D[j] << ",";
+			else
+				u_out << D[j] << endl;
+		}
+		
+		nodes_s[i] = mrf_s->AddNode(TypeGeneral::LocalSize(labelNum), TypeGeneral::NodeData(D));
+		nodes_bp[i] = mrf_bp->AddNode(TypeGeneral::LocalSize(labelNum), TypeGeneral::NodeData(D));
+
+		cout << unary_str << endl;
+		cout << unary_vec.transpose() << endl;
+	}
+	//e_out << endl;
+	cout << "done." << endl;
+
+	cout << "Set pairwise potentials." << endl;
+	for (int i = 0; i < nodeNum; i++)
+	{
+		PAPart cand1 = m_part_candidates[i];
+		int point_cluster_no_1 = cand1.getClusterNo();
+
+		for (int j = i + 1; j < nodeNum; j++)
+		{
+			PAPart cand2 = m_part_candidates[j];
+			int point_cluster_no_2 = cand2.getClusterNo();
+
+			PAPartRelation relation(cand1, cand2);
+
+			//e_out << "Node_" << cand1.getClusterNo() << "_" << i << " - Node_" << cand2.getClusterNo() << "_" << j << ":" << endl;
+			e_out << i << "," << j << endl;
+
+			//e_out << ",";
+			/*for (int idx = 0; idx < labelNum; idx++)
+			{
+				if (idx < labelNum - 1)
+					e_out << idx << ",";
+				else
+					e_out << idx << endl;
+			}*/
+
+			for (int m = 0; m < labelNum; m++)
+			{
+				//e_out << m << ",";
+				for (int n = 0; n < labelNum; n++)
+				{
+					V[m + n * labelNum] = m_energy_functions->Epair(relation, point_cluster_no_1, point_cluster_no_2, m, n);
+					//e_out << "V(" << m << ", " << n << ")=" << V[m + n * labelNum] << "\t";
+					if (n < labelNum - 1)
+						e_out << V[m + n * labelNum] << ",";
+					else
+						e_out << V[m + n * labelNum] << endl;
+				} 
+			}
+			
+			mrf_s->AddEdge(nodes_s[i], nodes_s[j], TypeGeneral::EdgeData(TypeGeneral::GENERAL, V));
+			mrf_bp->AddEdge(nodes_bp[i], nodes_bp[j], TypeGeneral::EdgeData(TypeGeneral::GENERAL, V));
+		}
+	}
+	cout << "done." << endl;
+	e_out.close();
+	u_out.close();
+
+	/* Function below is optional - it may help if, for example, nodes are added in a random order */
+	//mrf->SetAutomaticOrdering();
+
+	/* Execute TRW-S algorithm */
+	cout << "Do TRW_S algorithm." << endl;
+	options.m_iterMax = 100; // maximum number of iterations
+	options.m_printIter = 10;
+	options.m_printMinIter = 0;
+	mrf_s->ZeroMessages();
+	mrf_s->AddRandomMessages(0, 0.0, 1.0);
+	mrf_s->Minimize_TRW_S(options, lowerBound, energy);
+	cout << "Minimization done." << endl;
+
+	/* Execute BP algorithm */
+	cout << "Do BP algorithm." << endl;
+	TypeGeneral::REAL energy_bp;
+	options_bp.m_iterMax = 100;
+	options_bp.m_printIter = 10;
+	options_bp.m_printMinIter = 0;
+	mrf_bp->ZeroMessages();
+	mrf_bp->AddRandomMessages(0, 0.0, 1.0);
+	mrf_bp->Minimize_BP(options_bp, energy_bp);
+	cout << "Minimization done." << endl;
+
+	MRFEnergy<TypeGeneral>* mrf_optimized;
+	if (energy < energy_bp)
+	{
+		cout << "TRW_S algorithm is more optimized. Energy = " << energy << endl;
+		mrf_optimized = mrf_s;
+	}
+	else
+	{
+		cout << "BP algorithm is more optimized. Energy = " << energy_bp << endl;
+		mrf_optimized = mrf_bp;
+	}
+
+	/* Read soluntions */
+	std::vector<int> labels(nodeNum);    /* The i-th component of labels represents the label assigned to the i-th candidate node */
+	QMap<int, int> parts_picked;  /* The parts picked out of candidates. key is part label, value is the index of candidate in parts_candidates*/
+	int null_label = m_energy_functions->getNullLabelName();
+
+	for (int i = 0; i < nodeNum; i++)
+	{
+		labels[i] = mrf_optimized->GetSolution(nodes_bp[i]);
+		if (labels[i] != null_label)
+		{
+			parts_picked.insert(labels[i], i);
+			std::cout << "Part label " << labels[i] << " corresponds to Candidate-" << i << std::endl;
+		}
+	}
+
+	emit predictionDone(parts_picked);
 }
 
 void PredictionThread::predictLabelsAndOrientations()
@@ -81,14 +237,14 @@ void PredictionThread::predictLabelsAndOrientations()
 	const int labelNum = m_label_names.size();   /* the number of labels */
 
 	/* Function below is optional - it may help if, for example, nodes are added in a random order */
-	mrf->SetAutomaticOrdering();
+	//mrf->SetAutomaticOrdering();
 
 	/* Execute TRW-S algorithm */
 	options.m_iterMax = 100; // maximum number of iterations
-	options.m_printIter = 10;
-	options.m_printMinIter = 0;
-	mrf->ZeroMessages();
-	mrf->AddRandomMessages(0, 0.0, 1.0);
+	//options.m_printIter = 10;
+	//options.m_printMinIter = 0;
+	//mrf->ZeroMessages();
+	//mrf->AddRandomMessages(0, 0.0, 1.0);
 	mrf->Minimize_TRW_S(options, lowerBound, energy);
 
 	/* Read soluntions */

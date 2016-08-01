@@ -4,19 +4,21 @@
 #include <Eigen\Core>
 #include <qvector.h>
 #include <qvector3d.h>
+#include <qvector4d.h>
+#include <qmatrix4x4.h>
 #include <QList>
 #include <vector>
 #include <string>
 #include <fstream>
-#include "obb.h"
 #include <cmath>
+#include "obb.h"
 
 class PAPart
 {
 public:
 	PAPart();
-	PAPart(OBB *obb);
 	PAPart(std::string path);
+	PAPart(OBB *obb);
 	PAPart(const PAPart &part);
 	~PAPart();
 
@@ -34,8 +36,8 @@ public:
 	std::vector<int> getVerticesIndices() const;
 	void setVerticesIndices(QList<int> indices);
 	void setClusterNo(int cluster_no);
-	int getClusterNo() const { return m_cluster_no; }
 	void saveToFile(std::string name);
+	int getClusterNo() const { return m_cluster_no; }
 	OBB * generateOBB();
 
 private:

@@ -7,6 +7,7 @@
 #include <QVector3D>
 #include <QList>
 #include <cstdlib>
+#include <qalgorithms.h>
 #include <cmath>
 #include <QMatrix4x4>
 #include <QVector4D>
@@ -25,14 +26,14 @@ typedef Seb::Smallest_enclosing_ball<float> Miniball;
 
 /* Define 11 different colors */
 const float COLORS[11][3] = {
-	{ 1.0, 0.0, 0.0 },
-	{ 0.0, 1.0, 0.0 },
-	{ 0.0, 0.0, 1.0 },
-	{ 1.0, 1.0, 0.0 },
-	{ 0.0, 1.0, 1.0 },
-	{ 1.0, 0.0, 1.0 },
-	{ 0.5, 0.0, 0.5 },
-	{ 1.0, 0.5, 0.25 },
+	{ 1.0, 0.0, 0.0 },    /* 红色 */
+	{ 0.0, 1.0, 0.0 },    /* 绿色 */
+	{ 0.0, 0.0, 1.0 },    /* 蓝色 */
+	{ 1.0, 1.0, 0.0 },    /* 黄色 */
+	{ 0.0, 1.0, 1.0 },    /* 天蓝色 */
+	{ 1.0, 0.0, 1.0 },    /* 淡紫色*/
+	{ 0.5, 0.0, 0.5 },    /* 紫色 */
+	{ 1.0, 0.5, 0.25 },   /* 橘黄色 */
 	{ 0.5, 0.5, 0.0 },
 	{ 0.0, 0.5, 0.5 },
 	{ 0.5, 0.5, 0.5 }

@@ -296,6 +296,24 @@
     <ClCompile Include="GeneratedFiles\Release\moc_unarytermthread.cpp">
       <Filter>Generated Files\Release</Filter>
     </ClCompile>
+    <ClCompile Include="debugrelationthread.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneratedFiles\Debug\moc_debugrelationthread.cpp">
+      <Filter>Generated Files\Debug</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneratedFiles\Release\moc_debugrelationthread.cpp">
+      <Filter>Generated Files\Release</Filter>
+    </ClCompile>
+    <ClCompile Include="utils_sampling.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="vcg_mesh.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ICP.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="pointanalysis.h">
@@ -382,6 +400,9 @@
     <CustomBuild Include="unarytermthread.h">
       <Filter>Header Files</Filter>
     </CustomBuild>
+    <CustomBuild Include="debugrelationthread.h">
+      <Filter>Header Files</Filter>
+    </CustomBuild>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GeneratedFiles\ui_pointanalysis.h">
@@ -454,6 +475,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="energyfunctions.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="utils_sampling.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vcg_mesh.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ICP.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
