@@ -15,12 +15,12 @@ OutputThread::~OutputThread()
 void OutputThread::run()
 {
 	qDebug() << "Outputing the original point cloud...";
-	pcModel->output(outputFileName.c_str());
+	model->output(outputFileName.c_str());
 	emit(outputCompleted());
 }
 
-void OutputThread::setOutputModel(PCModel *outmodel, std::string filen)
+void OutputThread::setOutputModel(Model *outmodel, std::string filen)
 {
-	pcModel = outmodel;
+	model = outmodel;
 	outputFileName = filen;
 }

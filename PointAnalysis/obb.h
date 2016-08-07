@@ -3,11 +3,19 @@
 
 #include <QObject>
 #include <QVector3D>
+#include <QtOpenGL>
 #include <qvector.h>
 #include <Eigen\Core>
-#include "utils_sampling.hpp"
-#include "pcmodel.h"
+#include <Eigen\Geometry>
+#include <assert.h>
+#include <utils_sampling.h>
+#include <pcl/point_types.h>
+#include <pcl/point_cloud.h>
+#include "model.h"
 //#include "utils.h"
+
+typedef QVector<Eigen::Vector3f> Samples_Vec;
+Q_DECLARE_METATYPE(Samples_Vec)
 
 class OBB : public QObject
 {
@@ -23,22 +31,26 @@ public:
 	Eigen::Vector3f getYAxis() const;
 	Eigen::Vector3f getZAxis() const;
 	QVector3D getScale() const;
-	QVector<Eigen::Vector3f> getAxes() const;
+	Eigen::Matrix3f getAxes() const;
 	void triangulate();
-	const float *constData() const { return m_data.constData(); }
-	float *data() { return m_data.data(); }
-	int count() const { return m_count; }
-	int vertexCount() const { return m_count / 12 * 3; }
-	int facetCount() const { return m_count / 12; }
+	//const float *constData() const { return m_data.constData(); }
+	//float *data() { return m_data.data(); }
+	//int count() const { return m_count; }
+	int vertexCount() const;
+	int faceCount() const;
+	int sampleCount() const;
 	int getLabel() const{ return m_label; }
 	QVector3D getColor() const { return QVector3D(m_color); }
 	Eigen::Vector3f getCentroid() const { return m_centroid; }
-	QVector<QVector3D> getVertices() const;
+	QVector<Eigen::Vector3f> getVertices() const;
+	QVector<Eigen::Vector3i> getFaces() const;
+	QVector<Eigen::Vector3f> getFacesNormals() const;
+	QVector<Eigen::Vector3f> getSamples() const;
 	void setLabel(int label) { m_label = label; }
 	void setColor(QVector3D color);
 	int samplePoints(int num_of_samples = 0);
 	QVector<Eigen::Vector3f> getSamplePoints() const;
-	void setSamplePoints(Eigen::MatrixXf samples_mat);
+	void setSamplePoints(Eigen::MatrixXd samples_mat);
 	void setXAxis(Eigen::Vector3f xAxis);
 	void setYAxis(Eigen::Vector3f yAxis);
 	void setZAxis(Eigen::Vector3f zAxis);
@@ -47,6 +59,11 @@ public:
 	void setYAxis(Eigen::Vector3d yAxis);
 	void setZAxis(Eigen::Vector3d zAxis);
 	void setCentroid(Eigen::Vector3d centroid);
+	void draw(int scale);
+	void drawSamples(int scale);
+	void translate(float x, float y, float z);
+	void rotate(float angle, float x, float y, float z);
+	void rotate(float angle, float x, float y, float z, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
 
 private:
 	Eigen::Vector3f x_axis;
@@ -57,13 +74,15 @@ private:
 	double z_length;
 	Eigen::Vector3f m_centroid;
 	QVector3D m_color;
-	QVector<float> m_data;
-	int m_count;
+	//QVector<float> m_data;
+	//int m_count;
 	int m_label;
-	QVector<QVector3D> m_vertices;
+	QVector<Eigen::Vector3f> m_vertices;
+	QVector<Eigen::Vector3i> m_faces;
+	QVector<Eigen::Vector3f> m_faces_normals;
 	QVector<Eigen::Vector3f> m_sample_points;
 
-	void add(QVector3D v0, QVector3D v1, QVector3D v2, Eigen::Vector3f normal);
+	//void add(QVector3D v0, QVector3D v1, QVector3D v2, Eigen::Vector3f normal);
 	QVector3D eigen_vector3f_to_qvector3d(Eigen::Vector3f vec);
 };
 

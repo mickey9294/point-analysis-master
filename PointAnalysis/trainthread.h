@@ -31,14 +31,11 @@ protected:
 
 private:
 	shark::ClassificationDataset data;
-	shark::ClassificationDataset dataTest;
 	std::string m_modelClassName;
 
 	void loadPoints();
-	void loadTestPoints();
 	void readFeatures(QString featFilename, int mode);
 	void train();
-	std::string getModelName(QString filename);
 };
 
 #endif // TRAINTHREAD_H

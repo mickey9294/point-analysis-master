@@ -4,7 +4,10 @@
 #include <QThread>
 #include <QDebug>
 #include <QString>
+#include <fstream>
 #include "pcmodel.h"
+#include "model.h"
+#include "meshmodel.h"
 #include "utils.h"
 
 class LoadThread : public QThread
@@ -25,7 +28,7 @@ public:
 	void setPhase(PHASE phase);
 
 signals:
-	void loadPointsCompleted(PCModel *model);
+	void loadPointsCompleted(Model *model);
 	void computeFeaturesCompleted();
 	void reportStatus(QString stat);
 	void addDebugText(QString text);

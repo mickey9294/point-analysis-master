@@ -2,15 +2,13 @@
 #define PCMODEL_H
 
 #include <QObject>
-#include <qopengl.h>
+#include <QtOpenGL>
 #include <QVector>
-#include <QVector3D>
-#include <QList>
 #include <cstdlib>
+#include <qset.h>
+#include <assert.h>
 #include <qalgorithms.h>
 #include <cmath>
-#include <QMatrix4x4>
-#include <QVector4D>
 #include <fstream>
 #include <iostream>
 #include <vector>
@@ -18,55 +16,61 @@
 #include <pcl/point_types.h>
 #include <pcl/features/normal_3d.h>
 #include "Seb.h"
+#include "model.h"
+#include "utils.h"
+#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
+#include <CGAL/jet_estimate_normals.h>
+#include <CGAL/mst_orient_normals.h>
 
 typedef Seb::Point<float> MiniPoint;
 typedef std::vector<MiniPoint> PointVector;
 typedef Seb::Smallest_enclosing_ball<float> Miniball;
 
+// kernel
+typedef CGAL::Exact_predicates_inexact_constructions_kernel Kernel;
+// Simple geometric types
+typedef Kernel::FT FT;
+typedef Kernel::Point_3 Point3;
+typedef Kernel::Vector_3 Vector;
+// Point with normal vector stored in a std::pair.
+typedef std::pair<Point3, Vector> PointVectorPair;
+typedef std::vector<PointVectorPair> PointList;
 
-/* Define 11 different colors */
-const float COLORS[11][3] = {
-	{ 1.0, 0.0, 0.0 },    /* 红色 */
-	{ 0.0, 1.0, 0.0 },    /* 绿色 */
-	{ 0.0, 0.0, 1.0 },    /* 蓝色 */
-	{ 1.0, 1.0, 0.0 },    /* 黄色 */
-	{ 0.0, 1.0, 1.0 },    /* 天蓝色 */
-	{ 1.0, 0.0, 1.0 },    /* 淡紫色*/
-	{ 0.5, 0.0, 0.5 },    /* 紫色 */
-	{ 1.0, 0.5, 0.25 },   /* 橘黄色 */
-	{ 0.5, 0.5, 0.0 },
-	{ 0.0, 0.5, 0.5 },
-	{ 0.5, 0.5, 0.5 }
-};
-
-class PCModel : public QObject
+class PCModel : public QObject, public Model
 {
 	Q_OBJECT
 
 public:
 	PCModel();
-	PCModel(int nvertices, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, pcl::PointCloud<pcl::Normal>::Ptr cloud_normals);
-	PCModel(int nvertices, QVector<float> data);
-	PCModel(int nvertices, QVector<float> data, QVector<int> labels);
+	PCModel(const PCModel &pc);
+	PCModel(const char *file_path, int normals_estimation_method);
+	PCModel(std::string file_path, int normals_estimation_method);
 	~PCModel();
 
-	const GLfloat *constData() const { return m_data.constData(); }
-	GLfloat *data() { return m_data.data(); }
-	int count() const { return m_count; }
-	int vertexCount() const { return m_count / 9; }
-	//void addFrame(PCModel model, QMatrix4x4 trans);
-	QVector3D getCenter();
+	int vertexCount() const { return m_vertices_list.size(); }
+	Eigen::Vector3f getCentroid() const;
 	void output(const char *filename);
-	void clear();
-	double getRadius() { return radius; }
+	double getRadius() const{ return m_radius; }
 	void setInputFilename(const char *name);
 	void setInputFilename(std::string name);
-	std::string getInputFilename();
-	QVector<int> getLabels();
-	QVector<double> getSdf();
+	std::string getInputFilepath() const;
+	QVector<int> getVerticesLabels() const;
+	QVector<double> getSdf() const;
 	void setSdf(QVector<double> sdf);
-	QList<int> getLabelNames();
+	QVector<int> getLabelNames() const;
 	int numOfClasses();
+	void rotate(float angle, float x, float y, float z);
+	void draw(int scale);
+	QVector<Eigen::Vector3f>::iterator vertices_begin(){ return m_vertices_list.begin(); }
+	QVector<Eigen::Vector3f>::iterator vertices_end() { return m_vertices_list.end(); }
+	QVector<Eigen::Vector3f>::iterator normals_begin() { return m_normals_list.begin(); }
+	QVector<Eigen::Vector3f>::iterator normals_end() { return m_normals_list.end(); }
+
+	QVector<Eigen::Vector3f> getVertices() const;
+	QVector<Eigen::Vector3f> getNormals() const;
+
+	Eigen::Vector3f & operator[](int index);
+	Eigen::Vector3f at(int index);
 
 	public slots:
 	void setLabels(QVector<int> labels);
@@ -78,19 +82,20 @@ signals:
 	void addDebugText(QString text);
 
 private:
-	QVector<GLfloat> m_data;
+	//QVector<GLfloat> m_data;
 	QVector<int> m_labels;
-	int m_count;
-	QVector3D center;  /* the center of the minimal bounding sphere */
-	double max;
-	double radius;  /* the radius of the minimal bounding sphere */
-	std::string inputfilename;
+	//int m_count;
+	Eigen::Vector3f m_centroid;  /* the center of the minimal bounding sphere */
+	double m_radius;  /* the radius of the minimal bounding sphere */
+	std::string m_input_filepath;
 	QVector<double> m_sdf;
-	QList<int> m_label_names;
+	QVector<int> m_label_names;
+	QVector<Eigen::Vector3f> m_vertices_list;
+	QVector<Eigen::Vector3f> m_normals_list;
 
-	void add(const QVector3D &v, const QVector3D &n, const QVector3D &c);
-	void transform(QMatrix4x4 transMatrix);
+	//void add(const QVector3D &v, const QVector3D &n, const QVector3D &c);
 	void normalize();
+	void load_from_file(const char *file_path, int normals_estimation_normals);
 };
 
 #endif // PCMODEL_H

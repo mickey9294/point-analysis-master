@@ -35,7 +35,7 @@ public:
 
 signals:
 	void estimateCompleted(int id, QVector<QVector<double>> points_feats);
-	void firstStepCompleted();
+	//void firstStepCompleted();
 	void addDebugText(QString text);
 
 protected:

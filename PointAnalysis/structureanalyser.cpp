@@ -92,7 +92,7 @@ void StructureAnalyser::execute()
 	}
 	
 	/* Check if the point cloud featrues have been estimated before */
-	QString model_file_name = Utils::getModelName(QString::fromStdString(m_pcModel->getInputFilename()));
+	QString model_file_name = Utils::getModelName(QString::fromStdString(m_pcModel->getInputFilepath()));
 	m_model_name = model_file_name.toStdString();
 	std::string pcFile = "../data/features_test/" + m_model_name + ".csv";
 	std::ifstream feat_file_in(pcFile.c_str());
@@ -129,7 +129,7 @@ using namespace shark;
 using namespace std;
 void StructureAnalyser::classifyPoints(PAPointCloud *pointcloud)
 {
-	QString model_file_name = Utils::getModelName(QString::fromStdString(m_pcModel->getInputFilename()));
+	QString model_file_name = Utils::getModelName(QString::fromStdString(m_pcModel->getInputFilepath()));
 	std::string pcFile = "../data/features_test/" + model_file_name.toStdString() + ".csv";
 
 	if (pointcloud != NULL)    /* If there exists no features file of the point cloud */
@@ -158,7 +158,7 @@ void StructureAnalyser::classifyPoints(PAPointCloud *pointcloud)
 			for (int j = 0; j < DIMEN; j++)
 				feats[j] = line_data[j].toDouble();
 			PAPoint papoint(feats);
-			GLfloat *point = m_pcModel->data() + i * 9;
+			Eigen::Vector3f point = m_pcModel->operator[](i);
 			GLfloat x = point[0];
 			GLfloat y = point[1];
 			GLfloat z = point[2];

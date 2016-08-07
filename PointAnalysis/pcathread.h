@@ -19,8 +19,8 @@
 #include "papart.h"
 #include "papartrelation.h"
 #include "utils.h"
-#include "utils_sampling.hpp"
 #include "ICP.h"
+#include "meshmodel.h"
 
 class PCAThread : public QThread
 {
@@ -33,31 +33,27 @@ public:
 	};
 
 	PCAThread(QObject *parent = 0);
-	PCAThread(PCModel *pcModel, PHASE phase, QObject *parent = 0);
+	PCAThread(Model *model, PHASE phase, QObject *parent = 0);
 	~PCAThread();
 
-	void setPointCloud(PCModel * pcModel);
+	void setPointCloud(Model * model);
 
 signals:
 	void estimateOBBsCompleted(QVector<OBB*> obbs);
 	void addDebugText(QString text);
 	void estimatePartsDone(QVector<PAPart> parts);
+	void sendSamples(Samples_Vec samples);
 
 protected:
 	void run();
 
 private:
 	QMap<int, pcl::PointCloud<pcl::PointXYZ>::Ptr> m_parts;
-	PCModel * m_pcModel;
+	Model * m_model;
 	QVector<OBB *> m_OBBs;
 	PHASE m_phase;
 
-	void loadParts(PCModel *pcModel);
-	void ICP_procedure();
-	/* Load the mesh from file for ICP */
-	void loadMesh(std::vector<Utils_sampling::Vec3> &points_list, std::vector<Eigen::Vector3i> &faces_list, QMap<int, QList<int>> &label_faces_map);
-	void sampleOnMesh(QMap<int, std::vector<Eigen::Vector3f>> &parts_samples);
-	void sampleOnOBBs(QMap<int, std::vector<Eigen::Vector3f>> &obbs_samples);
+	void loadParts(Model *model);
 };
 
 #endif // PCATHREAD_H

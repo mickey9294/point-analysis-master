@@ -26,7 +26,7 @@ void DebugRelationThread::execute()
 
 void DebugRelationThread::receiveModel(PCModel *pcModel)
 {
-	qDebug() << "Receive point cloud from" << QString::fromStdString(pcModel->getInputFilename());
+	qDebug() << "Receive point cloud from" << QString::fromStdString(pcModel->getInputFilepath());
 
 	qDebug() << "Start compute OBBs of parts.";
 	pcaThread.setPointCloud(pcModel);

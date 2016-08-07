@@ -11,6 +11,8 @@
 #include "utils.h"
 #include "PAPointCloud.h"
 #include "loadthread.h"
+#include "model.h"
+#include "meshmodel.h"
 
 class PointFeatureExtractor : public QObject
 {
@@ -23,13 +25,13 @@ public:
 	void execute();
 
 	public slots:
-	void receiveModel(PCModel *model);
+	void receiveModel(Model *model);
 	void oneEstimateCompleted(PAPointCloud *cloud);
 	void onDebugTextAdded(QString text);
 
 signals:
 	void reportStatus(QString stat);
-	void showModel(PCModel *);
+	void showModel(Model *);
 	void addDebugText(QString text);
 
 private:
@@ -39,6 +41,7 @@ private:
 	LoadThread loadThread;
 	std::string m_modelClassName;
 	QList<int> m_label_names;
+	QList<std::string> m_features_filepaths;
 
 	void estimateFeatures();
 	std::string getOutFilename(int index);

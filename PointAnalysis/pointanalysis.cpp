@@ -5,6 +5,7 @@ PointAnalysis::PointAnalysis(QWidget *parent)
 {
 	ui.setupUi(this);
 	qRegisterMetaType<PCModel *>("PCModelPointer");
+	qRegisterMetaType<Model *>("ModelPointer");
 	qRegisterMetaType<PAPointCloud *>("PAPointCloud");
 	qRegisterMetaType<QVector<int>>("QVectorInt");
 	qRegisterMetaType<QVector<OBB *>>("OBBPointer");
@@ -15,7 +16,7 @@ PointAnalysis::PointAnalysis(QWidget *parent)
 	connect(ui.actionEstimate_Features, SIGNAL(triggered()), this, SLOT(estimateFeatures()));
 	connect(ui.actionExtract_Point_Features, SIGNAL(triggered()), this, SLOT(extractPointFeatures()));
 	connect(&pfe, SIGNAL(reportStatus(QString)), this, SLOT(setStatMessage(QString)));
-	connect(&pfe, SIGNAL(showModel(PCModel *)), ui.displayGLWidget, SLOT(setModel(PCModel *)));
+	connect(&pfe, SIGNAL(showModel(Model *)), ui.displayGLWidget, SLOT(setModel(Model *)));
 	connect(&pfe, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
 	connect(ui.actionTrain_Point_Classifier, SIGNAL(triggered()), this, SLOT(trainPointClassifier()));
 	connect(ui.actionTest_PointCloud, SIGNAL(triggered()), this, SLOT(testPointCloud()));
@@ -74,16 +75,24 @@ void PointAnalysis::load()
 
 		/* Start LoadThread to load the model */
 		loadThread = new LoadThread(filepath.toStdString(), LoadThread::PHASE::TESTING, this);
-		connect(loadThread, SIGNAL(loadPointsCompleted(PCModel *)), this, SLOT(loadCompleted(PCModel *)));
+		connect(loadThread, SIGNAL(loadPointsCompleted(Model *)), this, SLOT(loadCompleted(Model *)));
 		loadThread->start();
 	}
 }
 
-void PointAnalysis::loadCompleted(PCModel *model)
+void PointAnalysis::loadCompleted(Model *model)
 {
 	ui.displayGLWidget->setModel(model);
-	connect(ui.displayGLWidget->getModel(), SIGNAL(addDebugText(QString)), ui.displayGLWidget, SLOT(onDebugTextAdded(QString)));
-	connect(ui.displayGLWidget->getModel(), SIGNAL(onLabelsChanged()), ui.displayGLWidget, SLOT(updateLabels()));
+	if (model->getType() == Model::ModelType::Mesh)
+	{
+		connect((MeshModel *)ui.displayGLWidget->getModel(), SIGNAL(addDebugText(QString)), ui.displayGLWidget, SLOT(onDebugTextAdded(QString)));
+		connect((MeshModel *)ui.displayGLWidget->getModel(), SIGNAL(onLabelsChanged()), ui.displayGLWidget, SLOT(updateLabels()));
+	}
+	else
+	{
+		connect((PCModel *)ui.displayGLWidget->getModel(), SIGNAL(addDebugText(QString)), ui.displayGLWidget, SLOT(onDebugTextAdded(QString)));
+		connect((PCModel *)ui.displayGLWidget->getModel(), SIGNAL(onLabelsChanged()), ui.displayGLWidget, SLOT(updateLabels()));
+	}
 	ui.statusBar->showMessage("Loading done.");
 	onDebugTextAdded("Loading done.");
 
@@ -107,10 +116,14 @@ void PointAnalysis::saveModel()
 		"../../Data",
 		tr("Object File Format (*.off);;Stanford Polygon File Format (*.ply"));
 	
-	connect(ui.displayGLWidget->getModel(), SIGNAL(outputProgressReport(int)), &progressDialog1, SLOT(setProgressValue(int)));
+	Model *model = ui.displayGLWidget->getModel();
+	if (model->getType() == Model::ModelType::Mesh)
+		connect((MeshModel *)model, SIGNAL(outputProgressReport(int)), &progressDialog1, SLOT(setProgressValue(int)));
+	else
+		connect((PCModel *)model, SIGNAL(outputProgressReport(int)), &progressDialog1, SLOT(setProgressValue(int)));
 	outputThread = new OutputThread(this);
 	connect(outputThread, SIGNAL(outputCompleted()), this, SLOT(saveCompleted()));
-	outputThread->setOutputModel(ui.displayGLWidget->getModel(), fileName.toStdString());
+	outputThread->setOutputModel(model, fileName.toStdString());
 	outputThread->start();
 	progressDialog1.setProgressValue(0);
 	progressDialog1.setWindowTitle("Point Cloud Save");
@@ -156,6 +169,7 @@ void PointAnalysis::featureEstimateCompleted(PAPointCloud *pointcloud)
 {
 	qDebug() << "Point features estimation done.";
 	onDebugTextAdded("Point features estimation done.");
+	/* Write the features of the model to local file */
 	std::string outputname = "../data/features_test/" + filename + ".csv";
 	onDebugTextAdded("Save the point cloud features to file " + QString::fromStdString(outputname) + ".");
 	setStatMessage("Saving the point cloud features to file" + QString::fromStdString(outputname) + "...");
@@ -213,7 +227,7 @@ void PointAnalysis::testPointCloud()
 		testPcThread.terminate();
 
 	connect(&testPcThread, SIGNAL(setPCLabels(QVector<int>)), this, SLOT(onTestCompleted(QVector<int>)));
-	connect(&testPcThread, SIGNAL(signalTest()), ui.displayGLWidget->getModel(), SLOT(receiveSignalTest()));
+	connect(&testPcThread, SIGNAL(signalTest()), (PCModel *)ui.displayGLWidget->getModel(), SLOT(receiveSignalTest()));
 	testPcThread.setPcName(QString::fromStdString(filename));
 	testPcThread.start();
 }
@@ -221,7 +235,7 @@ void PointAnalysis::testPointCloud()
 void PointAnalysis::onTestCompleted(QVector<int> labels)
 {
 	onDebugTextAdded("Test Completed. Set the labels to point cloud model.");
-	ui.displayGLWidget->getModel()->setLabels(labels);
+	((PCModel *)ui.displayGLWidget->getModel())->setLabels(labels);
 }
 
 void PointAnalysis::computeSdf()
@@ -282,6 +296,7 @@ void PointAnalysis::computeOBB()
 	connect(pcaThread, SIGNAL(finished()), this, SLOT(onComputeOBBDone()));
 	connect(pcaThread, SIGNAL(estimateOBBsCompleted(QVector<OBB *>)), ui.displayGLWidget, SLOT(setOBBs(QVector<OBB *>)));
 	connect(pcaThread, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
+	connect(pcaThread, SIGNAL(sendSamples(Samples_Vec)), ui.displayGLWidget, SLOT(setSamples(Samples_Vec)));
 	pcaThread->start();
 }
 
@@ -308,7 +323,7 @@ void PointAnalysis::trainPartRelations()
 
 	trainPartsThread = new TrainPartsThread(this);
 	connect(trainPartsThread, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
-	connect(trainPartsThread, SIGNAL(showModel(PCModel *)), ui.displayGLWidget, SLOT(setModel(PCModel *)));
+	connect(trainPartsThread, SIGNAL(showModel(Model *)), ui.displayGLWidget, SLOT(setModel(Model *)));
 	connect(&trainPartsThread->pcaThread, SIGNAL(estimateOBBsCompleted(QVector<OBB*>)), ui.displayGLWidget, SLOT(setOBBs(QVector<OBB *>)));
 	connect(trainPartsThread, SIGNAL(finish()), this, SLOT(onTrainPartsDone()));
 	/* No need "trainPartsThread->start();", the thread will start itself after construction */
@@ -341,6 +356,6 @@ void PointAnalysis::onTrainPartsDone()
 
 void PointAnalysis::inferStructure()
 {
-	m_analyser.setPointCloud(ui.displayGLWidget->getModel());
+	m_analyser.setPointCloud((PCModel *)ui.displayGLWidget->getModel());
 	m_analyser.execute();
 }

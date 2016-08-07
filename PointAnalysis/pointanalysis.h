@@ -23,6 +23,7 @@
 #include "papart.h"
 #include "structureanalyser.h"
 #include "debugrelationthread.h"
+#include "model.h"
 
 class PointAnalysis : public QMainWindow
 {
@@ -36,7 +37,7 @@ public:
 	void load();
 	void saveModel();
 	void saveCompleted();
-	void loadCompleted(PCModel *model);
+	void loadCompleted(Model *model);
 	void getProgressReport(int value);
 	void estimateFeatures();
 	void featureEstimateCompleted(PAPointCloud *cloud);

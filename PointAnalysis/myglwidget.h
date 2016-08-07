@@ -10,6 +10,9 @@
 #include "obb.h"
 #include <Windows.h>
 #include <GL/glu.h>
+#include <Eigen\Core>
+#include "meshmodel.h"
+#include "model.h"
 
 #ifndef PI
 #define PI 3.1415926536
@@ -28,7 +31,7 @@ public:
 	int zRotation() const { return m_zRot; }
 
 	void resetView();
-	PCModel * getModel() { return m_model; }
+	Model * getModel() { return m_model; }
 
 signals:
 	void xRotationChanged(int angle);
@@ -40,10 +43,11 @@ signals:
 	void setXRotation(int angle);
 	void setYRotation(int angle);
 	void setZRotation(int angle);
-	void setModel(PCModel *m);
+	void setModel(Model *m);
 	void setOBBs(QVector<OBB *> obbs);
 	void onDebugTextAdded(QString text);
 	void updateLabels();
+	void setSamples(Samples_Vec samples);
 
 protected:
 	void initializeGL();
@@ -71,8 +75,9 @@ private:
 	GLfloat m_zRot;
 	bool m_transparent;
 	float m;
-	PCModel * m_model;
+	Model * m_model;
 	QVector<OBB *> m_OBBs;
+	Samples_Vec m_samples;
 
 	QPoint m_lastPos;
 	bool clickEvent;

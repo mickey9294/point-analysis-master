@@ -258,11 +258,11 @@ void DisplayGLWidget::paintGL()
 	f->glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(GLfloat), reinterpret_cast<void *>(6 * sizeof(GLfloat)));
 
 	m_world.setToIdentity();
-	m_world.translate(m_model->getCenter().x(), m_model->getCenter().y(), m_model->getCenter().z());
+	m_world.translate(m_model->getCentroid().x(), m_model->getCentroid().y(), m_model->getCentroid().z());
 	m_world.rotate(m_xRot / 16.0f, 1, 0, 0);
 	m_world.rotate(m_yRot / 16.0f, 0, 1, 0);
 	m_world.rotate(m_zRot / 16.0f, 0, 0, 1);
-	m_world.translate(-m_model->getCenter().x(), -m_model->getCenter().y(), -m_model->getCenter().z());
+	m_world.translate(-m_model->getCentroid().x(), -m_model->getCentroid().y(), -m_model->getCentroid().z());
 
 	QOpenGLVertexArrayObject::Binder vaoBinder(&m_vao);
 	m_program->bind();

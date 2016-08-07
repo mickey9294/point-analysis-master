@@ -7,49 +7,65 @@ FeatureEstimator::FeatureEstimator(QObject *parent)
 	m_normals = pcl::PointCloud<pcl::Normal>::Ptr(new pcl::PointCloud < pcl::Normal>);
 }
 
-FeatureEstimator::FeatureEstimator(PCModel *pcModel, PHASE phase, QObject *parent)
+FeatureEstimator::FeatureEstimator(Model *model, PHASE phase, QObject *parent)
 	: QObject(parent), finish_count(NUM_OF_THREADS), m_phase(phase)
 {
 	qDebug() << "Initializing the feature estimator...";
 	emit addDebugText("Initializing the feature estimator...");
 	m_cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
 	m_normals = pcl::PointCloud<pcl::Normal>::Ptr(new pcl::PointCloud < pcl::Normal>);
-	m_pointcloudFile = QString(pcModel->getInputFilename().c_str());
-	m_pointcloud = new PAPointCloud(pcModel->vertexCount());
-	m_pointcloud->setRadius(pcModel->getRadius());
+	m_pointcloudFile = QString(model->getInputFilepath().c_str());
 
-	qDebug() << "Before initialization, the size of cloud is" << m_cloud->size();
-	qDebug("The cloud should have %d points.", pcModel->vertexCount());
-	for (int i = 0; i < pcModel->vertexCount(); i++)
+	if (model->getType() == Model::ModelType::Mesh)    /* If it is a training mesh model */
 	{
-		int gap = i * 9;
-		GLfloat *point = pcModel->data();
-		float x = point[gap + 0];
-		float y = point[gap + 1];
-		float z = point[gap + 2];
-		float nx = point[gap + 3];
-		float ny = point[gap + 4];
-		float nz = point[gap + 5];
-	
-		pcl::PointXYZ p(x, y, z);
-		m_cloud->push_back(p);
-		pcl::Normal normal(nx, ny, nz);
-		m_normals->push_back(normal);
-		m_pointcloud->at(i).setPosition(x, y, z);
+		MeshModel *mesh = (MeshModel *)model;
+		if (mesh->sampleCount() <= 0)
+			mesh->samplePoints();
+		m_pointcloud = new PAPointCloud(mesh->sampleCount());
+
+		for (Parts_Samples::iterator part_it = mesh->samples_begin(); part_it != mesh->samples_end(); ++part_it)
+		{
+			int label = part_it.key();
+
+			int sample_idx = 0;
+			for (QVector<Sample>::iterator sample_it = part_it->begin(); sample_it != part_it->end(); ++part_it)
+			{
+				pcl::PointXYZ p(sample_it->x(), sample_it->y(), sample_it->z());
+				m_cloud->push_back(p);
+				pcl::Normal normal(sample_it->nx(), sample_it->ny(), sample_it->nz());
+				m_normals->push_back(normal);
+				m_pointcloud->at(sample_idx).setPosition(sample_it->x(), sample_it->y(), sample_it->z());
+				m_pointcloud->at(sample_idx++).setLabel(label);
+			}
+		}
+	}
+	else    /* If it is a testing point cloud model */
+	{
+		PCModel *pc = (PCModel *)model;
+		m_pointcloud = new PAPointCloud(pc->vertexCount());
+
+		int vertex_idx = 0;
+		QVector<Eigen::Vector3f>::iterator vertex_it, normal_it;
+		for (vertex_it = pc->vertices_begin(), normal_it = pc->normals_begin();
+			vertex_it != pc->vertices_end() && normal_it != pc->normals_end(); ++vertex_it, ++normal_it)
+		{
+			pcl::PointXYZ p(vertex_it->x(), vertex_it->y(), vertex_it->z());
+			m_cloud->push_back(p);
+			pcl::Normal normal(normal_it->x(), normal_it->y(), normal_it->z());
+			m_normals->push_back(normal);
+			m_pointcloud->at(vertex_idx).setPosition(vertex_it->x(), vertex_it->y(), vertex_it->z());
+			m_pointcloud->at(vertex_idx++).setLabel(10);
+		}
 	}
 
-	m_radius = pcModel->getRadius();
-	m_points_labels = pcModel->getLabels();
-	m_sdf = pcModel->getSdf();
-
-	qDebug() << "After initialization, the size of cloud is" << m_cloud->size();
+	m_pointcloud->setRadius(1.0);
 
 	qRegisterMetaType<QVector<QVector<double>>>("FeatureVector");
 	qDebug() << "Initialization done.";
 	emit addDebugText("Initialization done.");
 }
 
-void FeatureEstimator::reset(PCModel *pcModel)
+void FeatureEstimator::reset(Model *model)
 {
 	int num_of_threads = m_subthreads.size();
 	for (int i = 0; i < num_of_threads; i++)
@@ -65,38 +81,58 @@ void FeatureEstimator::reset(PCModel *pcModel)
 	m_subthreads.clear();
 	if (m_cloud->size() > 0)
 		m_cloud->clear();
-	if (m_normals->size())
+	if (m_normals->size() > 0)
 		m_normals->clear();
 
 	qDebug() << "Reset the feature estimator...";
 	emit addDebugText("Reset the feature estimator...");
 	m_cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
 	m_normals = pcl::PointCloud<pcl::Normal>::Ptr(new pcl::PointCloud < pcl::Normal>);
-	m_pointcloudFile = QString::fromStdString(pcModel->getInputFilename());
-	m_pointcloud = new PAPointCloud(pcModel->vertexCount());
+	m_pointcloudFile = QString::fromStdString(model->getInputFilepath());
 
-	for (int i = 0; i < pcModel->vertexCount(); i++)
+	if (model->getType() == Model::ModelType::Mesh)  /* If it is a training mesh model */
 	{
-		int gap = i * 9;
-		GLfloat *point = pcModel->data();
-		float x = point[gap + 0];
-		float y = point[gap + 1];
-		float z = point[gap + 2];
-		float nx = point[gap + 3];
-		float ny = point[gap + 4];
-		float nz = point[gap + 5];
+		MeshModel * mesh = (MeshModel *)model;
+		if (mesh->sampleCount() <= 0)
+			mesh->samplePoints();
+		m_pointcloud = new PAPointCloud(mesh->sampleCount());
 
-		pcl::PointXYZ p(x, y, z);
-		m_cloud->push_back(p);
-		pcl::Normal normal(nx, ny, nz);
-		m_normals->push_back(normal);
-		m_pointcloud->at(i).setPosition(x, y, z);
+		int sample_idx = 0;
+		for (Parts_Samples::iterator part_it = mesh->samples_begin(); part_it != mesh->samples_end(); ++part_it)
+		{
+			int label = part_it.key();
+			
+			for (QVector<Sample>::iterator sample_it = part_it->begin(); sample_it != part_it->end(); ++sample_it)
+			{
+				pcl::PointXYZ p(sample_it->x(), sample_it->y(), sample_it->z());
+				m_cloud->push_back(p);
+				pcl::Normal normal(sample_it->nx(), sample_it->ny(), sample_it->nz());
+				m_normals->push_back(normal);
+				m_pointcloud->at(sample_idx).setPosition(sample_it->x(), sample_it->y(), sample_it->z());
+				m_pointcloud->at(sample_idx++).setLabel(label);
+			}
+		}
+	}
+	else    /* If it is a testing point cloud model */
+	{
+		PCModel *pc = (PCModel *)model;
+		m_pointcloud = new PAPointCloud(pc->vertexCount());
+
+		QVector<Eigen::Vector3f>::iterator vertex_it, normal_it;
+		int vertex_idx = 0;
+		for (vertex_it = pc->vertices_begin(), normal_it = pc->normals_begin(); 
+			vertex_it != pc->vertices_end() && normal_it != pc->normals_end(); ++vertex_it, ++normal_it)
+		{
+			pcl::PointXYZ p(vertex_it->x(), vertex_it->y(), vertex_it->z());
+			m_cloud->push_back(p);
+			pcl::Normal normal(normal_it->x(), normal_it->y(), normal_it->z());
+			m_normals->push_back(normal);
+			m_pointcloud->at(vertex_idx).setPosition(vertex_it->x(), vertex_it->y(), vertex_it->z());
+			m_pointcloud->at(vertex_idx).setLabel(10);
+		}
 	}
 
-	m_radius = pcModel->getRadius();
-	m_points_labels = pcModel->getLabels();
-	m_sdf = pcModel->getSdf();
-
+	m_radius = 1.0;
 	finish_count = NUM_OF_THREADS;
 	qDebug() << "Resetting done.";
 	emit addDebugText("Resetting done.");
@@ -133,9 +169,7 @@ void FeatureEstimator::estimateFeatures()
 		FeatureThread * thread = new FeatureThread(i, m_cloud, m_normals, m_radius, coefficient, this);
 		connect(thread, SIGNAL(estimateCompleted(int, QVector<QVector<double>>)), this, SLOT(receiveFeatures(int, QVector<QVector<double>>)));
 		connect(thread, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
-		/* If it is the thread computing sdf values, then sent the filename of the point cloud to it */
-		if (m_phase == PHASE::TRAINING && i == NUM_OF_THREADS - 1)
-			thread->setInputFilename(m_pointcloudFile);
+		thread->setInputFilename(m_pointcloudFile);
 
 		m_subthreads.push_back(thread);
 		thread->start();
@@ -163,36 +197,17 @@ void FeatureEstimator::receiveFeatures(int sid, QVector<QVector<double>> points_
 	}
 	else    /* It is the thread which computes height and sdf */
 	{
-		if (m_points_labels.size() > 0){
-			const int BUFFER_SIZE = 10;
-			char buffer[BUFFER_SIZE];
-			for (int i = 0; i < size; i++)
-			{
-				/* Set the height and sdf for each point */
-				QVector<double> feat = points_feats[i];
-				m_pointcloud->at(i).setHeight(feat[0]);
-				if (m_phase == PHASE::TRAINING)
-					m_pointcloud->at(i).setSdf(m_sdf[i]);
-				else
-					m_pointcloud->at(i).setSdf(feat[1]);
-
-				/* Set part label for each point */
-				m_pointcloud->at(i).setLabel(m_points_labels[i]);
-			}
-		}
-		else
+		for (int i = 0; i < size; i++)
 		{
-			for (int i = 0; i < size; i++)
-			{
-				/* Set the height and sdf */
-				QVector<double> feat = points_feats[i];
-				m_pointcloud->at(i).setHeight(feat[0]);
-				m_pointcloud->at(i).setSdf(feat[1]);
-			}
+			/* Set the height and sdf for each point */
+			QVector<double> feat = points_feats[i];
+			m_pointcloud->at(i).setHeight(feat[0]);
+			m_pointcloud->at(i).setSdf(feat[1]);
 		}
 	}
 
 	finish_count--;
+	/* If all the subthread have finished, send the result out */
 	if (finish_count == 0)
 	{
 		emit estimateCompleted(m_pointcloud);

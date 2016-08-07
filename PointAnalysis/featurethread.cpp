@@ -20,7 +20,7 @@ FeatureThread::FeatureThread(int idno, pcl::PointCloud<pcl::PointXYZ>::Ptr c, pc
 	qRegisterMetaType<QVector<QVector<double>>>("FeatureVector");
 	qRegisterMetaType<QList<QVector<double>>>("FeatureList");
 	//qRegisterMetaType<pcl::search::KdTree<pcl::PointXYZ>::Ptr>("KdTreePointer");
-	connect(this, SIGNAL(firstStepCompleted()), this, SLOT(nextEstimateStep()));
+	//connect(this, SIGNAL(firstStepCompleted()), this, SLOT(nextEstimateStep()));
 }
 
 FeatureThread::~FeatureThread()
@@ -81,7 +81,7 @@ void FeatureThread::estimate()
 			normals->at(i).curvature = curv;
 		}
 
-		emit firstStepCompleted();
+		nextEstimateStep();
 	}
 	else    /* If the thread is used to estimate height and sdf */
 	{
@@ -89,29 +89,14 @@ void FeatureThread::estimate()
 		QString dtext = "FeatureThread-" + QString::number(id) + ": Estimating heights and sdf values of points...";
 		emit addDebugText(dtext);
 
-		
-		//QVector<double> sdfs;
-		//if (input_filename.length() > 0){    /* If it is processing the training data model */
-		//	/* Get the file path of off mesh of the current mesh model */
-		//	QString mesh_filepath = "../data/off_modified/" + Utils::getModelName(input_filename) + "_modified.off";
-		//	emit addDebugText("Compute sdf values with " + mesh_filepath + ".");
-		//	/* Compute the sdf values */
-		//	sdfs = Utils::sdf_mesh(mesh_filepath);
-		//}
-
 		for (int i = 0; i < cloud->size(); i++)
 		{
 			double height = cloud->at(i).y;
-			//double sdf = Utils::sdf(cloud, normals, i);
 			QVector<double> feat(2);
 			feat[0] = height;
-			/* If it is processing the training data model, set sdf value to 0 and leave it to be computed by Feature estimator */
-			if (input_filename.length() > 0)   
-				feat[1] = 0;
-			else
-			{
-				feat[1] = Utils::sdf(cloud, normals, i);    /* If it is processing the testing data model */
-			}
+			
+			feat[1] = Utils::sdf(cloud, normals, i);    /* If it is processing the testing data model */
+			
 			cloud_feats[i] = feat;
 		}
 		qDebug("FeatureThread-%d: Heights and sdf estimation done.", id);
@@ -129,7 +114,7 @@ void FeatureThread::receiveFeatures(int sid, QList<QVector<double>> points_feats
 		+ QString::number(id) + "-" + QString::number(sid) + ".";
 	emit addDebugText(dtext);
 
-	int one = cloud->size() / NUM_OF_SUBTHREAD;
+	int one = cloud->size() / NUM_OF_SUBTHREAD;    /* The number of data items a PointFeatureThread processed */
 	for (int i = sid * one; i < sid * one + points_feats.size(); i++)
 	{
 		QVector<double> *feats = cloud_feats.data() + sid * one;

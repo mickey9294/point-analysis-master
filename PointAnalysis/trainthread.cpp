@@ -3,7 +3,7 @@
 TrainThread::TrainThread(QObject *parent)
 	: QThread(parent)
 {
-	m_modelClassName = "coseg_chairs_3";
+	m_modelClassName = "coseg_chairs_8";
 }
 
 TrainThread::TrainThread(std::string modelClassName, QObject *parent)
@@ -60,33 +60,6 @@ void TrainThread::loadPoints()
 	//sleep(3000);
 }
 
-void TrainThread::loadTestPoints()
-{
-	qDebug() << "Loading test points...";
-	emit reportStatus("Loading test points...");
-	emit addDebugText("Loading test points...");
-
-	ifstream in("../data/TestList.txt");
-	if (in.is_open())
-	{
-		const int BUFFER_SIZE = 256;
-		char buffer[BUFFER_SIZE];
-
-		while (!in.eof())
-		{
-			in.getline(buffer, BUFFER_SIZE);
-			QString feat_str(buffer);
-
-			if (feat_str.length() > 10)
-				readFeatures(feat_str, 1);
-		}
-
-		in.close();
-	}
-
-	emit addDebugText("Loading test points done.");
-}
-
 void TrainThread::readFeatures(QString featFilename, int mode)
 { 
 	QString stat_msg = "Reading features from " + featFilename + "...";
@@ -105,18 +78,6 @@ void TrainThread::readFeatures(QString featFilename, int mode)
 		qDebug() << stat_msg;
 		emit addDebugText(stat_msg);
 	}
-	else    /* Load the test data */
-	{
-		dataTest.append(set);
-		stat_msg = "Reading done.";
-		qDebug() << stat_msg;
-		emit addDebugText(stat_msg);
-	}
-}
-
-std::string TrainThread::getModelName(QString filename)
-{
-	return "ab";
 }
 
 void TrainThread::train()

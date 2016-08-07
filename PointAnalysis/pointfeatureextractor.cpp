@@ -6,9 +6,9 @@ PointFeatureExtractor::PointFeatureExtractor(QObject *parent)
 	qRegisterMetaType<PAPointCloud *>("PAPointCloudPointer");
 	qRegisterMetaType<PCModel *>("PCModelPointer");
 
-	m_modelClassName = "coseg_chairs_3";
+	m_modelClassName = "coseg_chairs_8";
 
-	connect(&loadThread, SIGNAL(loadPointsCompleted(PCModel *)), this, SLOT(receiveModel(PCModel *)));
+	connect(&loadThread, SIGNAL(loadPointsCompleted(Model *)), this, SLOT(receiveModel(Model *)));
 	connect(&fe, SIGNAL(estimateCompleted(PAPointCloud *)), this, SLOT(oneEstimateCompleted(PAPointCloud *)));
 	connect(&loadThread, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
 	connect(&fe, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
@@ -22,7 +22,7 @@ PointFeatureExtractor::PointFeatureExtractor(std::string modelClassName, QObject
 	qRegisterMetaType<PAPointCloud *>("PAPointCloudPointer");
 	qRegisterMetaType<PCModel *>("PCModelPointer");
 
-	connect(&loadThread, SIGNAL(loadPointsCompleted(PCModel *)), this, SLOT(receiveModel(PCModel *)));
+	connect(&loadThread, SIGNAL(loadPointsCompleted(Model *)), this, SLOT(receiveModel(Model *)));
 	connect(&fe, SIGNAL(estimateCompleted(PAPointCloud *)), this, SLOT(oneEstimateCompleted(PAPointCloud *)));
 	connect(&loadThread, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
 	connect(&fe, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
@@ -81,19 +81,18 @@ QString PointFeatureExtractor::getModelName(int index)
 	return modelname;
 }
 
-void PointFeatureExtractor::receiveModel(PCModel *pcModel)
+void PointFeatureExtractor::receiveModel(Model *model)
 {
 	QString modelname = getModelName(currentId);
 	QString stat_msg = "Loading " + modelname + " done.";
 	qDebug() << stat_msg;
 	emit addDebugText(stat_msg);
-	std::string file = fileList.at(currentId);
-	pcModel->setInputFilename(file);
-	emit showModel(pcModel);
+	
+	emit showModel(model);    /* Display the current model being estimated */
 
 	/* Check the label names, add the new label names to the list m_label_names */
-	QList<int> label_names = pcModel->getLabelNames();
-	QList<int>::iterator it;
+	QVector<int> label_names = model->getLabelNames();
+	QVector<int>::iterator it;
 	for (it = label_names.begin(); it != label_names.end(); it++)
 	{
 		if (!m_label_names.contains(*it))
@@ -101,7 +100,7 @@ void PointFeatureExtractor::receiveModel(PCModel *pcModel)
 	}
 
 	/* Set point cloud to be estimated to pcModel */
-	fe.reset(pcModel);
+	fe.reset(model);
 	stat_msg = "Estimating Features of " + modelname + "...";
 	emit reportStatus(stat_msg);
 	emit addDebugText(stat_msg);
@@ -112,7 +111,9 @@ void PointFeatureExtractor::receiveModel(PCModel *pcModel)
 void PointFeatureExtractor::oneEstimateCompleted(PAPointCloud *cloud)
 {
 	/* Output the point features of the model into file */
-	cloud->writeToFile(getOutFilename(currentId).c_str());
+	std::string out_path = getOutFilename(currentId);
+	m_features_filepaths.push_back(out_path);
+	cloud->writeToFile(out_path.c_str());
 	QString stat_msg = "Model " + getModelName(currentId) + " estimation done.";
 	qDebug() << stat_msg;
 	emit reportStatus(stat_msg);
@@ -153,6 +154,17 @@ void PointFeatureExtractor::oneEstimateCompleted(PAPointCloud *cloud)
 
 			label_names_out.close();
 		}
+
+		/* Write the paths of features files to a list file */
+		std::ofstream list_out("../data/" + m_modelClassName + "_featslist.txt");
+		if (list_out.is_open())
+		{
+			for (QList<std::string>::iterator path_it = m_features_filepaths.begin(); path_it != m_features_filepaths.end(); ++path_it)
+				list_out << *path_it << std::endl;
+
+			list_out.close();
+		}
+		m_features_filepaths.clear();
 	}
 }
 

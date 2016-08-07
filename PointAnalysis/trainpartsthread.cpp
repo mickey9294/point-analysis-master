@@ -54,7 +54,7 @@ void TrainPartsThread::run()
 
 void TrainPartsThread::receiveModel(PCModel *pc)
 {
-	qDebug() << "Receive point cloud from" << QString::fromStdString(pc->getInputFilename());
+	qDebug() << "Receive point cloud from" << QString::fromStdString(pc->getInputFilepath());
 
 	emit showModel(pc);
 	pcaThread.setPointCloud(pc);

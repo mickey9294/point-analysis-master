@@ -14,468 +14,9 @@ Utils::~Utils()
 }
 
 using namespace std;
-PCModel * Utils::loadPointCloud(const char *filename)
-{
-	PCModel *outModel = NULL;
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-
-	int name_len = strlen(filename);
-	char suffix[4] = { filename[name_len - 3], filename[name_len - 2], filename[name_len - 1], filename[name_len] };
-		
-	if (strcmp(suffix, "off") == 0)
-	{
-		ifstream in(filename);
-		if (in.is_open())
-		{
-			char buffer[256];
-			in.getline(buffer, 256);
-			in.getline(buffer, 256);
-			QString *line = new QString(buffer);
-			QStringList slist = line->split(" ");
-			int nvertices = slist[0].toInt();
-			delete(line);
-
-			/* Data structure for bounding sphere computation */
-			const int n = nvertices;                        // number of points
-			const int d = 3;                         // dimension of points
-			Point *points = new Point[n]();                 // n points
-			double        coord[d];
-
-			qDebug() << "Loading points coordinates...";
-			for (int i = 0; i < nvertices; i++)
-			{
-				in.getline(buffer, 256);
-				line = new QString(buffer);
-				QStringList vertex_str = line->split(" ");
-				float x = vertex_str.at(0).toFloat();
-				float y = vertex_str.at(1).toFloat();
-				float z = vertex_str.at(2).toFloat();
-				//qDebug() << x << " " << y << " " << z;
-				cloud->push_back(pcl::PointXYZ(x, y, z));
-
-				coord[0] = x;
-				coord[1] = y;
-				coord[2] = z;
-				Point newp(d, coord, coord + d);
-				points[i] = newp;
-				delete line;
-			}
-			qDebug() << "Loading done.";
-			in.close();
-
-			qDebug() << "Computing points normals...";
-			// Create the normal estimation class, and pass the input dataset to it
-			pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
-			ne.setInputCloud(cloud);
-
-			// Create an empty kdtree representation, and pass it to the normal estimation object.
-			// Its content will be filled inside the object, based on the given input dataset (as no other search surface is given).
-			pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>());
-			ne.setSearchMethod(tree);
-
-			// Output datasets
-			pcl::PointCloud<pcl::Normal>::Ptr cloud_normals(new pcl::PointCloud<pcl::Normal>);
-
-			// Use all neighbors in a sphere of radius 3cm
-			ne.setRadiusSearch(0.1);
-			
-			// Compute the features
-			ne.compute(*cloud_normals);
-
-			qDebug() << "Normals calculation done.";
-			outModel = new PCModel(nvertices, cloud, cloud_normals);
-		}
-	}
-	else if (strcmp(suffix, "xyz") == 0)
-	{
-		ifstream in(filename);
-		if (in.is_open())
-		{
-			char buffer[256];
-			QVector<float> points_data;
-			int nvertices = 0;
-			while (!in.eof())
-			{
-				in.getline(buffer, 256);
-				QString *line = new QString(buffer);
-				QStringList vertex_str = line->split(" ");
-				if (vertex_str.size() != 6)
-				{
-					delete(line);
-					break;
-				}
-				float x = vertex_str.at(0).toFloat();
-				float y = vertex_str.at(1).toFloat();
-				float z = vertex_str.at(2).toFloat();
-				float nx = vertex_str.at(3).toFloat();
-				float ny = vertex_str.at(4).toFloat();
-				float nz = vertex_str.at(5).toFloat();
-
-				points_data.push_back(x);
-				points_data.push_back(y);
-				points_data.push_back(z);
-				points_data.push_back(-nx);
-				points_data.push_back(-ny);
-				points_data.push_back(-nz);
-
-				nvertices++;
-				delete(line);
-			}
-			outModel = new PCModel(nvertices, points_data);
-		}
-	}
-	outModel->setInputFilename(filename);
-	return outModel;
-}
-
-PCModel * Utils::loadPointCloud_CGAL(const char *filename)
-{
-	PCModel *outModel = new PCModel();
-	/* The output filename for mesh modified by CGAL algorithms */
-	QString meshFilename = "../data/off_modified/" + getModelName(QString(filename)) + "_modified.off";
-
-	int name_len = strlen(filename);
-	char suffix[4] = { filename[name_len - 3], filename[name_len - 2], filename[name_len - 1], filename[name_len] };
-
-	/* Read point cloud from off file */
-	if (strcmp(suffix, "off") == 0){
-		PointList points;    /* The container holding all the points and their normal vectors */
-		QVector<float> points_data;    /* The points information (coordinates & normal vectors) to be used to create PCModel object */
-		QVector<Point3> origin_points;
-
-		std::ifstream off_in(filename);    /* Input file stream to read model from off file */
-		char off_buffer[128];     /* Line buffer to store a line in off file */
-		
-
-		/* Get the number of faces */
-		off_in.getline(off_buffer, 128);    /* Read "OFF" header */
-		off_in.getline(off_buffer, 128);    /* Read the number of vertices and faces */
-		QString nvertices_str = QString(off_buffer).section(' ', 0, 0);
-		QString nfaces_str = QString(off_buffer).section(' ', 1, 1);
-		int nvertices = nvertices_str.toInt();    /* The number of vertices */
-		int nfaces = nfaces_str.toInt();    /* The number of triangle faces */
-
-		/* Read points coordinates from off file and store them in origin_points list */
-		for (int i = 0; i < nvertices; i++)
-		{
-			off_in.getline(off_buffer, 128);
-			QString line(off_buffer);
-
-			double x = line.section(' ', 0, 0).toDouble();
-			double y = line.section(' ', 1, 1).toDouble();
-			double z = line.section(' ', 2, 2).toDouble();
-			Point3 point(x, y, z);
-			Vector nullVector;
-			PointVectorPair point_vector(point, nullVector);
-			points.push_back(point_vector);    /* Add the point to points list which will be sent to normal estimation process */
-			origin_points.push_back(point);    /* Add the point to origin_points list which keep the origin order of the points */
-		}
-
-		// Estimates normals direction.
-		// Note: pca_estimate_normals() requires an iterator over points
-		// as well as property maps to access each point's position and normal.
-		qDebug() << "Estimating normals direction...";
-		const int nb_neighbors = 18; // K-nearest neighbors = 3 rings
-		CGAL::jet_estimate_normals<Concurrency_tag>(points.begin(), points.end(),
-			CGAL::First_of_pair_property_map<PointVectorPair>(),
-			CGAL::Second_of_pair_property_map<PointVectorPair>(),
-			18);
-		qDebug() << "Normals estimation done.";
-
-		// Orients normals.
-		// Note: mst_orient_normals() requires an iterator over points
-		// as well as property maps to access each point's position and normal.
-		qDebug() << "Orienting normals...";
-		PointList::iterator unoriented_points_begin =
-			CGAL::mst_orient_normals(points.begin(), points.end(),
-			CGAL::First_of_pair_property_map<PointVectorPair>(),
-			CGAL::Second_of_pair_property_map<PointVectorPair>(),
-			16);
-		qDebug() << "Normals orientation done.";
-
-		std::ofstream off_out(meshFilename.toStdString().c_str());    /* Output file stream to save the model modified by CGAL algorithm to a new off file */
-		/* Write the header to new off file storing the model modified */
-		off_out << "OFF" << std::endl;
-		off_out << nvertices_str.toStdString() + " " + nfaces_str.toStdString() + " 0" << std::endl;
-
-		/* Add points after normals estimation into points_data which is to be sent to create PCModel object */
-		for (std::vector<PointVectorPair>::iterator it = points.begin(); it != points.end(); ++it)
-		{
-			PointVectorPair pair = *it;
-			Point3 point = pair.first;
-			Vector normal = pair.second;
-
-			points_data.push_back(point.x());
-			points_data.push_back(point.y());
-			points_data.push_back(point.z());
-			points_data.push_back(normal.x());
-			points_data.push_back(normal.y());
-			points_data.push_back(normal.z());
-
-			/* Write the point to the new off file storing the model modified by CGAL algorithms */
-			off_out << QString::number(point.x()).toStdString() << " " << QString::number(point.y()).toStdString()
-				<< " " << QString::number(point.z()).toStdString() << std::endl;
-		}
-
-		/* Read labels of points from gt files */
-		QVector<int> points_labels(nvertices, 9294);
-
-		std::ifstream seg_in(Utils::getSegFilename(filename).toStdString().c_str());    /* Input file stream to read segmentation files */
-		if (seg_in.is_open()){    /* If the current model has label information */
-			qDebug() << "Setting the labels of points...";			
-			char seg_buffer[3];    /* Line buffer to store a line in seg file */
-
-			/* Read face label and points attached to the face */
-			for (int i = 0; i < nfaces; i++)
-			{
-				seg_in.getline(seg_buffer, 3);
-				int label = std::atoi(seg_buffer);    /* The label of face i */
-
-				off_in.getline(off_buffer, 128);    /* Since off_in has already read all the points coordinates above, it currently points to the faces infomation */
-				QString face_str(off_buffer);
-				QStringList face_list = face_str.split(' ');
-
-				/* Indices of points in orgin_points of face i */
-				int v1 = face_list.at(1).toInt();
-				int v2 = face_list.at(2).toInt();
-				int v3 = face_list.at(3).toInt();
-				//qDebug("Iteration-%d, origin indices of 3 points: %d, %d, %d.", i, v1, v2, v3);
-
-				/* Find the current indices of three points in the face i*/
-				Point3 sps[3] = { origin_points[v1], origin_points[v2], origin_points[v3] };
-				QVector<int> indices = searchPoints(sps, points);
-				//qDebug("Iteration-%d, indices of 3 points in current list: %d, %d, %d", i, indices[0], indices[1], indices[2]);
-
-				/* Set the point label for each point in labels array */
-				if (indices[0] >= 0)
-					points_labels[indices[0]] = label;
-				else
-					throw "Didn't find the point in origin_points list!";    /* If not find the point in origin points list, there is an error */
-				if (indices[1] >= 0)
-					points_labels[indices[1]] = label;
-				else
-					throw "Didn't find the point in origin_points list!";
-				if (indices[2] >= 0)
-					points_labels[indices[2]] = label;
-				else
-					throw "Didn't find the point in origin_points list!";
-
-				/* Write the facet information to the new off file */
-				off_out << "3 " << std::to_string(indices[0]) << " " + std::to_string(indices[1])
- 					<< " " + std::to_string(indices[2]) << std::endl;
-			}
-
-			seg_in.close();
-			
-			qDebug() << "Labels setting done.";
-		}
-
-		off_in.close();
-		off_out.close();
-		delete(outModel);    /* Delete the current empty model object */
-		outModel = new PCModel(nvertices, points_data, points_labels);
-	}
-	/* Read point cloud from xyz file */
-	else if (strcmp(suffix, "xyz") == 0)
-	{
-		ifstream in(filename);
-		if (in.is_open())
-		{
-			char buffer[256];
-			QVector<float> points_data;
-			int nvertices = 0;
-			while (!in.eof())
-			{
-				in.getline(buffer, 256);
-				QString *line = new QString(buffer);
-				QStringList vertex_str = line->split(" ");
-				if (vertex_str.size() < 6)
-				{
-					delete(line);
-					break;
-				}
-				float x = vertex_str.at(0).toFloat();
-				float y = vertex_str.at(1).toFloat();
-				float z = vertex_str.at(2).toFloat();
-				float nx = vertex_str.at(3).toFloat();
-				float ny = vertex_str.at(4).toFloat();
-				float nz = vertex_str.at(5).toFloat();
-
-				points_data.push_back(x);
-				points_data.push_back(y);
-				points_data.push_back(z);
-				points_data.push_back(-nx);
-				points_data.push_back(-ny);
-				points_data.push_back(-nz);
-
-				nvertices++;
-				delete(line);
-			}
-
-			delete(outModel);
-			outModel = new PCModel(nvertices, points_data);
-		}
-	}
-	outModel->setInputFilename(filename);
-	return outModel;
-}
-
-PCModel * Utils::loadPointCloud_CGAL_SDF(const char *filename)
-{
-	PCModel *outModel = new PCModel();
-
-	int name_len = strlen(filename);
-	char suffix[4] = { filename[name_len - 3], filename[name_len - 2], filename[name_len - 1], filename[name_len] };
-
-	/* Read point cloud from off file */
-	if (strcmp(suffix, "off") == 0){
-		PointList points;    /* The container holding all the points and their normal vectors */
-		QVector<float> points_data;    /* The points information (coordinates & normal vectors) to be used to create PCModel object */
-		QVector<Point3> origin_points;
-
-		QVector<double> sdfs_origin;    /* The sdf values in the order of origin points list */
-		QVector<double> sdfs_current;    /* The sdf values in the order of current points list */
-
-		std::ifstream off_in(filename);    /* Input file stream to read model from off file */
-		char off_buffer[128];     /* Line buffer to store a line in off file */
-
-		QString sdf_filename = "../data/sdf/coseg_chairs_8/" + Utils::getModelName(QString(filename)) + ".sdff";
-		std::ifstream sdf_in(sdf_filename.toStdString().c_str());    /* Input file stream to read sdf value of each vertex */
-		char sdf_buffer[50];    /* Line buffer to store a sdf value */
-
-		/* Get the number of faces */
-		off_in.getline(off_buffer, 128);    /* Read "OFF" header */
-		off_in.getline(off_buffer, 128);    /* Read the number of vertices and faces */
-		QString nvertices_str = QString(off_buffer).section(' ', 0, 0);
-		QString nfaces_str = QString(off_buffer).section(' ', 1, 1);
-		int nvertices = nvertices_str.toInt();    /* The number of vertices */
-		int nfaces = nfaces_str.toInt();    /* The number of triangle faces */
-
-		sdfs_origin.resize(nvertices);
-		sdfs_current.resize(nvertices);
-
-		/* Read points coordinates from off file and store them in origin_points list */
-		for (int i = 0; i < nvertices; i++)
-		{
-			off_in.getline(off_buffer, 128);
-			QString line(off_buffer);
-			sdf_in.getline(sdf_buffer, 50);
-
-			double x = line.section(' ', 0, 0).toDouble();
-			double y = line.section(' ', 1, 1).toDouble();
-			double z = line.section(' ', 2, 2).toDouble();
-			Point3 point(x, y, z);
-			Vector nullVector;
-			PointVectorPair point_vector(point, nullVector);
-			points.push_back(point_vector);    /* Add the point to points list which will be sent to normal estimation process */
-			origin_points.push_back(point);    /* Add the point to origin_points list which keep the origin order of the points */
-
-			sdfs_origin[i] = std::atof(sdf_buffer);
-		}
-
-		// Estimates normals direction.
-		// Note: pca_estimate_normals() requires an iterator over points
-		// as well as property maps to access each point's position and normal.
-		qDebug() << "Estimating normals direction...";
-		const int nb_neighbors = 18; // K-nearest neighbors = 3 rings
-		CGAL::jet_estimate_normals<Concurrency_tag>(points.begin(), points.end(),
-			CGAL::First_of_pair_property_map<PointVectorPair>(),
-			CGAL::Second_of_pair_property_map<PointVectorPair>(),
-			18);
-		qDebug() << "Normals estimation done.";
-
-		// Orients normals.
-		// Note: mst_orient_normals() requires an iterator over points
-		// as well as property maps to access each point's position and normal.
-		qDebug() << "Orienting normals...";
-		PointList::iterator unoriented_points_begin =
-			CGAL::mst_orient_normals(points.begin(), points.end(),
-			CGAL::First_of_pair_property_map<PointVectorPair>(),
-			CGAL::Second_of_pair_property_map<PointVectorPair>(),
-			16);
-		qDebug() << "Normals orientation done.";
-
-		/* Add points after normals estimation into points_data which is to be sent to create PCModel object */
-		for (std::vector<PointVectorPair>::iterator it = points.begin(); it != points.end(); ++it)
-		{
-			PointVectorPair pair = *it;
-			Point3 point = pair.first;
-			Vector normal = pair.second;
-
-			points_data.push_back(point.x());
-			points_data.push_back(point.y());
-			points_data.push_back(point.z());
-			points_data.push_back(normal.x());
-			points_data.push_back(normal.y());
-			points_data.push_back(normal.z());
-		}
-
-		/* Read labels of points from gt files */
-		QVector<int> points_labels(nvertices, 9294);
-
-		std::ifstream seg_in(Utils::getSegFilename(filename).toStdString().c_str());    /* Input file stream to read segmentation files */
-		if (seg_in.is_open()){    /* If the current model has label information */
-			qDebug() << "Setting the labels of points...";
-			char seg_buffer[3];    /* Line buffer to store a line in seg file */
-
-			/* Read face label and points attached to the face */
-			for (int i = 0; i < nfaces; i++)
-			{
-				seg_in.getline(seg_buffer, 3);
-				int label = std::atoi(seg_buffer);    /* The label of face i */
-
-				off_in.getline(off_buffer, 128);    /* Since off_in has already read all the points coordinates above, it currently points to the faces infomation */
-				QString face_str(off_buffer);
-				QStringList face_list = face_str.split(' ');
-
-				/* Indices of points in orgin_points of face i */
-				int v1 = face_list.at(1).toInt();
-				int v2 = face_list.at(2).toInt();
-				int v3 = face_list.at(3).toInt();
-				//qDebug("Iteration-%d, origin indices of 3 points: %d, %d, %d.", i, v1, v2, v3);
-
-				/* Find the current indices of three points in the face i*/
-				Point3 sps[3] = { origin_points[v1], origin_points[v2], origin_points[v3] };
-				QVector<int> indices = searchPoints(sps, points);
-				//qDebug("Iteration-%d, indices of 3 points in current list: %d, %d, %d", i, indices[0], indices[1], indices[2]);
-
-				/* Set the point label for each point in labels array */
-				if (indices[0] >= 0){
-					points_labels[indices[0]] = label;
-					sdfs_current[indices[0]] = sdfs_origin[v1];
-				}
-				else
-					throw "Didn't find the point in origin_points list!";    /* If not find the point in origin points list, there is an error */
-				if (indices[1] >= 0){
-					points_labels[indices[1]] = label;
-					sdfs_current[indices[1]] = sdfs_origin[v2];
-				}
-				else
-					throw "Didn't find the point in origin_points list!";
-				if (indices[2] >= 0){
-					points_labels[indices[2]] = label;
-					sdfs_current[indices[2]] = sdfs_origin[v3];
-				}
-				else
-					throw "Didn't find the point in origin_points list!";
-			}
-
-			seg_in.close();
-			
-			qDebug() << "Labels setting done.";
-		}
-
-		off_in.close();
-		sdf_in.close();
-		delete(outModel);    /* Delete the current empty model object */
-		outModel = new PCModel(nvertices, points_data, points_labels);
-		outModel->setSdf(sdfs_current);
-		outModel->setInputFilename(std::string(filename));
-	}
-	return outModel;
-}
 using namespace pcl;
 using namespace Eigen;
+
 double Utils::sdf(pcl::PointCloud<pcl::PointXYZ>::Ptr points, pcl::PointCloud<pcl::Normal>::Ptr normals, int searchPointIdx)
 {
 	const double pi = 3.14159265359;
@@ -706,6 +247,16 @@ QString Utils::getSegFilename(QString modelFilename)
 	return "";
 }
 
+std::string Utils::getSegFilename(std::string model_filename)
+{
+	return getSegFilename(QString::fromStdString(model_filename)).toStdString();
+}
+
+std::string Utils::getSegFilename(const char *model_file_name)
+{
+	return getSegFilename(QString(model_file_name)).toStdString();
+}
+
 int Utils::searchPoint(Point3 searchPoint, PointList points)
 {
 	for (int i = 0; i < points.size(); i++)
@@ -842,28 +393,28 @@ void Utils::saveMatrixToFile(Eigen::MatrixXf mat, Eigen::VectorXf relation, Eige
 	mat_no++;
 }
 
-void Utils::savePartsPairToFile(PAPart part1, PAPart part2)
-{
-	using namespace std;
-	string out_path1 = "../data/debug/part1_" + std::to_string(mat_no) + ".txt";
-	ofstream out1(out_path1.c_str());
-	string out_path2 = "../data/debug/part2_" + std::to_string(mat_no) + ".txt";
-	ofstream out2(out_path2.c_str());
-
-	if (out1.is_open() && out2.is_open())
-	{
-		out1 << part1.getRotMat() << endl << endl;
-		out1 << part1.getTransVec() << endl << endl;
-		out1 << part1.getScale() << endl;
-
-		out2 << part2.getRotMat() << endl << endl;
-		out2 << part2.getTransVec() << endl << endl;
-		out2 << part2.getScale() << endl;
-
-		out1.close();
-		out2.close();
-	}
-}
+//void Utils::savePartsPairToFile(PAPart part1, PAPart part2)
+//{
+//	using namespace std;
+//	string out_path1 = "../data/debug/part1_" + std::to_string(mat_no) + ".txt";
+//	ofstream out1(out_path1.c_str());
+//	string out_path2 = "../data/debug/part2_" + std::to_string(mat_no) + ".txt";
+//	ofstream out2(out_path2.c_str());
+//
+//	if (out1.is_open() && out2.is_open())
+//	{
+//		out1 << part1.getRotMat() << endl << endl;
+//		out1 << part1.getTransVec() << endl << endl;
+//		out1 << part1.getScale() << endl;
+//
+//		out2 << part2.getRotMat() << endl << endl;
+//		out2 << part2.getTransVec() << endl << endl;
+//		out2 << part2.getScale() << endl;
+//
+//		out1.close();
+//		out2.close();
+//	}
+//}
 
 void Utils::saveRelationToFile(Eigen::Matrix<float, 3, 4> T12, Eigen::Vector4f h1, Eigen::Matrix<float, 3, 4> T21, Eigen::Vector4f h2)
 {
@@ -927,4 +478,18 @@ QVector3D Utils::eigen_vector3f_to_qvector3d(Eigen::Vector3f vec)
 {
 	QVector3D qvec(vec.x(), vec.y(), vec.z());
 	return qvec;
+}
+
+std::string Utils::getFileFormat(std::string file_path)
+{
+	QString q_file_path = QString::fromStdString(file_path);
+	QString format = q_file_path.section('.', -1, -1);
+	return format.toStdString();
+}
+
+std::string Utils::getFileFormat(const char *file_path)
+{
+	QString q_file_path(file_path);
+	QString format = q_file_path.section('.', -1, -1);
+	return format.toStdString();
 }

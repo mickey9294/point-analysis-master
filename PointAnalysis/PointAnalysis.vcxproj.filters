@@ -50,15 +50,6 @@
     <ClCompile Include="GeneratedFiles\qrc_pointanalysis.cpp">
       <Filter>Generated Files</Filter>
     </ClCompile>
-    <ClCompile Include="displayglwidget.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="GeneratedFiles\Debug\moc_displayglwidget.cpp">
-      <Filter>Generated Files\Debug</Filter>
-    </ClCompile>
-    <ClCompile Include="GeneratedFiles\Release\moc_displayglwidget.cpp">
-      <Filter>Generated Files\Release</Filter>
-    </ClCompile>
     <ClCompile Include="pcmodel.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -305,13 +296,19 @@
     <ClCompile Include="GeneratedFiles\Release\moc_debugrelationthread.cpp">
       <Filter>Generated Files\Release</Filter>
     </ClCompile>
-    <ClCompile Include="utils_sampling.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="vcg_mesh.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="ICP.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="meshmodel.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneratedFiles\Debug\moc_meshmodel.cpp">
+      <Filter>Generated Files\Debug</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneratedFiles\Release\moc_meshmodel.cpp">
+      <Filter>Generated Files\Release</Filter>
+    </ClCompile>
+    <ClCompile Include="model.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -324,9 +321,6 @@
     </CustomBuild>
     <CustomBuild Include="pointanalysis.qrc">
       <Filter>Resource Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="displayglwidget.h">
-      <Filter>Header Files</Filter>
     </CustomBuild>
     <CustomBuild Include="pcmodel.h">
       <Filter>Header Files</Filter>
@@ -403,6 +397,9 @@
     <CustomBuild Include="debugrelationthread.h">
       <Filter>Header Files</Filter>
     </CustomBuild>
+    <CustomBuild Include="meshmodel.h">
+      <Filter>Header Files</Filter>
+    </CustomBuild>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GeneratedFiles\ui_pointanalysis.h">
@@ -477,13 +474,10 @@
     <ClInclude Include="energyfunctions.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="utils_sampling.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="vcg_mesh.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="ICP.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="model.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -21,14 +21,15 @@ MyGLWidget::~MyGLWidget()
 
 }
 
-void MyGLWidget::setModel(PCModel *model)
+void MyGLWidget::setModel(Model *model)
 {
 	qDebug() << "setMeshModel, # of points =" << model->vertexCount();
 	emit addDebugText("setPCModel, the number of points = " + QString::number(model->vertexCount()));
 
-	PCModel *temp = m_model;
+	Model *temp = m_model;
 	m_model = model;
-	connect(m_model, SIGNAL(onLabelsChanged()), this, SLOT(updateLabels()));
+	if (model->getType() == Model::ModelType::PointCloud)
+		connect((PCModel *)m_model, SIGNAL(onLabelsChanged()), this, SLOT(updateLabels()));
 	delete(temp);
 
 	/* Clear the current oriented bounding boxes */
@@ -96,7 +97,9 @@ void MyGLWidget::paintGL()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glClearColor(1.0, 1.0, 1.0, 1.0f);
-	draw();
+	glEnable(GL_DEPTH_TEST);
+	if (m_model != NULL)
+		draw();
 	glFlush();
 	glFinish();
 }
@@ -120,106 +123,78 @@ void MyGLWidget::draw()
 	/*QVector4D eye = QVector4D(0.0, 0.0, m, 1.0);
 	gluLookAt(eye.x(), eye.y(), eye.z(), 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);*/
 
-	glTranslatef(m_model->getCenter().x(), m_model->getCenter().y(), m_model->getCenter().z());
+	Eigen::Vector3f centroid = m_model->getCentroid();
+	glTranslatef(centroid.x(), centroid.y(), centroid.z());
 	glRotatef(m_xRot, 1.0, 0.0, 0.0);
 	glRotatef(m_yRot, 0.0, 1.0, 0.0);
 	glRotatef(m_zRot, 0.0, 0.0, 1.0);
-	glTranslatef(-m_model->getCenter().x(), -m_model->getCenter().y(), -m_model->getCenter().z());
+	glTranslatef(-centroid.x(), -centroid.y(), -centroid.z());
 
-
-
-	/* Draw the point cloud model m_model */
-	glPointSize(2.0);
-	glBegin(GL_POINTS);
-	int nvertices = m_model->vertexCount();
-	for (int i = 0; i < nvertices; i++)
+	/* Draw the model m_model */
+	if (m_model != NULL)
 	{
-		const GLfloat *data = m_model->constData() + i * 9;
-		GLfloat x = data[0];
-		GLfloat y = data[1];
-		GLfloat z = data[2];
-		GLfloat nx = data[3];
-		GLfloat ny = data[4];
-		GLfloat nz = data[5];
-		float cr = data[6];
-		float cg = data[7];
-		float cb = data[8];
-
-		GLfloat color[4] = { cr, cg, cb, 1.0 };
-		//glMaterialfv(GL_FRONT, GL_DIFFUSE, color);
-		glColor4f(cr, cg, cb, 1.0);
-		glNormal3f(nx, ny, nz);
-
-		glVertex3f(m * x, m* y, m * z);
+		if (m_model->getType() == Model::ModelType::PointCloud)
+		{
+			glPointSize(2.0);
+			m_model->draw(m);
+		}
+		else
+		{
+			m_model->draw(m);
+			//((MeshModel *)m_model)->drawSamples(m);
+		}
 	}
-	glEnd();
 
 	/* Draw the oriented bounding boxes of the parts */
 	int nboxes = m_OBBs.size();
 	for (QVector<OBB *>::iterator obb_it = m_OBBs.begin(); obb_it != m_OBBs.end(); ++obb_it)
 	{
-		OBB * obb = *obb_it;
-		int nfaces = obb->facetCount();
-		QVector3D color = obb->getColor();
-		glColor4f(color.x(), color.y(), color.z(), 0.8);
+		OBB *obb = *obb_it;
+		/* Draw the oriented box */
+		obb->draw(m);
 
-		glBegin(GL_TRIANGLES);
-		for (int j = 0; j < nfaces; j++)
-		{
-			const GLfloat *data = obb->constData() + j * 12;
-			GLfloat v0x = data[0];
-			GLfloat v0y = data[1];
-			GLfloat v0z = data[2];
-			GLfloat v1x = data[3];
-			GLfloat v1y = data[4];
-			GLfloat v1z = data[5];
-			GLfloat v2x = data[6];
-			GLfloat v2y = data[7];
-			GLfloat v2z = data[8];
-			GLfloat nx = data[9];
-			GLfloat ny = data[10];
-			GLfloat nz = data[11];
+		/* Draw the sample points on the OBB */
+		//obb->drawSamples(m);
+	//	/* Draw the local coordinates axes */
+	//	Eigen::Vector3f centroid = obb->getCentroid();
+	//	QVector<Eigen::Vector3f> axes = obb->getAxes();
+	//	for (int i = 0; i < 3; i++)
+	//	{
+	//		glColor4f(COLORS[i][0], COLORS[i][1], COLORS[i][2], 1.0);
+	//		glBegin(GL_LINES);
+	//		Eigen::Vector3f axis_end = centroid + axes[i];
+	//		glVertex3f(m * centroid.x(), m * centroid.y(), m * centroid.z());
+	//		glVertex3f(m * axis_end.x(), m * axis_end.y(), m * axis_end.z());
+	//		glEnd();
+	//	}
 
-			//glMaterialfv(GL_FRONT, GL_DIFFUSE, color);
-
-			glNormal3f(nx, ny, nz);
-
-			glVertex3f(m * v0x, m * v0y, m * v0z);
-			glVertex3f(m * v1x, m * v1y, m * v1z);
-			glVertex3f(m * v2x, m * v2y, m * v2z);
-		}
-
-		glEnd();
-
-		/* Draw the local coordinates axes */
-		Eigen::Vector3f centroid = obb->getCentroid();
-		QVector<Eigen::Vector3f> axes = obb->getAxes();
-		for (int i = 0; i < 3; i++)
-		{
-			glColor4f(COLORS[i][0], COLORS[i][1], COLORS[i][2], 1.0);
-			glBegin(GL_LINES);
-			Eigen::Vector3f axis_end = centroid + axes[i];
-			glVertex3f(m * centroid.x(), m * centroid.y(), m * centroid.z());
-			glVertex3f(m * axis_end.x(), m * axis_end.y(), m * axis_end.z());
-			glEnd();
-		}
-
-		/* Draw the sample points on the oriented boxes */
-		//QVector<Eigen::Vector3f> sample_points = obb->getSamplePoints();
-		//glColor4f(0.7, 0.7, 0.7, 1.0);
-		//glBegin(GL_POINTS);
-		//glPointSize(2.2);
-		//for (QVector<Eigen::Vector3f>::iterator sample_it = sample_points.begin(); sample_it != sample_points.end(); ++sample_it)
-		//{
-		//	Eigen::Vector3f p = *sample_it;
-		//	glVertex3f(m * p.x(), m * p.y(), m * p.z());
-		//}
-		//glEnd();
+	//	/* Draw the sample points on the oriented boxes */
+	//	QVector<Eigen::Vector3f> sample_points = obb->getSamplePoints();
+	//	glColor4f(0.7, 0.7, 0.7, 1.0);
+	//	glBegin(GL_POINTS);
+	//	glPointSize(2.2);
+	//	for (QVector<Eigen::Vector3f>::iterator sample_it = sample_points.begin(); sample_it != sample_points.end(); ++sample_it)
+	//	{
+	//		Eigen::Vector3f p = *sample_it;
+	//		glVertex3f(m * p.x(), m * p.y(), m * p.z());
+	//	}
+	//	glEnd();
 	}
 
-	//glColor4f(1.0, 0.0, 0.0, 0.5);
-	//drawCylinder(0, 0.5, 0.0, 0, -0.5, 0, 0.7);
+	/* Draw the samples points sampled on the mesh */
+	/*glColor4f(0.7, 0.7, 0.7, 1.0);
+	glBegin(GL_POINTS);
+	glPointSize(2.3);
+	for (Samples_Vec::iterator sample_it = m_samples.begin(); sample_it != m_samples.end(); ++sample_it)
+	{
+		Eigen::Vector3f sample = *sample_it;
+		glVertex3f(m * sample.x(), m * sample.y(), m * sample.z());
+	}
+	glEnd();*/
+
 	glPopMatrix();
+	//glColor4f(1.0, 0.0, 0.0, 0.5);
+	//drawCylinder(0, 0.5, 0.0, 0, -0.5, 0, 1.0);
 }
 
 void MyGLWidget::resizeGL(int width, int height)
@@ -392,4 +367,12 @@ void MyGLWidget::drawCylinder(float x0, float y0, float z0, float x1, float y1, 
 	//gluQuadricDrawStyle(GLU_FILL);
 	gluCylinder(quad_obj, radius, radius, bone_length, slices, stack);
 	glPopMatrix();
+}
+
+void MyGLWidget::setSamples(Samples_Vec samples)
+{
+	if (!m_samples.empty())
+		m_samples.clear();
+
+	m_samples = samples;
 }

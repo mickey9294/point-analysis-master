@@ -7,7 +7,6 @@
 #include <fstream>
 #include <string>
 #include <cstdlib>
-#include "pcmodel.h"
 #include <QDebug>
 #include <QVector>
 #include <QVector3D>
@@ -30,7 +29,6 @@
 #include <boost/accumulators/statistics.hpp>
 #include <boost/date_time/posix_time/posix_time_types.hpp>
 #include <cmath>
-#include "papart.h"
 
 typedef CGAL::Cartesian_d<double>              K;
 typedef CGAL::Min_sphere_annulus_d_traits_d<K> Traits;
@@ -64,26 +62,27 @@ public:
 	Utils(QObject *parent = 0);
 	~Utils();
 
-	static PCModel * loadPointCloud(const char *filename);
-	static PCModel * loadPointCloud_CGAL(const char *filename);
-	static PCModel * loadPointCloud_CGAL_SDF(const char *filename);
 	static double sdf(pcl::PointCloud<pcl::PointXYZ>::Ptr points, pcl::PointCloud<pcl::Normal>::Ptr normals, int searchPointIdx);
 	static QVector<double> sdf_mesh(QString off_mesh_filename);
 	static bool double_equal(double a, double b);
 	static bool float_equal(double a, double b);
-	static QString getSegFilename(QString modelFilename);
+	static QString getSegFilename(QString model_file_name);
+	static std::string getSegFilename(std::string model_file_name);
 	static QString getModelName(QString filepath);
+	static std::string getSegFilename(const char *model_file_name);
 	static int comb(int n, int i);
 	static QVector<QPair<int, int>> getCombinations(QVector<int> nums);
 	static std::string vectorToString(Eigen::VectorXf vec);
 	static std::string matrixToString(Eigen::MatrixXf mat);
 	static void saveMatrixToFile(Eigen::MatrixXf mat, Eigen::VectorXf relation, Eigen::VectorXf mean, Eigen::VectorXf vec);
-	static void savePartsPairToFile(PAPart part1, PAPart part2);
+	//static void savePartsPairToFile(PAPart part1, PAPart part2);
 	static void saveRelationToFile(Eigen::Matrix<float, 3, 4> T12, Eigen::Vector4f h1, Eigen::Matrix<float, 3, 4> T21, Eigen::Vector4f h2);
 	static void saveFeatureToFile(float feature[32]);
 	static void saveFeatureToFile(std::vector<float> featrue);
 	static long getCurrentTime();
 	static QVector3D eigen_vector3f_to_qvector3d(Eigen::Vector3f vec);
+	static std::string getFileFormat(std::string file_path);
+	static std::string getFileFormat(const char *file_path);
 
 private:
 	static void sort(QList<double> &lens, QList<int> &indices, int low, int high);

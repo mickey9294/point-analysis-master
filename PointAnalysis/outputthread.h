@@ -3,7 +3,7 @@
 
 #include <QThread>
 #include <QDebug>
-#include "pcmodel.h"
+#include "model.h"
 #include <string>
 
 class OutputThread : public QThread
@@ -13,7 +13,7 @@ class OutputThread : public QThread
 public:
 	OutputThread(QObject *parent = 0);
 	~OutputThread();
-	void setOutputModel(PCModel *model, std::string filename);
+	void setOutputModel(Model *model, std::string filename);
 
 signals:
 	void outputCompleted();
@@ -23,7 +23,7 @@ protected:
 
 private:
 	std::string outputFileName;
-	PCModel *pcModel;
+	Model *model;
 	
 };
 

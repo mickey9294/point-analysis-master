@@ -17,6 +17,8 @@
 #include <CGAL/Cartesian_d.h>
 #include "featurethread.h"
 #include "PAPointCloud.h"
+#include "model.h"
+#include "meshmodel.h"
 
 #define NUM_OF_THREADS 6
 
@@ -35,11 +37,11 @@ public:
 		TESTING
 	};
 	FeatureEstimator(QObject *parent = 0);
-	FeatureEstimator(PCModel *pcModel, PHASE phase, QObject *parent = 0);
+	FeatureEstimator(Model *model, PHASE phase, QObject *parent = 0);
 	~FeatureEstimator();
 
 	void estimateFeatures();
-	void reset(PCModel * pcModel);
+	void reset(Model *model);
 	void setPhase(PHASE phase);
 
 	public slots:
@@ -61,8 +63,9 @@ private:
 	QVector<int> m_points_labels;
 	PHASE m_phase;
 	QVector<double> m_sdf;
+	Model * m_model;
 
-	//QVector<int> getLabels(QString segfile);
+	//QVector<int> getVerticesLabels(QString segfile);
 };
 
 #endif // FEATUREESTIMATOR_H

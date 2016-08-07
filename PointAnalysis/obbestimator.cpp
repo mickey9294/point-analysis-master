@@ -132,12 +132,11 @@ OBB *OBBEstimator::computeOBB()
 	/* Obtain the centroid of OBB in global system from that in the local system */
 	pca_operator.reconstruct(pca_centroid, obb_centroid);
 
-	QVector3D x_axis(local_axes.col(0).x(), local_axes.col(0).y(), local_axes.col(0).z());
-	QVector3D y_axis(local_axes.col(1).x(), local_axes.col(1).y(), local_axes.col(1).z());
-	QVector3D z_axis(local_axes.col(2).x(), local_axes.col(2).y(), local_axes.col(2).z());
 	Eigen::Vector3f centroid(obb_centroid.x, obb_centroid.y, obb_centroid.z);
 
 	OBB *obb = new OBB(local_axes.col(0), local_axes.col(1), local_axes.col(2), centroid, x_length, y_length, z_length, m_label);
+	//obb->triangulate();
+	ICP_procedure(obb);
 	return obb; 
 }
 
@@ -378,10 +377,13 @@ void OBBEstimator::ICP_procedure(OBB *obb)
 {
 	using namespace Eigen;
 
-	int sample_size = obb->samplePoints();
+	int sample_size = 0;
+	if (obb->sampleCount() < 3)
+		sample_size = obb->samplePoints();
 	MatrixXd sample_points(3, sample_size);
 	MatrixXd part_points(3, m_cloud->size());
 
+	/* Form a data matrix for sample points on OBB */
 	QVector<Vector3f> samples = obb->getSamplePoints();
 	int idx = 0;
 	for (QVector<Vector3f>::iterator sample_it = samples.begin(); sample_it != samples.end(); ++sample_it)
@@ -391,6 +393,7 @@ void OBBEstimator::ICP_procedure(OBB *obb)
 		sample_points.col(idx++) = point;
 	}
 
+	/* Form a data matrix for the points of the part(model) */
 	idx = 0;
 	for (pcl::PointCloud<pcl::PointXYZ>::iterator part_it = m_cloud->begin(); part_it != m_cloud->end(); ++part_it)
 	{
@@ -402,7 +405,11 @@ void OBBEstimator::ICP_procedure(OBB *obb)
 	Matrix3d rotation_mat;
 	Vector3d translation_vec;
 
+	/* Execute ICP procedure */
 	double error = ICP::run_iterative_closest_points(sample_points, part_points, rotation_mat, translation_vec);
 
-	 
+	std::cout << "For part_" << m_label << "'s OBB, rotation matrix:" << std::endl;
+	std::cout << rotation_mat << std::endl;
+	std::cout << "translation vector:" << std::endl; 
+	std::cout << translation_vec.transpose() << std::endl;
 }

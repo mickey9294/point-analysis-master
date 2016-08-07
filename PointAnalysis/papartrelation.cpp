@@ -16,7 +16,7 @@ PAPartRelation::PAPartRelation(const PAPartRelation &relation)
 
 PAPartRelation::PAPartRelation(PAPart part1, PAPart part2)
 {
-	Utils::savePartsPairToFile(part1, part2);
+	//Utils::savePartsPairToFile(part1, part2);
 
 	m_part_label_1 = part1.getLabel();
 	m_part_label_2 = part2.getLabel();

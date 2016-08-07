@@ -36,14 +36,21 @@ void LoadThread::run()
 using namespace std;
 void LoadThread::loadPointCloud()
 {
-	PCModel *model;
-	if (m_phase == PHASE::TRAINING)
-		model = Utils::loadPointCloud_CGAL_SDF(filename.c_str());
-	else
+	Model *model;
+
+	/* Decide whether the model is a training mesh or a testing point cloud */
+	string segment_filepath = Utils::getSegFilename(filename);
+	ifstream seg_in(segment_filepath.c_str());
+	if (seg_in.is_open())  /* If there exists a segmentation file for the model, then the model is a training mesh */
 	{
-		model = Utils::loadPointCloud_CGAL(filename.c_str());
-		//model = Utils::loadPointCloud(filename.c_str());
+		seg_in.close();
+		model = new MeshModel(filename);
 	}
+	else  /* If there not exists a segmentation file, then the model is a testing point cloud */
+	{
+		model = new PCModel(filename, 0);
+	}
+	
 	emit loadPointsCompleted(model);
 }
 
