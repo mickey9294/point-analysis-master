@@ -6,7 +6,7 @@
 #include <qvector.h>
 #include <assert.h>
 #include "gencandidatesthread.h"
-#include "MRFEnergy.h"
+#include <MRFEnergy.h>
 #include "energyfunctions.h"
 #include "pairwisetermthread.h"
 #include "unarytermthread.h"

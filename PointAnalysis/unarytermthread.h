@@ -3,7 +3,7 @@
 
 #include <QThread>
 #include <QList>
-#include "MRFEnergy.h"
+#include <MRFEnergy.h>
 #include "energyfunctions.h"
 
 typedef QVector<double *> Unary_Potentials;

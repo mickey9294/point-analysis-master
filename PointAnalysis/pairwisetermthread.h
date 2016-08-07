@@ -7,7 +7,7 @@
 #include <QList>
 #include "energyfunctions.h"
 #include "papart.h"
-#include "MRFEnergy.h"
+#include <MRFEnergy.h>
 
 typedef QVector<QVector<double *>> Pairwise_Potentials;
 Q_DECLARE_METATYPE(Pairwise_Potentials)

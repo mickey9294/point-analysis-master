@@ -254,18 +254,6 @@
     <ClCompile Include="GeneratedFiles\Release\moc_predictionthread.cpp">
       <Filter>Generated Files\Release</Filter>
     </ClCompile>
-    <ClCompile Include="MRFEnergy.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="minimize.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ordering.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="treeProbabilities.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="energyfunctions.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -439,36 +427,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="papartrelation.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="MRFEnergy.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="instances.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="typeBinary.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="typeBinaryFast.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="typeGeneral.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="typePotts.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="typeTruncatedLinear.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="typeTruncatedLinear2D.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="typeTruncatedQuadratic.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="typeTruncatedQuadratic2D.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="energyfunctions.h">
