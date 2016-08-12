@@ -23,13 +23,15 @@ FeatureEstimator::FeatureEstimator(Model *model, PHASE phase, QObject *parent)
 			mesh->samplePoints();
 		m_pointcloud = new PAPointCloud(mesh->sampleCount());
 
+		int sample_idx = 0;
 		for (Parts_Samples::iterator part_it = mesh->samples_begin(); part_it != mesh->samples_end(); ++part_it)
 		{
 			int label = part_it.key();
-
-			int sample_idx = 0;
-			for (QVector<Sample>::iterator sample_it = part_it->begin(); sample_it != part_it->end(); ++part_it)
+			//qDebug("Part_%d:", label);
+			
+			for (QVector<Sample>::iterator sample_it = part_it->begin(); sample_it != part_it->end(); ++sample_it)
 			{
+				//qDebug("Add sample_%d.", sample_idx);
 				pcl::PointXYZ p(sample_it->x(), sample_it->y(), sample_it->z());
 				m_cloud->push_back(p);
 				pcl::Normal normal(sample_it->nx(), sample_it->ny(), sample_it->nz());
@@ -59,6 +61,8 @@ FeatureEstimator::FeatureEstimator(Model *model, PHASE phase, QObject *parent)
 	}
 
 	m_pointcloud->setRadius(1.0);
+	m_radius = 1.0;
+	finish_count = NUM_OF_THREADS;
 
 	qRegisterMetaType<QVector<QVector<double>>>("FeatureVector");
 	qDebug() << "Initialization done.";
@@ -132,6 +136,7 @@ void FeatureEstimator::reset(Model *model)
 		}
 	}
 
+	m_pointcloud->setRadius(1.0);
 	m_radius = 1.0;
 	finish_count = NUM_OF_THREADS;
 	qDebug() << "Resetting done.";

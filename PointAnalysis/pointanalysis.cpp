@@ -31,6 +31,7 @@ PointAnalysis::PointAnalysis(QWidget *parent)
 	connect(&m_analyser, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
 	connect(&m_analyser, SIGNAL(sendOBBs(QVector<OBB *>)), ui.displayGLWidget, SLOT(setOBBs(QVector<OBB *>)));
 	connect(ui.actionDebug_Parts_Relations, SIGNAL(triggered()), this, SLOT(debugPartRelations()));
+	connect(ui.actionCheck_Models, SIGNAL(triggered()), this, SLOT(checkModels()));
 
 	fe = NULL;
 	trainThread = NULL;
@@ -42,8 +43,9 @@ PointAnalysis::PointAnalysis(QWidget *parent)
 	sdfThread = NULL;
 	trainThread = NULL;
 	debugRelationThread = NULL;
+	checkModelsThread = NULL;
 	
-	m_modelClassName = "coseg_chairs_3";
+	m_modelClassName = "coseg_chairs_8";
 }
 
 PointAnalysis::~PointAnalysis()
@@ -63,7 +65,7 @@ void PointAnalysis::load()
 
 	/* User choose a model file by FileDialog */
 	QString filepath = QFileDialog::getOpenFileName(this, tr("Load"), 
-		"../../Data/LabeledDB/Chair", 
+		"../../Data/ground_truth_datasets/coseg_chairs/off", 
 		tr("Object File Format (*.off);;XYZ Point Cloud (*.xyz)"));
 
 	if (filepath.length() > 0){    /* If the user choose a valid model file path */
@@ -74,7 +76,7 @@ void PointAnalysis::load()
 		ui.statusBar->showMessage(stat_msg, 0);
 
 		/* Start LoadThread to load the model */
-		loadThread = new LoadThread(filepath.toStdString(), LoadThread::PHASE::TESTING, this);
+		loadThread = new LoadThread(filepath.toStdString(), PHASE::TESTING, this);
 		connect(loadThread, SIGNAL(loadPointsCompleted(Model *)), this, SLOT(loadCompleted(Model *)));
 		loadThread->start();
 	}
@@ -159,7 +161,7 @@ void PointAnalysis::estimateFeatures()
 	qDebug() << "Estimate point features.";
 	onDebugTextAdded("Estimate point features of " + QString::fromStdString(filename) + ".");
 	ui.statusBar->showMessage("Estimating points features of " + QString::fromStdString(filename) + "...");
-	fe = new FeatureEstimator(ui.displayGLWidget->getModel(), FeatureEstimator::PHASE::TESTING, this);
+	fe = new FeatureEstimator(ui.displayGLWidget->getModel(), PHASE::TESTING, this);
 	connect(fe, SIGNAL(estimateCompleted(PAPointCloud *)), this, SLOT(featureEstimateCompleted(PAPointCloud *)));
 	connect(fe, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
 	fe->estimateFeatures();
@@ -292,7 +294,7 @@ void PointAnalysis::computeOBB()
 		pcaThread = NULL;
 	}
 
-	pcaThread = new PCAThread(ui.displayGLWidget->getModel(), PCAThread::PHASE::TRAINING, this);
+	pcaThread = new PCAThread(ui.displayGLWidget->getModel(), PHASE::TRAINING, this);
 	connect(pcaThread, SIGNAL(finished()), this, SLOT(onComputeOBBDone()));
 	connect(pcaThread, SIGNAL(estimateOBBsCompleted(QVector<OBB *>)), ui.displayGLWidget, SLOT(setOBBs(QVector<OBB *>)));
 	connect(pcaThread, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
@@ -358,4 +360,23 @@ void PointAnalysis::inferStructure()
 {
 	m_analyser.setPointCloud((PCModel *)ui.displayGLWidget->getModel());
 	m_analyser.execute();
+}
+
+void PointAnalysis::checkModels()
+{
+	if (checkModelsThread == NULL)
+		checkModelsThread = new CheckModelsThread(this);
+
+	connect(checkModelsThread, SIGNAL(showModel(Model *)), ui.displayGLWidget, SLOT(setModel(Model *)));
+	connect(checkModelsThread, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
+	connect(checkModelsThread, SIGNAL(finish()), this, SLOT(checkModelsDone()));
+	checkModelsThread->execute();
+}
+
+void PointAnalysis::checkModelsDone()
+{
+	if (checkModelsThread != NULL)
+	{
+		delete(checkModelsThread);
+	}
 }

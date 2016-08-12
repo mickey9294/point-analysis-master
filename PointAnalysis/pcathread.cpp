@@ -98,7 +98,9 @@ void PCAThread::run()
 			emit addDebugText("Compute OBB of part " + QString::number(label));
 
 			OBBEstimator obbe(label, it.value());
+			obbe.setPhase(m_phase);
 			OBB *obb = obbe.computeOBB();
+
 			parts.push_back(PAPart(obb));
 			m_OBBs[i++] = obb;	
 		}

@@ -103,7 +103,7 @@ void StructureAnalyser::execute()
 	}
 	else    /* If the point cloud has not been estimated, then estimate it */
 	{
-		m_fe = new FeatureEstimator(m_pcModel, FeatureEstimator::PHASE::TESTING, this);
+		m_fe = new FeatureEstimator(m_pcModel, PHASE::TESTING, this);
 		connect(m_fe, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
 		connect(m_fe, SIGNAL(estimateCompleted(PAPointCloud *)), this, SLOT(initialize(PAPointCloud *)));
 		onDebugTextAdded("Estimating points features...");

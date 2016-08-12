@@ -12,8 +12,8 @@ PointFeatureExtractor::PointFeatureExtractor(QObject *parent)
 	connect(&fe, SIGNAL(estimateCompleted(PAPointCloud *)), this, SLOT(oneEstimateCompleted(PAPointCloud *)));
 	connect(&loadThread, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
 	connect(&fe, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
-	fe.setPhase(FeatureEstimator::PHASE::TRAINING);
-	loadThread.setPhase(LoadThread::PHASE::TRAINING);
+	fe.setPhase(PHASE::TRAINING);
+	loadThread.setPhase(PHASE::TRAINING);
 }
 
 PointFeatureExtractor::PointFeatureExtractor(std::string modelClassName, QObject *parent)
@@ -26,8 +26,8 @@ PointFeatureExtractor::PointFeatureExtractor(std::string modelClassName, QObject
 	connect(&fe, SIGNAL(estimateCompleted(PAPointCloud *)), this, SLOT(oneEstimateCompleted(PAPointCloud *)));
 	connect(&loadThread, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
 	connect(&fe, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
-	fe.setPhase(FeatureEstimator::PHASE::TRAINING);
-	loadThread.setPhase(LoadThread::PHASE::TRAINING);
+	fe.setPhase(PHASE::TRAINING);
+	loadThread.setPhase(PHASE::TRAINING);
 }
 
 PointFeatureExtractor::~PointFeatureExtractor()

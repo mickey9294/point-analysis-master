@@ -7,6 +7,7 @@
 #include <cmath>
 #include "obb.h"
 #include <pcl/common/pca.h>
+#include <pcl/registration/icp.h>
 #include <Eigen\Core>
 #include <qvector.h>
 #include <qdebug.h>
@@ -25,12 +26,15 @@ public:
 	OBB * computeOBB_PCA();
 	QVector<OBB *> computeOBBCandidates();
 	void reset(int label, pcl::PointCloud <pcl::PointXYZ>::Ptr cloud);
+	void setPhase(PHASE phase);
 
 private:
 	pcl::PointCloud<pcl::PointXYZ>::Ptr m_cloud;
 	int m_label;
+	PHASE m_phase;
 
 	void ICP_procedure(OBB *obb);
+	void ICP_pcl(OBB *obb);
 };
 
 #endif

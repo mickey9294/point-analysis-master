@@ -355,65 +355,110 @@ void MeshModel::draw(int scale)
 
 		Vector3f normal = m_faces_normals[face_idx++];
 
-		glColor4f(COLORS[label][0], COLORS[label][1], COLORS[label][2], 0.7);
+		glColor4f(COLORS[label][0], COLORS[label][1], COLORS[label][2], 0.8);
 		glNormal3f(normal.x(), normal.y(), normal.z());
 
 		glVertex3f(scale * v0.x(), scale * v0.y(), scale * v0.z());
 		glVertex3f(scale * v1.x(), scale * v1.y(), scale * v1.z());
 		glVertex3f(scale * v2.x(), scale * v2.y(), scale * v2.z());
 	}
-	/*for (int i = 0; i < m_faces_list.size(); i++)
-	{
-		int label = m_faces_labels[i];
-		Vector3i face = m_faces_list[i];
-		int v0_idx = face.x();
-		int v1_idx = face.y();
-		int v2_idx = face.z();
+	glEnd();
 
-		Vector3f v0 = m_vertices_list[v0_idx];
-		Vector3f v1 = m_vertices_list[v1_idx];
-		Vector3f v2 = m_vertices_list[v2_idx];
+	/* Draw the normals of the vertices */
+	/*glBegin(GL_LINES);
+	glColor4f(0.5, 0.5, 0.5, 1.0);
+	for (int i = 0; i < vertexCount(); i++)
+	{
+		Vector3f vertex = scale * m_vertices_list[i];
+		Vector3f normal = m_vertices_normals[i];
+		Vector3f norm_end = vertex + normal;
+
+		glVertex3f(vertex.x(), vertex.y(), vertex.z());
+		glVertex3f(norm_end.x(), norm_end.y(), norm_end.z());
+	}
+	glEnd();*/
+
+	/* Draw the normals of the faces */
+	/*glBegin(GL_LINES);
+	for (int i = 0; i < faceCount(); i++)
+	{
+		Vector3i face = m_faces_list[i];
+		Vector3f v0 = m_vertices_list[face.x()];
+		Vector3f v1 = m_vertices_list[face.y()];
+		Vector3f v2 = m_vertices_list[face.z()];
 
 		Vector3f normal = m_faces_normals[i];
+		Vector3f mid = ((v0 + v1) / 2.0 + v2) / 2.0 * scale;
+		Vector3f end = mid + normal;
 
-		glColor4f(COLORS[label][0], COLORS[label][1], COLORS[label][1], 1.0);
-		glNormal3f(normal.x(), normal.y(), normal.z());
+		glVertex3f(mid.x(), mid.y(), mid.z());
+		glVertex3f(end.x(), end.y(), end.z());
+	}
+	glEnd();*/
 
-		glVertex3f(scale * v0.x(), scale * v0.y(), scale * v0.z());
-		glVertex3f(scale * v1.x(), scale * v1.y(), scale * v1.z());
-		glVertex3f(scale * v2.x(), scale * v2.y(), scale * v2.z());
-	}*/
+	/*glPointSize(4.0);
+	glBegin(GL_POINTS);
+	Vector3f v0 = m_vertices_list[1616];
+	Vector3f v1 = m_vertices_list[174];
+	Vector3f v2 = m_vertices_list[770];
+	glVertex3f(scale * v0.x(), scale * v0.y(), scale * v0.z());
+	glVertex3f(scale * v1.x(), scale * v1.y(), scale * v1.z());
+	glVertex3f(scale * v2.x(), scale * v2.y(), scale * v2.z());
 	glEnd();
+
+	glBegin(GL_LINES);
+	glColor4f(COLORS[0][0], COLORS[0][1], COLORS[0][2], 1.0);
+	glVertex3f(0.0, 0, 0);
+	glVertex3f(3.0, 0, 0);
+	glColor4f(COLORS[1][0], COLORS[1][1], COLORS[1][2], 1.0);
+	glVertex3f(0, 0, 0);
+	glVertex3f(0, 3.0, 0);
+	glColor4f(COLORS[2][0], COLORS[2][1], COLORS[2][2], 1.0);
+	glVertex3f(0, 0, 0);
+	glVertex3f(0, 0, 3.0);
+	glColor4f(0.7, 0.7, 0.7, 1.0);
+	Vector3f normal = 3 * m_faces_normals[2279];
+	Vector3f start = scale * v0;
+	Vector3f end = start + normal;
+	glVertex3f(start.x(), start.y(), start.z());
+	glVertex3f(end.x(), end.y(), end.z());
+	glEnd();*/
 }
 
 void MeshModel::drawSamples(int scale)
 {
+	/* Draw the sample points */
 	glBegin(GL_POINTS);
 	for (Parts_Samples::iterator part_it = m_parts_samples.begin(); part_it != m_parts_samples.end(); ++part_it)
 	{
 		int label = part_it.key();
 
-		glColor4f(COLORS[label][0], COLORS[label][1], COLORS[label][2], 1.0);
+		glColor4f(0.8, 0.8, 0.8, 1.0);
 		for (QVector<Sample>::iterator vertex_it = part_it->begin(); vertex_it != part_it->end(); ++vertex_it)
 		{
 			glNormal3f(vertex_it->nx(), vertex_it->ny(), vertex_it->nz());
 			glVertex3f(scale * vertex_it->x(), scale * vertex_it->y(), scale * vertex_it->z());
 		}
 	}
-
-	/*QList<int> keys = m_parts_samples.keys();
-	for (QList<int>::iterator it = keys.begin(); it != keys.end(); ++it)
-	{
-		int label = *it;
-		QVector<Sample> samples = m_parts_samples[label];
-		glColor4f(COLORS[label][0], COLORS[label][1], COLORS[label][2], 1.0);
-		for (QVector<Sample>::iterator vertex_it = samples.begin(); vertex_it != samples.end(); ++vertex_it)
-		{
-			glNormal3f(vertex_it->nx(), vertex_it->ny(), vertex_it->nz());
-			glVertex3f(scale * vertex_it->x(), scale * vertex_it->y(), scale * vertex_it->z());
-		}
-	}*/
 	glEnd();
+
+	/* Draw the normals of sample points */
+	/*glBegin(GL_LINES);
+	for (Parts_Samples::iterator part_it = m_parts_samples.begin(); part_it != m_parts_samples.end(); ++part_it)
+	{
+		int label = part_it.key();
+
+		glColor4f(0.5, 0.5, 0.5, 1.0);
+		for (QVector<Sample>::iterator sample_it = part_it->begin(); sample_it != part_it->end(); ++sample_it)
+		{
+			Vector3f vertex = scale * sample_it->getVertex();
+			Vector3f normal = sample_it->getNormal();
+			Vector3f norm_end = vertex + normal;
+			glVertex3f(vertex.x(), vertex.y(), vertex.z());
+			glVertex3f(norm_end.x(), norm_end.y(), norm_end.z());
+		}
+	}
+	glEnd();*/
 }
 
 void MeshModel::normalize()

@@ -24,6 +24,7 @@
 #include "structureanalyser.h"
 #include "debugrelationthread.h"
 #include "model.h"
+#include "checkmodelsthread.h"
 
 class PointAnalysis : public QMainWindow
 {
@@ -58,6 +59,8 @@ public:
 	void onTrainPartsDone();
 	void inferStructure();
 	void debugPartRelations();
+	void checkModels();
+	void checkModelsDone();
 
 private:
 	Ui::PointAnalysisClass ui;
@@ -76,6 +79,7 @@ private:
 	DebugRelationThread *debugRelationThread;
 	StructureAnalyser m_analyser;
 	std::string m_modelClassName;
+	CheckModelsThread *checkModelsThread;
 };
 
 #endif // POINTANALYSIS_H

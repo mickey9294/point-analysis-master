@@ -4,7 +4,7 @@ DebugRelationThread::DebugRelationThread(QObject *parent)
 	: QThread(parent)
 {
 	qRegisterMetaType<QVector<PAPart>>("QVector<PAPart>");
-	loadThread.setPhase(LoadThread::PHASE::TRAINING);
+	loadThread.setPhase(PHASE::TRAINING);
 
 	connect(&loadThread, SIGNAL(loadPointsCompleted(PCModel *)), this, SLOT(receiveModel(PCModel *)));
 	connect(&pcaThread, SIGNAL(estimatePartsDone(QVector<PAPart>)), this, SLOT(receiveParts(QVector<PAPart>)));

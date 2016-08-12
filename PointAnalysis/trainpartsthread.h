@@ -31,12 +31,12 @@ public:
 	PCAThread pcaThread;
 
 	public slots:
-	void receiveModel(PCModel *pc);
+	void receiveModel(Model *model);
 	void receiveParts(QVector<PAPart> parts);
 
 signals:
 	void addDebugText(QString text);
-	void showModel(PCModel *pc); 
+	void showModel(Model *model); 
 
 protected:
 	void run();

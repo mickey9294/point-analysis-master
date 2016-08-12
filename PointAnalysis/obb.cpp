@@ -97,6 +97,16 @@ Eigen::Matrix3f OBB::getAxes() const
 	return axes;
 }
 
+Matrix<float, 4, 3> OBB::getAugmentedAxes()
+{
+	Eigen::Matrix<float, 4, 3> axes;
+	axes.block<3, 1>(0, 0) = x_axis;
+	axes.block<3, 1>(0, 1) = y_axis;
+	axes.block<3, 1>(0, 2) = z_axis;
+	axes.block<1, 3>(3, 0) = Vector3f::Zero();
+	return axes;
+}
+
 void OBB::triangulate()
 {
 	m_vertices.resize(8);
@@ -198,15 +208,23 @@ int OBB::samplePoints(int num_of_samples)
 
 		std::vector<Utils_sampling::Vec3> verts(vertexCount());
 		std::vector<Vec3> nors(vertexCount());
-		std::vector<int> tris(vertexCount());
+		std::vector<int> tris(3 * m_faces.size());
 
 		int vert_idx = 0;
 		for (QVector<Vector3f>::iterator vertex_it = m_vertices.begin(); vertex_it != m_vertices.end(); ++vertex_it)
 		{
 			Vec3 vert(vertex_it->x(), vertex_it->y(), vertex_it->z());
 			verts[vert_idx] = vert;
-			tris[vert_idx] = vert_idx;
+			//tris[vert_idx] = vert_idx;
 			nors[vert_idx++] = Vec3(0, 0, 0);
+		}
+
+		int face_idx = 0;
+		for (QVector<Vector3i>::iterator face_it = m_faces.begin(); face_it != m_faces.end(); ++face_it)
+		{
+			tris[face_idx++] = face_it->x();
+			tris[face_idx++] = face_it->y();
+			tris[face_idx++] = face_it->z();
 		}
 
 		std::vector<Vec3> samples_pos;
@@ -247,6 +265,21 @@ void OBB::setSamplePoints(Eigen::MatrixXd samples_mat)
 		Eigen::Vector3d col_sample = samples_mat.col(i);
 		Eigen::Vector3f sample((float)col_sample.x(), (float)col_sample.y(), (float)col_sample.z());
 		m_sample_points[i] = sample;
+	}
+}
+
+void OBB::setSamplePoints(pcl::PointCloud<pcl::PointXYZ> cloud)
+{
+	using namespace pcl;
+
+	m_sample_points.clear();
+	m_sample_points.resize(cloud.size());
+
+	int sample_idx = 0;
+	for (PointCloud<PointXYZ>::iterator point_it = cloud.begin(); point_it != cloud.end(); ++point_it)
+	{
+		Vector3f sample(point_it->x, point_it->y, point_it->z);
+		m_sample_points[sample_idx++] = sample;
 	}
 }
 
@@ -302,8 +335,8 @@ void OBB::draw(int scale)
 	if (m_vertices.size() < 3)
 		triangulate();
 
-	glColor4f(COLORS[m_label][0], COLORS[m_label][1], COLORS[m_label][2], 0.5);
-	glBegin(GL_TRIANGLES);
+	glColor4f(COLORS[m_label][0], COLORS[m_label][1], COLORS[m_label][2], 1.0);
+	/*glBegin(GL_TRIANGLES);
 	assert(m_faces.size() == m_faces_normals.size());
 	QVector<Vector3i>::iterator face_it;
 	QVector<Vector3f>::iterator normal_it;
@@ -319,11 +352,28 @@ void OBB::draw(int scale)
 		glVertex3f(scale * v1.x(), scale * v1.y(), scale * v1.z());
 		glVertex3f(scale * v2.x(), scale * v2.y(), scale * v2.z());
 	}
+	glEnd();*/
+	glLineWidth(2.0);
+	glBegin(GL_LINES);
+	drawLine(0, 1, scale);
+	drawLine(1, 5, scale);
+	drawLine(5, 4, scale);
+	drawLine(4, 0, scale);
+	drawLine(3, 2, scale);
+	drawLine(2, 6, scale);
+	drawLine(6, 7, scale);
+	drawLine(7, 3, scale);
+	drawLine(1, 2, scale);
+	drawLine(0, 3, scale);
+	drawLine(4, 7, scale);
+	drawLine(5, 6, scale);
 	glEnd();
+
 
 	/* Draw the local system axes */
 	/* draw x axis */
 	glColor4f(COLORS[0][0], COLORS[0][1], COLORS[0][2], 1.0);
+	glLineWidth(1.0);
 	glBegin(GL_LINES);
 	glVertex3f(scale * m_centroid.x(), scale * m_centroid.y(), scale * m_centroid.z());
 	Vector3f x_end = m_centroid + x_axis;
@@ -451,7 +501,217 @@ void OBB::rotate(float angle, float x, float y, float z, pcl::PointCloud<pcl::Po
 	//samplePoints();
 }
 
+using namespace pcl;
+void OBB::rotate(Matrix3d rotate_mat, Vector3d translate_vec, PointCloud<PointXYZ>::Ptr cloud)
+{
+	Matrix3f _rotate_mat = rotate_mat.cast<float>();
+	Vector3f _translate_vec = translate_vec.cast<float>();
+
+	m_centroid = _rotate_mat * m_centroid + _translate_vec;
+	x_axis = _rotate_mat * x_axis;
+	y_axis = _rotate_mat * y_axis;
+	z_axis = _rotate_mat * z_axis;
+
+	m_vertices.clear();
+	m_faces.clear();
+	m_faces_normals.clear();
+	m_sample_points.clear();
+	x_length = 1.0;
+	y_length = 1.0;
+	z_length = 1.0;
+
+	/* Recompute the x_length, y_length and z_length */
+	float min[3] = { 100.0, 100.0, 100.0 };
+	float max[3] = { -100.0, -100.0, -100.0 };
+	Matrix3f transform_mat = getAxes().inverse();
+	for (PointCloud<PointXYZ>::iterator point_it = cloud->begin(); point_it != cloud->end(); ++point_it)
+	{
+		Vector3f p(point_it->x, point_it->y, point_it->z);
+		//p -= m_centroid;
+		Vector3f point = transform_mat *p;
+
+		if (point.x() < min[0])
+			min[0] = point.x();
+		if (point.x() > max[0])
+			max[0] = point.x();
+		if (point.y() < min[1])
+			min[1] = point.y();
+		if (point.y() > max[1])
+			max[1] = point.y();
+		if (point.z() < min[2])
+			min[2] = point.z();
+		if (point.z() > max[2])
+			max[2] = point.z();
+	}
+
+	x_length = max[0] - min[0];
+	y_length = max[1] - min[1];
+	z_length = max[2] - min[2];
+
+	m_centroid[0] = (max[0] + min[0]) / 2.0;
+	m_centroid[1] = (max[1] + min[1]) / 2.0;
+	m_centroid[2] = (max[2] + min[2]) / 2.0;
+
+	triangulate();
+}
+
+void OBB::transform(Matrix4f transform_mat, PointCloud<PointXYZ>::Ptr cloud)
+{
+	Vector4f centroid_aug;
+	centroid_aug.block<3, 1>(0, 0) = m_centroid;
+	centroid_aug(3, 0) = 1.0;
+	Matrix<float, 4, 3> axes = getAugmentedAxes();
+
+	centroid_aug = transform_mat * centroid_aug;
+	for (int i = 0; i < 3; i++)
+		axes.col(i) = transform_mat * axes.col(i);
+
+	x_axis = axes.block<3, 1>(0, 0);
+	y_axis = axes.block<3, 1>(0, 1);
+	z_axis = axes.block<3, 1>(0, 2);
+	m_centroid = centroid_aug.block<3, 1>(0, 0);
+
+	m_vertices.clear();
+	m_faces.clear();
+	m_faces_normals.clear();
+	m_sample_points.clear();
+	x_length = 1.0;
+	y_length = 1.0;
+	z_length = 1.0;
+
+	/* Recompute the x_length, y_length and z_length */
+	float min[3] = { 100.0, 100.0, 100.0 };
+	float max[3] = { -100.0, -100.0, -100.0 };
+	Matrix3f local_axes_mat = getAxes();
+	Matrix3f coord_trans = local_axes_mat.inverse();
+	for (PointCloud<PointXYZ>::iterator point_it = cloud->begin(); point_it != cloud->end(); ++point_it)
+	{
+		Vector3f p(point_it->x, point_it->y, point_it->z);
+		//p -= m_centroid;
+		Vector3f point = coord_trans *p;
+
+		if (point.x() < min[0])
+			min[0] = point.x();
+		if (point.x() > max[0])
+			max[0] = point.x();
+		if (point.y() < min[1])
+			min[1] = point.y();
+		if (point.y() > max[1])
+			max[1] = point.y();
+		if (point.z() < min[2])
+			min[2] = point.z();
+		if (point.z() > max[2])
+			max[2] = point.z();
+	}
+
+	x_length = max[0] - min[0];
+	y_length = max[1] - min[1];
+	z_length = max[2] - min[2];
+
+	Vector3f local_centroid((max[0] + min[0]) / 2.0, (max[1] + min[1]) / 2.0, (max[2] + min[2]) / 2.0);
+	m_centroid = local_axes_mat * local_centroid;
+
+	triangulate();
+	/* transform the vertices of OBB */
+	/*for (QVector<Vector3f>::iterator vertex_it = m_vertices.begin(); vertex_it != m_vertices.end(); ++vertex_it)
+	{
+		Vector4f vertex_aug(vertex_it->x(), vertex_it->y(), vertex_it->z(), 1.0);
+		vertex_aug = transform_mat * vertex_aug;
+		*vertex_it = vertex_aug.block<3, 1>(0, 0);
+	}*/
+
+	/* transform the normals of faces */
+	/*for (QVector<Vector3f>::iterator face_norm_it = m_faces_normals.begin(); face_norm_it != m_faces_normals.end(); ++face_norm_it)
+	{
+		Vector4f norm_aug(face_norm_it->x(), face_norm_it->y(), face_norm_it->z(), 0);
+		norm_aug = transform_mat * norm_aug;
+		*face_norm_it = norm_aug.block<3, 1>(0, 0);
+	}*/
+}
+
 int OBB::sampleCount() const
 {
 	return m_sample_points.size();
+}
+
+void OBB::drawLine(int vert_no_0, int vert_no_1, float scale)
+{
+	Vector3f vert0 = m_vertices[vert_no_0];
+	Vector3f vert1 = m_vertices[vert_no_1];
+	glVertex3f(scale * vert0.x(), scale * vert0.y(), scale * vert0.z());
+	glVertex3f(scale * vert1.x(), scale * vert1.y(), scale * vert1.z());
+}
+
+QVector<Vector3f>::iterator OBB::samples_begin()
+{
+	return m_sample_points.begin();
+}
+
+QVector<Vector3f>::iterator OBB::samples_end()
+{
+	return m_sample_points.end();
+}
+
+void OBB::normalize(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud)
+{
+	/* Compute the rotation matrix from local y axis to global y axis */
+	Matrix3f rotation_y = Utils::rotation_matrix(y_axis, Vector3f(0, 1.0, 0));
+
+	/* Rotate three axes by rotation_y matrix */
+	y_axis = rotation_y * y_axis;
+	x_axis = rotation_y * x_axis;
+	z_axis = rotation_y * z_axis;
+
+	/* Rotate the local system around y_axis to align z_axis to global z-axis */
+	Matrix3f rotation_z = Utils::rotation_matrix(z_axis, Vector3f(0, 0, 1.0));
+	z_axis = rotation_z * z_axis;
+	x_axis = rotation_z * x_axis;
+
+	/* Rotate the local system back to make y_axis on the initial direction */
+	Matrix3f rotation_y_inv = rotation_y.inverse();
+	x_axis = rotation_y_inv * x_axis;
+	y_axis = rotation_y_inv * y_axis;
+	z_axis = rotation_y_inv * z_axis;
+
+	m_vertices.clear();
+	m_faces.clear();
+	m_faces_normals.clear();
+	m_sample_points.clear();
+	x_length = 1.0;
+	y_length = 1.0;
+	z_length = 1.0;
+
+	/* Recompute the x_length, y_length and z_length */
+	float min[3] = { 100.0, 100.0, 100.0 };
+	float max[3] = { -100.0, -100.0, -100.0 };
+	Matrix3f local_axes_mat = getAxes();
+	Matrix3f coord_trans = local_axes_mat.inverse();
+	for (PointCloud<PointXYZ>::iterator point_it = cloud->begin(); point_it != cloud->end(); ++point_it)
+	{
+		Vector3f p(point_it->x, point_it->y, point_it->z);
+		//p -= m_centroid;
+		Vector3f point = coord_trans *p;
+
+		if (point.x() < min[0])
+			min[0] = point.x();
+		if (point.x() > max[0])
+			max[0] = point.x();
+		if (point.y() < min[1])
+			min[1] = point.y();
+		if (point.y() > max[1])
+			max[1] = point.y();
+		if (point.z() < min[2])
+			min[2] = point.z();
+		if (point.z() > max[2])
+			max[2] = point.z();
+	}
+
+	x_length = max[0] - min[0];
+	y_length = max[1] - min[1];
+	z_length = max[2] - min[2];
+
+	Vector3f local_centroid((max[0] + min[0]) / 2.0, (max[1] + min[1]) / 2.0, (max[2] + min[2]) / 2.0);
+	m_centroid = local_axes_mat * local_centroid;
+
+	triangulate();
 }

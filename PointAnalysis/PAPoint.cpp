@@ -71,7 +71,7 @@ string PAPoint::toString()
 		featStr.append(to_string(features[i]) + ",");
 	featStr.append(to_string(features[DIMEN - 1]));
 
-	if (part_label >= 0 && part_label <= 10)
+	if (part_label >= 0 && part_label < 10)
 		featStr.append("," + to_string(part_label));
 
 	return featStr;

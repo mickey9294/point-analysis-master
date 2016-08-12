@@ -30,7 +30,6 @@ void MyGLWidget::setModel(Model *model)
 	m_model = model;
 	if (model->getType() == Model::ModelType::PointCloud)
 		connect((PCModel *)m_model, SIGNAL(onLabelsChanged()), this, SLOT(updateLabels()));
-	delete(temp);
 
 	/* Clear the current oriented bounding boxes */
 	for (int i = 0; i < m_OBBs.size(); i++)
@@ -38,8 +37,10 @@ void MyGLWidget::setModel(Model *model)
 		delete(m_OBBs[i]);
 		m_OBBs.remove(i);
 	}
-
 	m_OBBs.clear();
+
+	delete(temp);
+	temp = NULL;
 
 	update();
 }
@@ -152,45 +153,8 @@ void MyGLWidget::draw()
 		OBB *obb = *obb_it;
 		/* Draw the oriented box */
 		obb->draw(m);
-
-		/* Draw the sample points on the OBB */
-		//obb->drawSamples(m);
-	//	/* Draw the local coordinates axes */
-	//	Eigen::Vector3f centroid = obb->getCentroid();
-	//	QVector<Eigen::Vector3f> axes = obb->getAxes();
-	//	for (int i = 0; i < 3; i++)
-	//	{
-	//		glColor4f(COLORS[i][0], COLORS[i][1], COLORS[i][2], 1.0);
-	//		glBegin(GL_LINES);
-	//		Eigen::Vector3f axis_end = centroid + axes[i];
-	//		glVertex3f(m * centroid.x(), m * centroid.y(), m * centroid.z());
-	//		glVertex3f(m * axis_end.x(), m * axis_end.y(), m * axis_end.z());
-	//		glEnd();
-	//	}
-
-	//	/* Draw the sample points on the oriented boxes */
-	//	QVector<Eigen::Vector3f> sample_points = obb->getSamplePoints();
-	//	glColor4f(0.7, 0.7, 0.7, 1.0);
-	//	glBegin(GL_POINTS);
-	//	glPointSize(2.2);
-	//	for (QVector<Eigen::Vector3f>::iterator sample_it = sample_points.begin(); sample_it != sample_points.end(); ++sample_it)
-	//	{
-	//		Eigen::Vector3f p = *sample_it;
-	//		glVertex3f(m * p.x(), m * p.y(), m * p.z());
-	//	}
-	//	glEnd();
+		obb->drawSamples(m);
 	}
-
-	/* Draw the samples points sampled on the mesh */
-	/*glColor4f(0.7, 0.7, 0.7, 1.0);
-	glBegin(GL_POINTS);
-	glPointSize(2.3);
-	for (Samples_Vec::iterator sample_it = m_samples.begin(); sample_it != m_samples.end(); ++sample_it)
-	{
-		Eigen::Vector3f sample = *sample_it;
-		glVertex3f(m * sample.x(), m * sample.y(), m * sample.z());
-	}
-	glEnd();*/
 
 	glPopMatrix();
 	//glColor4f(1.0, 0.0, 0.0, 0.5);

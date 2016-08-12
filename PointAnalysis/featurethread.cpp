@@ -20,7 +20,7 @@ FeatureThread::FeatureThread(int idno, pcl::PointCloud<pcl::PointXYZ>::Ptr c, pc
 	qRegisterMetaType<QVector<QVector<double>>>("FeatureVector");
 	qRegisterMetaType<QList<QVector<double>>>("FeatureList");
 	//qRegisterMetaType<pcl::search::KdTree<pcl::PointXYZ>::Ptr>("KdTreePointer");
-	//connect(this, SIGNAL(firstStepCompleted()), this, SLOT(nextEstimateStep()));
+	connect(this, SIGNAL(firstStepCompleted()), this, SLOT(nextEstimateStep()));
 }
 
 FeatureThread::~FeatureThread()
@@ -81,7 +81,7 @@ void FeatureThread::estimate()
 			normals->at(i).curvature = curv;
 		}
 
-		nextEstimateStep();
+		emit firstStepCompleted();
 	}
 	else    /* If the thread is used to estimate height and sdf */
 	{

@@ -8,12 +8,12 @@ TrainPartsThread::TrainPartsThread(QObject *parent)
 	qRegisterMetaType<QVector<PAPart>>("QVector<PAPart>");
 	cout << "TrainPartsThread is created." << endl;
 
-	loadThread.setPhase(LoadThread::PHASE::TRAINING);
+	loadThread.setPhase(PHASE::TRAINING);
 	
-	connect(&loadThread, SIGNAL(loadPointsCompleted(PCModel *)), this, SLOT(receiveModel(PCModel *)));
+	connect(&loadThread, SIGNAL(loadPointsCompleted(Model *)), this, SLOT(receiveModel(Model *)));
 	connect(&pcaThread, SIGNAL(estimatePartsDone(QVector<PAPart>)), this, SLOT(receiveParts(QVector<PAPart>)));
 
-	ifstream list_in("../data/test_list.txt");
+	ifstream list_in("../data/coseg_chairs_8_list.txt");
 	if (list_in.is_open())
 	{
 		const int BUFFER_SIZE = 128;
@@ -52,12 +52,12 @@ void TrainPartsThread::run()
 	savePartRelationPriors();
 }
 
-void TrainPartsThread::receiveModel(PCModel *pc)
+void TrainPartsThread::receiveModel(Model *model)
 {
-	qDebug() << "Receive point cloud from" << QString::fromStdString(pc->getInputFilepath());
+	qDebug() << "Receive point cloud from" << QString::fromStdString(model->getInputFilepath());
 
-	emit showModel(pc);
-	pcaThread.setPointCloud(pc);
+	emit showModel(model);
+	pcaThread.setPointCloud(model);
 	pcaThread.start();
 }
 

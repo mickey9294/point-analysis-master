@@ -8,6 +8,7 @@
 #include "pcathread.h"
 #include "papartrelation.h"
 #include "pcmodel.h"
+#include "utils.h"
 
 class DebugRelationThread : public QThread
 {

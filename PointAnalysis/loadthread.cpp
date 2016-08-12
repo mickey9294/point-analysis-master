@@ -3,7 +3,7 @@
 LoadThread::LoadThread(QObject *parent)
 	: QThread(parent)
 {
-
+	m_gap_time = 0;
 }
 
 LoadThread::LoadThread(std::string name, PHASE phase, QObject *parent)
@@ -11,6 +11,7 @@ LoadThread::LoadThread(std::string name, PHASE phase, QObject *parent)
 {
 	filename = name;
 	m_phase = phase;
+	m_gap_time = 0;
 }
 
 LoadThread::~LoadThread()
@@ -31,6 +32,7 @@ void LoadThread::run()
 	loadPointCloud();
 	qDebug() << "Load points done.";
 	emit addDebugText("Load points done.");
+	sleep(m_gap_time);
 }
 
 using namespace std;
@@ -57,4 +59,9 @@ void LoadThread::loadPointCloud()
 void LoadThread::setPhase(PHASE phase)
 {
 	m_phase = phase;
+}
+
+void LoadThread::setGapTime(int time)
+{
+	m_gap_time = time;
 }

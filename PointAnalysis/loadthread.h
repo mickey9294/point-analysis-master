@@ -15,17 +15,13 @@ class LoadThread : public QThread
 	Q_OBJECT
 
 public:
-	enum PHASE{
-		TRAINING,
-		TESTING
-	};
-
 	LoadThread(QObject *parent = 0);
 	LoadThread(std::string filename, PHASE phase, QObject *parent = 0);
 	~LoadThread();
 
 	void setLoadFileName(std::string filename);
 	void setPhase(PHASE phase);
+	void setGapTime(int time);
 
 signals:
 	void loadPointsCompleted(Model *model);
@@ -39,6 +35,7 @@ protected:
 private:
 	std::string filename;
 	PHASE m_phase;
+	int m_gap_time;
 
 	void loadPointCloud();
 };

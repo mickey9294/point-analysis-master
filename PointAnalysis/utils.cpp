@@ -29,6 +29,7 @@ double Utils::sdf(pcl::PointCloud<pcl::PointXYZ>::Ptr points, pcl::PointCloud<pc
 	Eigen::Vector3d normalVec(searchPointNormal.normal_x, searchPointNormal.normal_y, searchPointNormal.normal_z); 
 	normalVec.normalize();
 	Vector3d cone_axis = -normalVec;
+	cone_axis.normalize();
 
 	QList<double> dists; 
 	QList<double> weights;
@@ -492,4 +493,30 @@ std::string Utils::getFileFormat(const char *file_path)
 	QString q_file_path(file_path);
 	QString format = q_file_path.section('.', -1, -1);
 	return format.toStdString();
+}
+
+Eigen::Matrix3f Utils::rotation_matrix(Eigen::Vector3f v0, Eigen::Vector3f v1)
+{
+	using namespace Eigen;
+
+	v0.normalize();
+	v1.normalize();
+
+	Vector3f v = v0.cross(v1);
+	float s = v.norm();
+	float c = v0.dot(v1);
+
+	Matrix3f ssc_v = skew_symmetric_cross(v);
+	Matrix3f R = Matrix3f::Identity() + ssc_v + ssc_v * ssc_v * (1 - c) / (s * s);
+	return R;
+}
+
+Eigen::Matrix3f Utils::skew_symmetric_cross(Eigen::Vector3f v)
+{
+	Eigen::Matrix3f ssc;
+	ssc << 0, -v.z(), v.y(),
+		v.z(), 0, -v.x(),
+		-v.y(), v.x(), 0;
+
+	return ssc;
 }

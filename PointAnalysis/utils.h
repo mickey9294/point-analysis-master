@@ -54,6 +54,11 @@ typedef CGAL::Sequential_tag Concurrency_tag;
 typedef CGAL::Polyhedron_3<Kernel> Polyhedron;
 typedef Polyhedron::Halfedge_around_facet_const_circulator Halfedge_facet_circulator;
 
+enum PHASE{
+	TRAINING,
+	TESTING
+};
+
 class Utils : public QObject
 {
 	Q_OBJECT
@@ -83,6 +88,8 @@ public:
 	static QVector3D eigen_vector3f_to_qvector3d(Eigen::Vector3f vec);
 	static std::string getFileFormat(std::string file_path);
 	static std::string getFileFormat(const char *file_path);
+	static Eigen::Matrix3f rotation_matrix(Eigen::Vector3f v0, Eigen::Vector3f v1);
+	static Eigen::Matrix3f skew_symmetric_cross(Eigen::Vector3f v);
 
 private:
 	static void sort(QList<double> &lens, QList<int> &indices, int low, int high);

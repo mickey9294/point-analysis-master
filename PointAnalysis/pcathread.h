@@ -27,11 +27,6 @@ class PCAThread : public QThread
 	Q_OBJECT
 
 public:
-	enum PHASE{
-		TRAINING,
-		TESTING
-	};
-
 	PCAThread(QObject *parent = 0);
 	PCAThread(Model *model, PHASE phase, QObject *parent = 0);
 	~PCAThread();

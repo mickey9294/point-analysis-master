@@ -41,30 +41,6 @@ OBB *OBBEstimator::computeOBB()
 	Eigen::Matrix3f global_axes = Eigen::Matrix3f::Identity();
 	Eigen::Matrix3f local_axes;
 
-	/* Specify the eigen vector closest to each global axis as each axis of the local system of OBB */
-	//Eigen::Matrix<float, 6, 3> eigen_vectors_transpose;
-	//for (int i = 0; i < 3; i++)
-	//{
-	//	eigen_vectors_transpose.row(2 * i) = eigen_vectors.col(i).transpose();
-	//	eigen_vectors_transpose.row(2 * i + 1) = (-eigen_vectors.col(i)).transpose();
-	//}
-	//Eigen::Matrix<float, 6, 3> angles = eigen_vectors_transpose * global_axes;
-	//int axes_indices[3] = { 0, 0, 0 };
-	//for (int i = 0; i < 3; i++)
-	//{
-	//	Eigen::VectorXf v = angles.col(i);
-	//	float max = -1.0;
-	//	for (int j = 0; j < 6; j++)
-	//	{
-	//		if (v[j] > max)
-	//		{
-	//			max = v[j];
-	//			axes_indices[i] = j / 2;
-	//			local_axes.col(i) = std::pow(-1.0, j % 2) * eigen_vectors.col(j / 2);
-	//		}
-	//	}
-	//}
-
 	/* Specify the eigen vectors closests to the global axes as the local system axes.
 	 * Particularly, choose the local system with the minimal sum of rotation angles on three system axes
 	 */
@@ -135,8 +111,12 @@ OBB *OBBEstimator::computeOBB()
 	Eigen::Vector3f centroid(obb_centroid.x, obb_centroid.y, obb_centroid.z);
 
 	OBB *obb = new OBB(local_axes.col(0), local_axes.col(1), local_axes.col(2), centroid, x_length, y_length, z_length, m_label);
-	//obb->triangulate();
-	ICP_procedure(obb);
+	obb->triangulate();
+	if (m_phase == PHASE::TESTING)
+		ICP_pcl(obb);
+	else
+		obb->normalize(m_cloud);
+
 	return obb; 
 }
 
@@ -347,11 +327,13 @@ QVector<OBB *> OBBEstimator::computeOBBCandidates()
 				}
 	
 				/* Create a candidate OBB */
-				obb_candidates[index++] = new OBB(local_axes.col(0),  /* The x axis */
+				OBB * obb_cand = new OBB(local_axes.col(0),  /* The x axis */
 					local_axes.col(1),    /* The y axis */
 					local_axes.col(2),    /* The z axis */
 					Eigen::Vector3f(obb_centroid.x, obb_centroid.y, obb_centroid.z),     /* the centroid of the OBB */
 					x_length, y_length, z_length, m_label);
+				ICP_pcl(obb_cand);
+				obb_candidates[index++] = obb_cand;
 			}
 		}
 	}
@@ -373,13 +355,16 @@ void OBBEstimator::reset(int label, PointCloud<PointXYZ>::Ptr cloud)
 	m_cloud = cloud;
 }
 
+using namespace Eigen;
+
 void OBBEstimator::ICP_procedure(OBB *obb)
 {
-	using namespace Eigen;
-
 	int sample_size = 0;
 	if (obb->sampleCount() < 3)
 		sample_size = obb->samplePoints();
+	else
+		sample_size = obb->sampleCount();
+
 	MatrixXd sample_points(3, sample_size);
 	MatrixXd part_points(3, m_cloud->size());
 
@@ -412,4 +397,66 @@ void OBBEstimator::ICP_procedure(OBB *obb)
 	std::cout << rotation_mat << std::endl;
 	std::cout << "translation vector:" << std::endl; 
 	std::cout << translation_vec.transpose() << std::endl;
+
+	//obb->setSamplePoints(sample_points);
+	//obb->rotate(rotation_mat, translation_vec, m_cloud);
+}
+
+void OBBEstimator::ICP_pcl(OBB* obb)
+{
+	std::cout << "Use ICP to adjust OBB_" << m_label << std::endl;
+	using namespace pcl;
+	PointCloud<PointXYZ>::Ptr cloud_in(new PointCloud<PointXYZ>);
+	PointCloud<PointXYZ>::Ptr cloud_out(new PointCloud<PointXYZ>);
+
+	/* Set the samples on the OBB as the input point cloud */
+	int sample_size = 0;
+	if (obb->sampleCount() < 3)
+		sample_size = obb->samplePoints();
+	else
+		sample_size = obb->sampleCount();
+
+	cloud_in->width = sample_size;
+	cloud_in->height = 1;
+	cloud_in->is_dense = false;
+	cloud_in->points.resize(cloud_in->width * cloud_in->height);
+
+	int sample_idx = 0;
+	for (QVector<Vector3f>::iterator sample_it = obb->samples_begin(); sample_it != obb->samples_end(); ++sample_it)
+	{
+		cloud_in->points[sample_idx].x = sample_it->x();
+		cloud_in->points[sample_idx].y = sample_it->y();
+		cloud_in->points[sample_idx++].z = sample_it->z();
+	}
+
+	/* Set the points on the model as the target point cloud */
+	cloud_out->width = m_cloud->size();
+	cloud_out->height = 1;
+	cloud_out->is_dense = false;
+	cloud_out->points.resize(cloud_out->width * cloud_out->height);
+
+	int point_idx = 0;
+	for (PointCloud<PointXYZ>::iterator point_it = m_cloud->begin(); point_it != m_cloud->end(); ++point_it)
+	{
+		cloud_out->points[point_idx].x = point_it->x;
+		cloud_out->points[point_idx].y = point_it->y;
+		cloud_out->points[point_idx++].z = point_it->z;
+	}
+	
+	/* Execute ICP algorithm */
+	IterativeClosestPoint<PointXYZ, PointXYZ> icp;
+	icp.setInputCloud(cloud_in);
+	icp.setInputTarget(cloud_out);
+	PointCloud<PointXYZ> Final;
+	icp.align(Final);
+	std::cout << "has converged: " << icp.hasConverged() << "; score: " << icp.getFitnessScore() << std::endl;
+	Matrix4f transform_mat = icp.getFinalTransformation();
+
+	//obb->setSamplePoints(Final);
+	obb->transform(transform_mat, m_cloud);
+}
+
+void OBBEstimator::setPhase(PHASE phase)
+{
+	m_phase = phase;
 }
