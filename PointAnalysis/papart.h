@@ -26,6 +26,7 @@ public:
 	Eigen::Vector3f getTransVec() const;
 	Eigen::Vector3f getScale() const;
 	Eigen::Vector4f getHeight() const;
+	OBB * getOBB() const;
 	QMatrix4x4 getQRotMat();
 	QVector3D getQTransVec();
 	QVector3D getQScale();
@@ -39,6 +40,8 @@ public:
 	void saveToFile(std::string name);
 	int getClusterNo() const { return m_cluster_no; }
 	OBB * generateOBB();
+	std::vector<int>::iterator vertices_begin();
+	std::vector<int>::iterator vertices_end();
 
 private:
 	Eigen::Matrix3f m_rotate;    /* Rotation matrix of 3x3 */
@@ -49,6 +52,7 @@ private:
 	std::vector<int> m_vertices_indices;
 	int m_label;
 	int m_cluster_no;
+	OBB *m_obb;
 };
 
 Q_DECLARE_METATYPE(PAPart)

@@ -20,7 +20,7 @@ class PredictionThread : public QThread
 
 public:
 	PredictionThread(QObject *parent = 0);
-	PredictionThread(EnergyFunctions *energy_functions, Part_Candidates part_candidates, QList<int> label_names, QObject *parent = 0);
+	PredictionThread(EnergyFunctions *energy_functions, Part_Candidates part_candidates, QVector<int> label_names, QObject *parent = 0);
 	~PredictionThread();
 
 	void execute();
@@ -31,7 +31,7 @@ public:
 	//void onGetTest();
 
 signals:
-	void predictionDone(QMap<int, int> parts_picked);
+	void predictionDone(QMap<int, int> parts_picked, std::vector<int> candidate_labels);
 	//void predictionDone();
 	//void testSignal();
 
@@ -40,7 +40,7 @@ protected:
 
 private:
 	Part_Candidates m_part_candidates;
-	QList<int> m_label_names;    /* The label set. Note that the label with the largest number is null label */
+	QVector<int> m_label_names;    /* The label set. Note that the label with the largest number is null label */
 	int m_ncandidates;
 	EnergyFunctions *m_energy_functions;
 	QVector<PairwiseTermThread *> m_pairwise_threads;

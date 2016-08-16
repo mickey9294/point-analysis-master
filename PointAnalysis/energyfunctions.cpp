@@ -122,6 +122,61 @@ void EnergyFunctions::setPointCloud(PAPointCloud * pointcloud)
 	m_pointcloud = pointcloud;
 }
 
+void EnergyFunctions::setOBBs(QMap<int, OBB *> obbs)
+{
+	using namespace pcl;
+
+	/* Delete the previous used obbs */
+	for (QMap<int, OBB *>::iterator obb_it = m_obbs.begin(); obb_it != m_obbs.end(); ++obb_it)
+	{
+		if (*obb_it != NULL)
+			delete(*obb_it);
+		*obb_it = NULL;
+	}
+	m_obbs.clear();
+
+	/* Set OBBs and generate kd-trees for each part */
+	m_kdtrees.clear();  /* Clear the previous used kd-trees */
+	int tree_idx = 0;
+	for (QMap<int, OBB *>::iterator obb_it = obbs.begin(); obb_it != obbs.end(); ++obb_it)
+	{
+		int label = obb_it.key();
+		if ((*obb_it)->sampleCount() < 3)  /* If the OBB has not been sampled */
+			(*obb_it)->samplePoints();    /* Sample point on the OBB */
+
+		m_obbs.insert(label, *obb_it);
+
+		/* Generate pointcloud data for the kdtree */
+		PointCloud<PointXYZ>::Ptr cloud(new PointCloud<PointXYZ>);
+		cloud->width = (*obb_it)->sampleCount();
+		cloud->height = 1;
+		cloud->points.resize(cloud->width * cloud->height);
+
+		int sample_idx = 0;
+		for (QVector<Eigen::Vector3f>::iterator sample_it = (*obb_it)->samples_begin();
+			sample_it != (*obb_it)->samples_end(); ++sample_it)
+		{
+			cloud->points[sample_idx].x = sample_it->x();
+			cloud->points[sample_idx].y = sample_it->y();
+			cloud->points[sample_idx++].z = sample_it->z();
+		}
+
+		KdTreeFLANN<PointXYZ> kdtree;
+		kdtree.setInputCloud(cloud);
+		m_kdtrees.insert(label, kdtree);
+	}
+}
+
+void EnergyFunctions::setPointAssignments(QVector<int> point_assignments)
+{
+	m_point_assignments = point_assignments;
+}
+
+QVector<int> EnergyFunctions::getPointAssignments() const
+{
+	return m_point_assignments;
+}
+
 void EnergyFunctions::setDistributions(QVector<QMap<int, float>> distributions)
 {
 	m_distributions = QVector<QMap<int, float>>(distributions);
@@ -191,6 +246,13 @@ double EnergyFunctions::Epnt(PAPart part, int label)
 	return energy;
 }
 
+double EnergyFunctions::Epnt_single(int point_index, int label)
+{
+	float probability = m_distributions[point_index][label];
+	double energy = -log(probability); 
+	return energy;
+}
+
 double EnergyFunctions::Epair(PAPartRelation relation, int cluster_no_1, int cluster_no_2, int label1, int label2)
 {
 	//cout << "Compute Epair of Cand_" << part1.getClusterNo() << " - Cand_" << part2.getClusterNo() 
@@ -232,4 +294,95 @@ double EnergyFunctions::Epair(PAPartRelation relation, int cluster_no_1, int clu
 
 		return energy;
 	}
+}
+
+double EnergyFunctions::Ep_q(int point_index, int assigned_label)
+{
+	/* Find the nearest neighbor of the point */
+	pcl::KdTreeFLANN<pcl::PointXYZ> kdtree = m_kdtrees[assigned_label];
+	PAPoint point = m_pointcloud->operator[](point_index);
+	pcl::PointXYZ searchPoint(point.x(), point.y(), point.z());
+
+	int K = 1;
+	std::vector<int> pointIdxNKNSearch(K);
+	std::vector<float> pointNKNSquaredDistance(K);
+
+	kdtree.nearestKSearch(searchPoint, K, pointIdxNKNSearch, pointNKNSquaredDistance);
+	return w3 * pointNKNSquaredDistance.front();
+}
+
+QVector<Eigen::Triplet<double>> EnergyFunctions::Esmooth(int point_index)
+{
+	double energy = 0;
+	float radius = m_pointcloud->getRadius() * 0.05;
+	const int param_num_point_neighbors = 8;
+	int num_of_neighbors = min(param_num_point_neighbors, m_pointcloud->size());
+
+	PAPoint point = m_pointcloud->operator[](point_index);
+	pcl::PointXYZ searchPoint(point.x(), point.y(), point.z());
+
+	QVector<Triplet<double>> pair_potentials;
+
+	 /* Find the neighbors of the point */
+	vector<int> pointIdxRadiusSearch;
+	vector<float> pointRadiusSquredDistance;
+
+	if (m_cloud_kdtree.radiusSearch(searchPoint, radius, pointIdxRadiusSearch, pointRadiusSquredDistance) > num_of_neighbors)
+	{
+		//assert(pointIdxRadiusSearch.size() == pointRadiusSquredDistance.size());
+		for (int i = 0; i < pointIdxRadiusSearch.size(); i++)
+		{
+			int n_point_index = pointIdxRadiusSearch[i];
+
+			/* Avoid symmetric pairs */
+			if (n_point_index <= point_index)
+				continue;
+
+			double distance = radius - sqrt(pointRadiusSquredDistance[i]);
+			double energy = w2 * distance * distance;
+			pair_potentials.push_back(Triplet<double>(point_index, n_point_index, energy));
+		}
+	}
+	else
+	{
+		vector<int> piontIdxNKNSearch(num_of_neighbors);
+		vector<float> pointNKNSquaredDistance(num_of_neighbors);
+
+		m_cloud_kdtree.nearestKSearch(searchPoint, num_of_neighbors, pointIdxRadiusSearch, pointNKNSquaredDistance);
+		for (int i = 0; i < pointIdxRadiusSearch.size(); i++)
+		{
+			int n_point_index = pointIdxRadiusSearch[i];
+
+			/* Avoid symmetric pairs  and exclude the situation that 2 points have the same part assignments */
+			if (n_point_index <= point_index || m_point_assignments[point_index] == m_point_assignments[n_point_index])
+				continue;
+
+			double distance = radius - sqrt(pointNKNSquaredDistance[i]);
+			double energy = w2 * distance * distance;
+			pair_potentials.push_back(Triplet<double>(point_index, n_point_index, energy));
+		}
+	}
+
+	return pair_potentials;
+}
+
+void EnergyFunctions::generateKdTree()
+{
+	using namespace pcl;
+
+	PointCloud<PointXYZ>::Ptr cloud(new PointCloud<PointXYZ>);
+
+	cloud->width = m_pointcloud->size();
+	cloud->height = 1;
+	cloud->points.resize(cloud->width * cloud->height);
+	
+	int point_idx = 0;
+	for (std::vector<PAPoint>::iterator point_it = m_pointcloud->begin(); point_it != m_pointcloud->end(); ++point_it)
+	{
+		cloud->points[point_idx].x = point_it->x();
+		cloud->points[point_idx].y = point_it->y();
+		cloud->points[point_idx++].z = point_it->z();
+	}
+
+	m_cloud_kdtree.setInputCloud(cloud);
 }

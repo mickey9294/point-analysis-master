@@ -32,6 +32,8 @@ PAPart::PAPart(OBB * obb) : m_cluster_no(0)
 	m_axes.col(0) = x_axis;
 	m_axes.col(1) = y_axis;
 	m_axes.col(2) = z_axis;
+
+	m_obb = new OBB(obb);
 }
 
 PAPart::PAPart(const PAPart &part)
@@ -45,9 +47,10 @@ PAPart::PAPart(const PAPart &part)
 	m_axes = part.getAxes();
 	m_vertices_indices = part.getVerticesIndices();
 	m_cluster_no = part.getClusterNo();
+	m_obb = part.getOBB();
 }
 
-PAPart::PAPart() : m_cluster_no(0), m_label(0)
+PAPart::PAPart() : m_cluster_no(0), m_label(0), m_obb(NULL)
 {
 	m_rotate.setIdentity();
 	m_translate.setZero();
@@ -59,6 +62,8 @@ PAPart::PAPart() : m_cluster_no(0), m_label(0)
 
 PAPart::~PAPart()
 {
+	if (m_obb != NULL)
+		delete(m_obb);
 }
 
 Matrix3f PAPart::getRotMat() const
@@ -257,5 +262,24 @@ OBB * PAPart::generateOBB()
 	float z_length = m_scale.z();
 	OBB *obb = new OBB(_x_axis, _y_axis, _z_axis, m_translate, (double)x_length, (double)y_length, (double)z_length, m_label);
 	obb->triangulate();
+	obb->samplePoints();
+	if (m_obb != NULL)
+		delete(m_obb);
+	m_obb = obb;
 	return obb;
+}
+
+OBB * PAPart::getOBB() const
+{
+	return m_obb;
+}
+
+vector<int>::iterator PAPart::vertices_begin()
+{
+	return m_vertices_indices.begin();
+}
+
+vector<int>::iterator PAPart::vertices_end()
+{
+	return m_vertices_indices.end();
 }

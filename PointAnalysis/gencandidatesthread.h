@@ -29,7 +29,7 @@ class GenCandidatesThread : public QThread
 
 public:
 	GenCandidatesThread(QObject *parent = 0);
-	GenCandidatesThread(std::string model_name, int num_of_candidates, QObject *parent = 0);
+	GenCandidatesThread(std::string model_name, int npoints, int num_of_candidates, QObject *parent = 0);
 	GenCandidatesThread(PAPointCloud *pointcloud, std::string model_name, QVector<QMap<int, float>> distribution, QObject *parent = 0);
 	~GenCandidatesThread();
 
@@ -38,7 +38,7 @@ public:
 	
 signals:
 	void addDebugText(QString text);
-	void genCandidatesDone(int num_of_candidates, Part_Candidates part_candidates);
+	void genCandidatesDone(int num_of_candidates, Part_Candidates part_candidates, QVector<int> point_cluster_map);
 	void setOBBs(QVector<OBB *> obbs);
 
 protected:
@@ -46,6 +46,7 @@ protected:
 
 private:
 	PAPointCloud * m_pointcloud;
+	int m_npoints;
 	QVector<QMap<int, float>> m_distribution;
 	int m_num_of_candidates;
 	std::string m_model_name;

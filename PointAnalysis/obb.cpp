@@ -62,6 +62,24 @@ OBB::OBB(const OBB &obb)
 	m_sample_points = obb.getSamplePoints();
 }
 
+OBB::OBB(const OBB * obb)
+{
+	x_axis = obb->getXAxis();
+	y_axis = obb->getYAxis();
+	z_axis = obb->getZAxis();
+	QVector3D scale = obb->getScale();
+	x_length = scale.x();
+	y_length = scale.y();
+	z_length = scale.z();
+	m_centroid = obb->getCentroid();
+	m_color = obb->getColor();
+	m_label = obb->getLabel();
+	m_vertices = obb->getVertices();
+	m_faces = obb->getFaces();
+	m_faces_normals = obb->getFacesNormals();
+	m_sample_points = obb->getSamplePoints();
+}
+
 OBB::~OBB()
 {
 
@@ -470,6 +488,7 @@ void OBB::rotate(float angle, float x, float y, float z, pcl::PointCloud<pcl::Po
 	/* Recompute the x_length, y_length and z_length */
 	float min[3] = { 100.0, 100.0, 100.0 };
 	float max[3] = { -100.0, -100.0, -100.0 };
+	Matrix3f local_axes = getAxes();
 	Matrix3f transform_mat = getAxes().inverse();
 	for (PointCloud<PointXYZ>::iterator point_it = cloud->begin(); point_it != cloud->end(); ++point_it)
 	{
@@ -497,7 +516,8 @@ void OBB::rotate(float angle, float x, float y, float z, pcl::PointCloud<pcl::Po
 	m_centroid[0] = (max[0] + min[0]) / 2.0;
 	m_centroid[1] = (max[1] + min[1]) / 2.0;
 	m_centroid[2] = (max[2] + min[2]) / 2.0;
-	
+
+	m_centroid = local_axes * m_centroid;
 	//samplePoints();
 }
 

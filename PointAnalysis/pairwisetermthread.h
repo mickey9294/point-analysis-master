@@ -19,7 +19,7 @@ class PairwiseTermThread : public QThread
 public:
 	PairwiseTermThread(QObject *parent = 0);
 	PairwiseTermThread(int id, Part_Candidates part_candidates, int start, int end, EnergyFunctions *energy_functions,
-		QList<int> label_names, QObject *parent = 0);
+		QVector<int> label_names, QObject *parent = 0);
 	~PairwiseTermThread();
 
 signals:
@@ -33,7 +33,7 @@ private:
 	int m_id;
 	int m_start;
 	int m_end;
-	QList<int> m_label_names;
+	QVector<int> m_label_names;
 	Part_Candidates m_part_candidates;
 	EnergyFunctions *m_energy_functions;
 	//Pairwise_Potentials m_pairwise_potentials;

@@ -6,6 +6,7 @@
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
 #include <pcl/search/kdtree.h>
+#include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/common/impl/centroid.hpp>
 #include <pcl/features/normal_3d.h>
 #include <boost/smart_ptr/shared_ptr.hpp>

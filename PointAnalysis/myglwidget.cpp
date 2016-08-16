@@ -276,6 +276,17 @@ void MyGLWidget::onDebugTextAdded(QString text)
 void MyGLWidget::updateLabels()
 {
 	emit addDebugText("Update the labels of points in GLWidget.");
+	/* Clear all oriented boxes first */
+	for (QVector<OBB *>::iterator obb_it = m_OBBs.begin(); obb_it != m_OBBs.end(); ++obb_it)
+	{
+		if (*obb_it != NULL)
+		{
+			delete(*obb_it);
+			*obb_it = NULL;
+		}
+	}
+	m_OBBs.clear();
+
 	update();
 }
 

@@ -7,7 +7,7 @@ PairwiseTermThread::PairwiseTermThread(QObject *parent)
 }
 
 PairwiseTermThread::PairwiseTermThread(int id, Part_Candidates part_candidates, int start, int end, 
-	EnergyFunctions *energy_functions, QList<int> label_names, QObject *parent)
+	EnergyFunctions *energy_functions, QVector<int> label_names, QObject *parent)
 	: QThread(parent), m_part_candidates(part_candidates), m_start(start), m_end(end), m_energy_functions(energy_functions),
 	m_label_names(label_names), m_id(id)
 {

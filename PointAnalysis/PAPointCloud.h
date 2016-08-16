@@ -22,6 +22,8 @@ public:
 	void setRadius(float radius);
 	float getRadius() const;
 	std::vector<PAPoint> getPoints() const;
+	std::vector<PAPoint>::iterator begin();
+	std::vector<PAPoint>::iterator end();
 
 private:
 	std::vector<PAPoint> pointList;

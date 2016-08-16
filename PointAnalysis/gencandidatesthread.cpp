@@ -15,12 +15,13 @@ GenCandidatesThread::GenCandidatesThread(PAPointCloud *pointcloud, std::string m
 	qRegisterMetaType<Part_Candidates>("PartCandidates");
 	m_pointcloud = pointcloud;
 	m_distribution = QVector<QMap<int, float>>(distribution);
+	m_npoints = pointcloud->size();
 }
 
-GenCandidatesThread::GenCandidatesThread(std::string model_name, int num_of_candidates, QObject *parent)
+GenCandidatesThread::GenCandidatesThread(std::string model_name, int npoints, int num_of_candidates, QObject *parent)
 	: QThread(parent), m_num_of_candidates(num_of_candidates), m_model_name(model_name)
 {
-
+	m_npoints = npoints;
 }
 
 GenCandidatesThread::~GenCandidatesThread()
@@ -70,10 +71,13 @@ void GenCandidatesThread::generateCandidates()
 		OBBEstimator *obbest = new OBBEstimator();
 		Part_Candidates part_candidates;  /* The container holding all the parts candidates, whose first template type means the part label
 													  * and the second template type means all the candidates of the particlular part label(class) */
+		QVector<int> point_cluster_map(size);  /* The i-th component represents the point cluster that the i-th point belongs to */
+		point_cluster_map.fill(-1);  /* Initialize the map with the null cluster number(namely -1) */
 
 		/* Define the symmetry group, parts contained in the group will be regarded as the same part */
 		QList<QVector<int>> symmetry_groups;
 		QSet<int> symmetry_set;
+
 		/* Load symmetry groups from file */
 		std::ifstream sym_in("../data/symmetry_groups.txt");
 		if (sym_in.is_open())
@@ -106,7 +110,7 @@ void GenCandidatesThread::generateCandidates()
 
 		/* Create numOfClasses containers to store points belonging to different part class */
 		QMap<int, PointCloud<PointXYZ>::Ptr> parts_clouds;
-		QMap<int, QList<int>> vertices_indices;    /* The indices of points in each part point cloud */
+		QMap<int, QList<int>> vertices_indices;    /* The indices(in the original point cloud) of points in each part point cloud */
 		QList<int> keys = m_distribution[0].keys();
 		QList<int>::iterator key_it;
 		for (key_it = keys.begin(); key_it != keys.end(); ++key_it)
@@ -233,7 +237,7 @@ void GenCandidatesThread::generateCandidates()
 				QVector<pcl::PointCloud<PointXYZ>::Ptr> point_clusters(num_of_components);    /* The point cluster genearted by each connected component */
 				for (int j = 0; j < num_of_components; j++)
 					point_clusters[j] = PointCloud<PointXYZ>::Ptr(new PointCloud<PointXYZ>);
-				/* Fill the vertices(points) to the component container that they belong to */
+				/* Fill the vertices(points) to the component(point cluster) container that they belong to */
 				for (int j = 0; j < components.size(); j++)
 				{
 					point_clusters[components[j]]->push_back(part_cloud->at(j));
@@ -252,13 +256,13 @@ void GenCandidatesThread::generateCandidates()
 					onDebugTextAdded("Part-" + QString::number(label_name) + ": Generate candidate OBBs for connected-component-" + QString::number(j) + ".");
 					qDebug("Part-%d: Generate candidate OBBs for connected-component-%d.", label_name, j);
 
-					/* Just compute the connected component with at least 2 vertices in it,
-					* because it will cause an error to compute eigen vectors of the OBB which contains only 1 point */
+					/* Just compute the connected component with at least 10 vertices in it,
+					* because it will cause an error to compute eigen vectors of the OBB which contains less than 3 point */
 					if (point_clusters[j]->size() >= 10)
 					{
 						obbest->reset(label_name, point_clusters[j]);
 						QVector<OBB *> cand_obbs = obbest->computeOBBCandidates();    /* Compute all 24 candidate OBB of the point cluster */
-						OBB * point_cluster_obb = cand_obbs.first();   /* Compute the OBB of the point cluster to display */
+						OBB * point_cluster_obb = new OBB(cand_obbs.first());   /* Compute the OBB of the point cluster to display */
 						point_cluster_obb->setColor(QVector3D(COLORS[cluster_count][0], COLORS[cluster_count][1], COLORS[cluster_count][2]));
 						point_cluster_obb->triangulate();
 						point_clusters_obbs.push_back(point_cluster_obb);
@@ -291,8 +295,13 @@ void GenCandidatesThread::generateCandidates()
 						//	dout.close();
 						//}
 
-						//for (int k = 0; k < cand_obbs.size(); k++) 
-						for (int k = 0; k < 2; k++)
+						/* Set the point cluster number of all the points in the current connected component(point cluster) */
+						QList<int> component_indices = components_indices[j];
+						for (QList<int>::iterator indice_it = component_indices.begin(); indice_it != component_indices.end(); ++indice_it)
+							point_cluster_map[*indice_it] = cluster_count;
+						
+						for (int k = 0; k < cand_obbs.size(); k++) 
+						//for (int k = 0; k < 2; k++)
 						{
 							/* Create PAPart object from OBB */
 							onDebugTextAdded("Part-" + QString::number(label_name) + ": Create a part for OBB-" + QString::number(cluster_count) + "-" + QString::number(num_of_candidates) + " as a candidate.");
@@ -325,7 +334,7 @@ void GenCandidatesThread::generateCandidates()
 		}
 
 		m_num_of_candidates = overall_cand_count;
-		emit genCandidatesDone(num_of_candidates, part_candidates);
+		emit genCandidatesDone(num_of_candidates, part_candidates, point_cluster_map);
 		/* Show the best candidate of each point cluster(the best means to be closest to the global system */
 		emit setOBBs(point_clusters_obbs);
 
@@ -345,9 +354,10 @@ void GenCandidatesThread::loadCandidatesFromFiles()
 	qDebug() << "Load candidates from local files.";
 
 	int index = 0;
-	string cand_path = "../data/candidates/" + m_model_name + "/" + to_string(index++) + ".txt";
+	string cand_path = "../data/candidates/" + m_model_name + "/" + to_string(index) + ".txt";
 	ifstream part_in(cand_path.c_str());
 	Part_Candidates candidates;
+	QVector<int> point_cluster_map(m_npoints);  /* The i-th component represents the point cluster that the i-th point belongs to */
 	while (part_in.is_open())
 	{
 		part_in.close();
@@ -355,8 +365,18 @@ void GenCandidatesThread::loadCandidatesFromFiles()
 		PAPart cand(cand_path);
 		candidates.push_back(cand);
 
+		/* Set the point cluster number for each point */
+		if (index % 24 == 0)  /* Set only once for one point cluster (which generates 24 candidates) */
+		{
+			for (vector<int>::iterator point_index_it = cand.vertices_begin(); point_index_it != cand.vertices_end();
+				++point_index_it)
+				point_cluster_map[*point_index_it] = index / 24;
+		}
+
+		index++;
+
 		/* Shift to the next candidate part file */
-		cand_path = "../data/candidates/" + m_model_name + "/" + to_string(index++) + ".txt";
+		cand_path = "../data/candidates/" + m_model_name + "/" + to_string(index) + ".txt";
 		part_in.open(cand_path.c_str());
 	}
 	/*for (int i = 0; i < m_num_of_candidates; i++)
@@ -369,7 +389,7 @@ void GenCandidatesThread::loadCandidatesFromFiles()
 	if (candidates.capacity() != m_num_of_candidates)
 		candidates.resize(m_num_of_candidates);
 
-	emit genCandidatesDone(m_num_of_candidates, candidates);
+	emit genCandidatesDone(m_num_of_candidates, candidates, point_cluster_map);
 
 	onDebugTextAdded("Parts candidates loading done.");
 	qDebug() << "Parts candidates loading done.";

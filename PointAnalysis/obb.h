@@ -24,6 +24,7 @@ class OBB : public QObject
 public:
 	OBB(QObject *parent = 0);
 	OBB(const OBB &obb);
+	OBB(const OBB * obb);
 	OBB(Eigen::Vector3f xAxis, Eigen::Vector3f yAxis, Eigen::Vector3f zAxis, Eigen::Vector3f centroid, 
 		double xLength, double yLength, double zLength, int label, QObject *parent = 0);
 	~OBB();

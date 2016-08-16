@@ -6,7 +6,7 @@ PredictionThread::PredictionThread(QObject *parent)
 	qRegisterMetaType<QMap<int, int>>("PartsPicked");
 }
 
-PredictionThread::PredictionThread(EnergyFunctions *energy_functions, Part_Candidates part_candidates, QList<int> label_names, QObject *parent)
+PredictionThread::PredictionThread(EnergyFunctions *energy_functions, Part_Candidates part_candidates, QVector<int> label_names, QObject *parent)
 	: QThread(parent), m_is_clean(true)
 {
 	m_energy_functions = energy_functions;
@@ -225,7 +225,7 @@ void PredictionThread::singleThreadOptimize()
 		}
 	}
 
-	emit predictionDone(parts_picked);
+	emit predictionDone(parts_picked, labels);
 }
 
 void PredictionThread::predictLabelsAndOrientations()
@@ -266,7 +266,7 @@ void PredictionThread::predictLabelsAndOrientations()
 		}
 	}
 
-	emit predictionDone(parts_picked);
+	emit predictionDone(parts_picked, labels);
 }
 
 void PredictionThread::execute()

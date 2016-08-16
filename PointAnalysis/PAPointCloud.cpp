@@ -100,3 +100,13 @@ std::vector<PAPoint> PAPointCloud::getPoints() const
 {
 	return pointList;
 }
+
+std::vector<PAPoint>::iterator PAPointCloud::begin()
+{
+	return pointList.begin();
+}
+
+std::vector<PAPoint>::iterator PAPointCloud::end()
+{
+	return pointList.end();
+}

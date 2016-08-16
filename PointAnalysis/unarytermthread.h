@@ -16,7 +16,7 @@ class UnaryTermThread : public QThread
 public:
 	UnaryTermThread(QObject *parent = 0);
 	UnaryTermThread(int id, Part_Candidates part_candidates, int start, int end, 
-		EnergyFunctions * energy_functions, QList<int> label_names, QObject *parent = 0);
+		EnergyFunctions * energy_functions, QVector<int> label_names, QObject *parent = 0);
 	~UnaryTermThread();
 
 signals:
@@ -31,7 +31,7 @@ private:
 	int m_start;
 	int m_end;
 	EnergyFunctions * m_energy_functions;
-	QList<int> m_label_names;
+	QVector<int> m_label_names;
 
 	void computeUnaryPotentials();
 };

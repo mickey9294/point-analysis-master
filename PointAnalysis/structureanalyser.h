@@ -12,6 +12,7 @@
 #include <shark/Algorithms/Trainers/RFTrainer.h> //the random forest trainer
 #include <fstream>
 #include <Eigen\Core>
+#include <assert.h>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
 #include <pcl/kdtree/kdtree_flann.h>
@@ -28,6 +29,7 @@
 #include "gencandidatesthread.h"
 #include "energyfunctions.h"
 #include "predictionthread.h"
+#include "pointsegmentationthread.h"
 
 typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS> Graph;
 
@@ -48,9 +50,10 @@ public:
 	void initialize(PAPointCloud *pointcloud);
 	void onClassificationDone(QVector<QMap<int, float>> distribution);
 	void onPointLabelsGot(QVector<int> labels);
-	void onGenCandidatesDone(int num_of_candidates, Part_Candidates part_candidates);
-	void onPredictionDone(QMap<int, int> part_picked);
+	void onGenCandidatesDone(int num_of_candidates, Part_Candidates part_candidates, QVector<int> point_cluster_map);
+	void onPredictionDone(QMap<int, int> part_picked, std::vector<int> candidate_labels);
 	void setOBBs(QVector<OBB *> obbs);
+	void pointSegmentationDone(QVector<int> new_point_assignments);
 	//void onPredictionDone();
 
 signals:
@@ -61,7 +64,8 @@ private:
 	std::string m_model_name;
 	std::string m_modelClassName;
 	Part_Candidates m_parts_candidates;
-	QList<int> m_label_names;
+	QVector<int> m_label_names;
+	QVector<int> m_point_assignments;
 	PCModel * m_pcModel;
 	PAPointCloud *m_pointcloud;
 	FeatureEstimator * m_fe;
@@ -70,6 +74,7 @@ private:
 	GenCandidatesThread *m_genCandThread;
 	EnergyFunctions *m_energy_functions;
 	PredictionThread *m_predictionThread;
+	PointSegmentationThread *m_segmentationThread;
 
 	void classifyPoints(PAPointCloud *pointcloud);
 	
