@@ -43,7 +43,8 @@ protected:
 	void run();
 
 private:
-	QMap<int, pcl::PointCloud<pcl::PointXYZ>::Ptr> m_parts;
+	QMap<int, pcl::PointCloud<pcl::PointXYZ>::Ptr> m_part_clouds;
+	QMap<int, PAPart> m_parts;
 	Model * m_model;
 	QVector<OBB *> m_OBBs;
 	PHASE m_phase;

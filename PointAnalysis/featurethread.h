@@ -14,9 +14,7 @@
 #include "PAPoint.h"
 #include "utils.h"
 #include "pointfeaturethread.h"
-
-#define NUM_OF_SUBTHREAD 8
-#define FLOAT_INF 100.0
+#include "constants.h"
 
 class FeatureThread : public QThread
 {

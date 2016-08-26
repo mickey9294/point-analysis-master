@@ -5,7 +5,7 @@
 #include <QMap>
 #include <qvector.h>
 #include <assert.h>
-#include "gencandidatesthread.h"
+#include "definitions.h"
 #include <MRFEnergy.h>
 #include "energyfunctions.h"
 #include "pairwisetermthread.h"
@@ -20,7 +20,7 @@ class PredictionThread : public QThread
 
 public:
 	PredictionThread(QObject *parent = 0);
-	PredictionThread(EnergyFunctions *energy_functions, Part_Candidates part_candidates, QVector<int> label_names, QObject *parent = 0);
+	PredictionThread(EnergyFunctions *energy_functions, Part_Candidates part_candidates, QVector<int> label_names, bool use_symmetry, QObject *parent = 0);
 	~PredictionThread();
 
 	void execute();
@@ -52,6 +52,7 @@ private:
 	bool m_is_clean;
 	long start_time;
 	long end_time;
+	bool m_use_symmetry;
 
 	void predictLabelsAndOrientations();
 	void clean();

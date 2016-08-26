@@ -145,6 +145,7 @@ void MeshModel::load_from_file(const char *file_path)
 			}
 
 			m_centroid.setZero();
+			m_radius = 1.0;
 
 			/* Read faces(triangle face) and compute normals of faces */
 			QVector<QList<int>> vertex_faces_list(nvertices);   /* The i-th component is a list of the faces which contain the i-th vertex */
@@ -248,8 +249,8 @@ void MeshModel::samplePoints()
 		parts_vertices_count.insert(*label_it, 0);
 	}
 
-	const int nb_samples = 1000;
-	const int NULL_INDEX = -1;
+	const int NUM_OF_SAMPLES = 1000;
+	const int NULL_PART_INDEX = -1;
 
 	/* Segment mesh into different parts according to the faces labels */
 	int face_idx = 0;
@@ -262,8 +263,8 @@ void MeshModel::samplePoints()
 		int v1_idx = face_it->y();
 		int v2_idx = face_it->z();
 
-		int vertex_idx_0 = origin_new_maps[label].value(v0_idx, NULL_INDEX);
-		if (vertex_idx_0 == NULL_INDEX)
+		int vertex_idx_0 = origin_new_maps[label].value(v0_idx, NULL_PART_INDEX);
+		if (vertex_idx_0 == NULL_PART_INDEX)
 		{
 			/* put the vertex to the corresponding part vertices list */
 			Vector3f vertex = m_vertices_list[v0_idx];
@@ -279,8 +280,8 @@ void MeshModel::samplePoints()
 		else
 			parts_tris[label].push_back(vertex_idx_0);
 
-		int vertex_idx_1 = origin_new_maps[label].value(v1_idx, NULL_INDEX);
-		if (vertex_idx_1 == NULL_INDEX)
+		int vertex_idx_1 = origin_new_maps[label].value(v1_idx, NULL_PART_INDEX);
+		if (vertex_idx_1 == NULL_PART_INDEX)
 		{
 			Vector3f vertex = m_vertices_list[v1_idx];
 			parts_verts[label].push_back(Vec3(vertex.x(), vertex.y(), vertex.z()));
@@ -293,8 +294,8 @@ void MeshModel::samplePoints()
 		else
 			parts_tris[label].push_back(vertex_idx_1);
 
-		int vertex_idx_2 = origin_new_maps[label].value(v2_idx, NULL_INDEX);
-		if (vertex_idx_2 == NULL_INDEX)
+		int vertex_idx_2 = origin_new_maps[label].value(v2_idx, NULL_PART_INDEX);
+		if (vertex_idx_2 == NULL_PART_INDEX)
 		{
 			Vector3f vertex = m_vertices_list[v2_idx];
 			parts_verts[label].push_back(Vec3(vertex.x(), vertex.y(), vertex.z()));
@@ -319,16 +320,16 @@ void MeshModel::samplePoints()
 		vector<Vec3> samples_pos;
 		vector<Vec3> samples_nors;
 
-		poisson_disk(0, nb_samples, verts, nors, tris, samples_pos, samples_nors);
+		poisson_disk(0, NUM_OF_SAMPLES, verts, nors, tris, samples_pos, samples_nors);
 
 		assert(samples_pos.size() == samples_nors.size());
 
-		QVector<Sample> samples(samples_pos.size());
+		QVector<SamplePoint> samples(samples_pos.size());
 		int sample_idx = 0;
 		vector<Vec3>::iterator vert_it, norm_it;
 		for (vert_it = samples_pos.begin(), norm_it = samples_nors.begin(); vert_it != samples_pos.end() && norm_it != samples_nors.end(); ++vert_it, ++norm_it)
 		{
-			Sample sample(vert_it->x, vert_it->y, vert_it->z, norm_it->x, norm_it->y, norm_it->z);
+			SamplePoint sample(vert_it->x, vert_it->y, vert_it->z, norm_it->x, norm_it->y, norm_it->z);
 			samples[sample_idx++] = sample;
 			m_sample_count++;
 		}
@@ -434,7 +435,7 @@ void MeshModel::drawSamples(int scale)
 		int label = part_it.key();
 
 		glColor4f(0.8, 0.8, 0.8, 1.0);
-		for (QVector<Sample>::iterator vertex_it = part_it->begin(); vertex_it != part_it->end(); ++vertex_it)
+		for (QVector<SamplePoint>::iterator vertex_it = part_it->begin(); vertex_it != part_it->end(); ++vertex_it)
 		{
 			glNormal3f(vertex_it->nx(), vertex_it->ny(), vertex_it->nz());
 			glVertex3f(scale * vertex_it->x(), scale * vertex_it->y(), scale * vertex_it->z());
@@ -493,6 +494,7 @@ void MeshModel::normalize()
 	}
 
 	m_centroid.setZero();
+	m_radius = 1.0;
 }
 
 int MeshModel::vertexCount() const
@@ -530,7 +532,7 @@ void MeshModel::rotate(float angle, float x, float y, float z)
 	/* Rotate the sample points and their normals */
 	for (Parts_Samples::iterator part_it = m_parts_samples.begin(); part_it != m_parts_samples.end(); ++part_it)
 	{
-		for (QVector<Sample>::iterator sample_it = part_it->begin(); sample_it != part_it->end(); ++sample_it)
+		for (QVector<SamplePoint>::iterator sample_it = part_it->begin(); sample_it != part_it->end(); ++sample_it)
 		{
 			sample_it->setVertex(rotation * sample_it->getVertex());
 			sample_it->setNormal(rotation * sample_it->getNormal());
@@ -591,6 +593,11 @@ Parts_Samples MeshModel::getPartsSamples() const
 	return m_parts_samples;
 }
 
+Vector3f MeshModel::getVertexNormal(int index)
+{
+	return m_vertices_normals[index];
+}
+
 int MeshModel::sampleCount() const
 {
 	return m_sample_count;
@@ -599,86 +606,4 @@ int MeshModel::sampleCount() const
 int MeshModel::numOfClasses()
 {
 	return m_label_names.size();
-}
-
-Sample::Sample()
-{
-	m_vertex.setZero();
-	m_normal.setZero();
-}
-
-Sample::Sample(const Sample &sample)
-{
-	m_vertex = sample.getVertex();
-	m_normal = sample.getNormal();
-}
-
-Sample::Sample(Vector3f vertex, Vector3f normal)
-{
-	m_vertex = vertex;
-	m_normal = normal;
-}
-
-Sample::Sample(float x, float y, float z, float nx, float ny, float nz)
-{
-	m_vertex[0] = x;
-	m_vertex[1] = y;
-	m_vertex[2] = z;
-	m_normal[0] = nx;
-	m_normal[1] = ny;
-	m_normal[2] = nz;
-}
-
-float Sample::x() const
-{
-	return m_vertex.x();
-}
-
-float Sample::y() const
-{
-	return m_vertex.y();
-}
-
-float Sample::z() const
-{
-	return m_vertex.z();
-}
-
-float Sample::nx() const
-{
-	return m_normal.x();
-}
-
-float Sample::ny() const
-{
-	return m_normal.y();
-}
-
-float Sample::nz() const
-{
-	return m_normal.z();
-}
-
-Vector3f Sample::getVertex() const
-{
-	return m_vertex;
-}
-
-Vector3f Sample::getNormal() const
-{
-	return m_normal;
-}
-
-void Sample::setVertex(Vector3f vertex)
-{
-	m_vertex[0] = vertex[0];
-	m_vertex[1] = vertex[1];
-	m_vertex[2] = vertex[2];
-}
-
-void Sample::setNormal(Vector3f normal)
-{
-	m_normal[0] = normal[0];
-	m_normal[1] = normal[1];
-	m_normal[2] = normal[2];
 }

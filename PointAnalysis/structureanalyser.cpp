@@ -2,7 +2,7 @@
 
 StructureAnalyser::StructureAnalyser(QObject *parent)
 	: QObject(parent), m_fe(NULL), classifier_loaded(false), m_testPCThread(NULL), m_genCandThread(NULL), m_pointcloud(NULL),
-	m_predictionThread(NULL), m_segmentationThread(NULL)
+	m_predictionThread(NULL), m_segmentationThread(NULL), m_iteration(0), m_null_label(-1)
 {
 	qRegisterMetaType<PAPointCloud *>("PAPointCloudPointer");
 	qRegisterMetaType<QVector<QMap<int, float>>>("ClassificationDistribution");
@@ -15,7 +15,7 @@ StructureAnalyser::StructureAnalyser(QObject *parent)
 
 StructureAnalyser::StructureAnalyser(PCModel *pcModel, QObject * parent)
 	: QObject(parent), m_fe(NULL), classifier_loaded(false), m_testPCThread(NULL), m_genCandThread(NULL), m_pointcloud(NULL),
-	m_predictionThread(NULL), m_segmentationThread(NULL)
+	m_predictionThread(NULL), m_segmentationThread(NULL), m_iteration(0), m_null_label(-1)
 {
 	qRegisterMetaType<PAPointCloud *>("PAPointCloudPointer");
 	qRegisterMetaType<QVector<QMap<int, float>>>("ClassificationDistribution");
@@ -24,6 +24,7 @@ StructureAnalyser::StructureAnalyser(PCModel *pcModel, QObject * parent)
 	m_pcModel = pcModel;
 	m_modelClassName = "coseg_chairs_8";
 	m_energy_functions = new EnergyFunctions(m_modelClassName);
+	m_parts_structure.set_model(pcModel);
 }
 
 StructureAnalyser::~StructureAnalyser()
@@ -90,7 +91,23 @@ void StructureAnalyser::execute()
 		delete(m_pointcloud);
 		m_pointcloud = NULL;
 	}
+
+	/* Load basic information */
+	bool ret = true;
+	ret = ret & m_parts_structure.load_labels((label_info_path + label_info_filename).c_str());
+	ret = ret & m_parts_structure.load_label_symmetries((label_info_path + label_symmetry_info_filename).c_str());
+	/* Load symmetry groups */
+	ret = ret & m_parts_structure.load_symmetry_groups((label_info_path + symmetry_group_info_filename).c_str());
+
+	if (!ret)
+	{
+		do {
+			std::cout << "Error: Cannot open label information files.";
+			std::cout << '\n' << "Press the Enter key to continue.";
+		} while (std::cin.get() != '\n');
+	}
 	
+
 	/* Check if the point cloud featrues have been estimated before */
 	QString model_file_name = Utils::getModelName(QString::fromStdString(m_pcModel->getInputFilepath()));
 	m_model_name = model_file_name.toStdString();
@@ -125,6 +142,8 @@ void StructureAnalyser::initialize(PAPointCloud *pointcloud)
 	/* Release the memory of FeatureEstimator */
 	if (m_fe != NULL)
 		delete(m_fe);   /* may cause exception */
+
+	m_parts_structure.set_pointcloud(pointcloud);
 
 	classifyPoints(pointcloud);
 }
@@ -161,8 +180,8 @@ void StructureAnalyser::classifyPoints(PAPointCloud *pointcloud)
 		{
 			features_in.getline(buffer, 511);
 			QStringList line_data = QString(buffer).split(',');
-			double feats[DIMEN];
-			for (int j = 0; j < DIMEN; j++)
+			double feats[POINT_FEATURES_DIMEN];
+			for (int j = 0; j < POINT_FEATURES_DIMEN; j++)
 				feats[j] = line_data[j].toDouble();
 			PAPoint papoint(feats);
 			Eigen::Vector3f point = m_pcModel->operator[](i);
@@ -177,6 +196,7 @@ void StructureAnalyser::classifyPoints(PAPointCloud *pointcloud)
 
 	/* Set the point cloud to EnergyFunctions object */
 	m_energy_functions->setPointCloud(m_pointcloud);
+
 
 	/* Create a thread to do the points classification */
 	/* Check whether the point cloud has been classified */
@@ -217,8 +237,15 @@ using namespace pcl;
 void StructureAnalyser::onClassificationDone(QVector<QMap<int, float>> distribution)
 {
 	m_label_names = QVector<int>::fromList(distribution[0].keys());
+	m_null_label = m_label_names.last();
+	m_parts_structure.m_null_label = m_null_label;
 	/* Set the classification probability distribution to EnergyFunctions object */
 	m_energy_functions->setDistributions(distribution);
+	/* Set the classification probability distrubution to the point cloud */
+	int point_idx = 0;
+	for (QVector<QMap<int, float>>::iterator dis_it = distribution.begin(); dis_it != distribution.end(); ++dis_it)
+		m_pointcloud->operator[](point_idx++).setClassConfidences(*dis_it);
+	
 
 	/* Create a thread to generate the part candidates */
 	m_genCandThread = new GenCandidatesThread(m_pointcloud, m_model_name, distribution, this);
@@ -254,11 +281,13 @@ void StructureAnalyser::onGenCandidatesDone(int num_of_candidates, Part_Candidat
 		m_genCandThread = NULL;
 	}
 
+
 	/* Do part labels and orientations prediction */
 	onDebugTextAdded("Predict part labels and orientations.");
 	qDebug() << "Predict part labels and orientations.";
 
-	m_predictionThread = new PredictionThread(m_energy_functions, part_candidates, m_label_names, this);
+	bool use_symmetry = m_iteration == 0 ? true : false;
+	m_predictionThread = new PredictionThread(m_energy_functions, part_candidates, m_label_names, use_symmetry, this);
 	connect(m_predictionThread, SIGNAL(predictionDone(QMap<int, int>, std::vector<int>)), this, SLOT(onPredictionDone(QMap<int, int>, std::vector<int>)));
 	//connect(m_predictionThread, SIGNAL(predictionDone()), this, SLOT(onPredictionDone()));
 	m_predictionThread->start();
@@ -281,19 +310,30 @@ void StructureAnalyser::onPredictionDone(QMap<int, int> parts_picked, std::vecto
 		int label = it.key();
 		assert(label == i);
 		int candidate_idx = it.value();
-		PAPart part = m_parts_candidates[candidate_idx];
-		OBB * obb = part.getOBB();
+		PAPart *part = new PAPart(m_parts_candidates[candidate_idx]);
+		part->setLabel(label);
+		
+		OBB * obb = part->getOBB();
 		if (obb == NULL)
-			obb = part.generateOBB();
+			obb = part->generateOBB();
+
+		if (part->num_of_samples < param_min_num_cuboid_sample_points)
+			part->samplePoints();
+
 		obb->setColor(QVector3D(COLORS[label][0], COLORS[label][1], COLORS[label][2]));
 		obbs.insert(label, obb);
 		obbs_to_show[i++] = new OBB(obb);
+
+		m_parts_structure.add_part(label, part);
 
 		/* Fill the label of cluster */
 		int cluster_no = candidate_idx / 24;
 		if (label != null_label)
 			cluster_labels[cluster_no] = label;
 	}
+
+	/* release the memories occupied by parts candidates */
+	m_parts_candidates.clear();
 
 	/* update the points to parts assignments with the optimization result */
 	for (QVector<int>::iterator point_it = m_point_assignments.begin(); point_it != m_point_assignments.end(); ++point_it)
@@ -308,9 +348,14 @@ void StructureAnalyser::onPredictionDone(QMap<int, int> parts_picked, std::vecto
 		*point_it = assignment;
 	}
 
+	/* Update points assignments to the parts structure */
+	m_parts_structure.set_points_assignments(m_point_assignments);
+
+	/* Update the OBBs and points assignments to EnergyFunctions */
 	m_energy_functions->setOBBs(obbs);
 	m_energy_functions->setPointAssignments(m_point_assignments);
 
+	/* Display the OBBs of result parts */
 	emit sendOBBs(obbs_to_show);
 
 	/* Release the memory of PredictionThread */
@@ -322,6 +367,9 @@ void StructureAnalyser::onPredictionDone(QMap<int, int> parts_picked, std::vecto
 		m_predictionThread = NULL;
 	}
 
+	/* Compute symmetry groups */
+	m_parts_structure.compute_symmetry_groups();
+
 	/* Do point segmentation */
 	m_segmentationThread = new PointSegmentationThread(m_pointcloud, m_label_names, m_energy_functions, this);
 	connect(m_segmentationThread, SIGNAL(pointSegmentationDone(QVector<int>)), this, SLOT(pointSegmentationDone(QVector<int>)));
@@ -332,6 +380,32 @@ void StructureAnalyser::pointSegmentationDone(QVector<int> new_point_assignments
 {
 	cout << "Update the point assignments to point cloud." << endl;
 	m_pcModel->setLabels(new_point_assignments);
+
+	/* Reassign points to the parts */
+	std::vector<PAPart *> all_parts = m_parts_structure.get_all_parts();
+	int num_parts = all_parts.size();
+	/* Clear previous points assignments in each part */
+	for (std::vector<PAPart *>::iterator it = all_parts.begin(); it != all_parts.end(); ++it)
+		(*it)->clearVertices();
+
+	/* Reassign */
+	assert(new_point_assignments.size() == m_pointcloud->size());
+	for (int point_index = 0; point_index < new_point_assignments.size(); point_index++)
+	{
+		int point_assignment = new_point_assignments[point_index];
+		PAPoint point = m_pointcloud->operator[](point_index);
+
+		if (point_assignment >= 0 && point_assignment != m_null_label)
+			all_parts[point_assignment]->addVertex(point_index, point.getPosition(), point.getNormal());
+	}
+
+	/* Update the samples of the parts and the samples correspondences */
+	for (std::vector<PAPart *>::iterator part_it = all_parts.begin(); part_it != all_parts.end(); ++part_it)
+	{
+		(*part_it)->samplePoints();
+		(*part_it)->update_sample_correspondences();
+	}
+
 
 	/* Release the memory of PointSegmentationThread */
 	if (m_segmentationThread != NULL)
@@ -363,4 +437,9 @@ void StructureAnalyser::setOBBs(QVector<OBB *> obbs)
 {
 	qDebug() << "StructureAnalyser::setOBBs()";
 	emit sendOBBs(obbs);
+}
+
+int StructureAnalyser::numOfLabels()
+{
+	return m_label_names.size();
 }

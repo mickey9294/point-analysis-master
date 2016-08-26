@@ -1,13 +1,14 @@
 #include "predictionthread.h"
 
 PredictionThread::PredictionThread(QObject *parent)
-	: QThread(parent), m_is_clean(true)
+	: QThread(parent), m_is_clean(true), m_use_symmetry(true)
 {
 	qRegisterMetaType<QMap<int, int>>("PartsPicked");
 }
 
-PredictionThread::PredictionThread(EnergyFunctions *energy_functions, Part_Candidates part_candidates, QVector<int> label_names, QObject *parent)
-	: QThread(parent), m_is_clean(true)
+PredictionThread::PredictionThread(EnergyFunctions *energy_functions, Part_Candidates part_candidates, 
+	QVector<int> label_names, bool use_symmetry, QObject *parent)
+	: QThread(parent), m_is_clean(true), m_use_symmetry(use_symmetry)
 {
 	m_energy_functions = energy_functions;
 	m_ncandidates = part_candidates.size();
@@ -109,7 +110,7 @@ void PredictionThread::singleThreadOptimize()
 		Eigen::VectorXf unary_vec(labelNum);
 		for (int j = 0; j < labelNum; j++)
 		{
-			D[j] = m_energy_functions->Epnt(cand, j);
+			D[j] = m_energy_functions->Epnt(&cand, j, m_use_symmetry);
 			unary_vec[j] = D[j];
 
 			if (j < labelNum - 1)

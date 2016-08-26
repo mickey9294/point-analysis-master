@@ -6,6 +6,7 @@
 #include <MRFEnergy.h>
 #include "PAPointCloud.h"
 #include "energyfunctions.h"
+#include "PartsStructure.h"
 
 class PointSegmentationThread : public QThread
 {
@@ -26,8 +27,11 @@ private:
 	EnergyFunctions *m_energy_functions;
 	PAPointCloud *m_pointcloud;
 	QVector<int> m_label_names;
+	PartsStructure * m_parts_structure;
 
 	int optimize();    /* Return the number of labels that have changed */
+
+	void segment_sample_points();
 };
 
 #endif // POINTSEGMENTATIONTHREAD_H

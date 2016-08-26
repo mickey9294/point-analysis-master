@@ -16,7 +16,7 @@ PCAThread::PCAThread(Model *model, PHASE phase, QObject *parent)
 
 void PCAThread::setPointCloud(Model *model)
 {
-	m_parts.clear();
+	m_part_clouds.clear();
 	m_OBBs.clear();
 
 	m_model = model;
@@ -41,7 +41,11 @@ void PCAThread::loadParts(Model * model)
 	{
 		PointCloud<PointXYZ>::Ptr part(new PointCloud<PointXYZ>);
 		int label_name = label_names[i];
-		m_parts.insert(label_name, part);
+		m_part_clouds.insert(label_name, part);
+
+		PAPart label_part;
+		label_part.setLabel(label_name);
+		m_parts.insert(label_name, label_part);
 	}
 	
 	if (model->getType() == Model::ModelType::Mesh)  /* If it is a training mesh model */
@@ -50,14 +54,19 @@ void PCAThread::loadParts(Model * model)
 		if (mesh->sampleCount() <= 0)
 			mesh->samplePoints();
 
+		int idx = 0;
 		for (Parts_Samples::iterator part_it = mesh->samples_begin(); part_it != mesh->samples_end(); ++part_it)
 		{
 			int label = part_it.key();
 
-			for (QVector<Sample>::iterator sample_it = part_it->begin(); sample_it != part_it->end(); ++sample_it)
+			for (QVector<SamplePoint>::iterator sample_it = part_it->begin(); sample_it != part_it->end(); ++sample_it)
 			{
 				PointXYZ point(sample_it->x(), sample_it->y(), sample_it->z());
-				m_parts[label]->push_back(point);
+				m_part_clouds[label]->push_back(point);
+
+				m_parts[label].addVertex(idx, sample_it->getVertex(), sample_it->getNormal());
+
+				idx++;
 			}
 		}
 	}
@@ -72,7 +81,9 @@ void PCAThread::loadParts(Model * model)
 		{
 			int label = labels[point_idx++];
 			PointXYZ point(point_it->x(), point_it->y(), point_it->z());
-			m_parts[label]->push_back(point);
+			m_part_clouds[label]->push_back(point);
+
+			m_parts[label].addVertex(point_idx, *point_it, pc->getVertexNormal(point_idx));
 		}
 	}
 }
@@ -84,14 +95,14 @@ void PCAThread::run()
 	{
 		loadParts(m_model);
 		QVector<PAPart> parts;
-		QVector<int> labels(m_parts.size());
+		QVector<int> labels(m_part_clouds.size());
 
-		m_OBBs.resize(m_parts.size());
+		m_OBBs.resize(m_part_clouds.size());
 
 		/* Compute the oriented bounding box for each distinct part */
 		QMap<int, PointCloud<PointXYZ>::Ptr>::iterator it;
 		int i = 0;
-		for (it = m_parts.begin(); it != m_parts.end(); it++)
+		for (it = m_part_clouds.begin(); it != m_part_clouds.end(); it++)
 		{
 			int label = it.key();
 			labels[i] = i;
@@ -101,7 +112,12 @@ void PCAThread::run()
 			obbe.setPhase(m_phase);
 			OBB *obb = obbe.computeOBB();
 
-			parts.push_back(PAPart(obb));
+			m_parts[label].setOBB(obb);
+			
+			if (m_phase == PHASE::TESTING)
+				m_parts[label].ICP_adjust_OBB();
+
+			parts.push_back(m_parts[label]);
 			m_OBBs[i++] = obb;	
 		}
 		

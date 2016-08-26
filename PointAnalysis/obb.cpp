@@ -12,6 +12,7 @@ OBB::OBB(QObject *parent)
 	y_length = 1.0;
 	z_length = 1.0;
 	m_centroid.setZero();
+	m_num_of_samples = NUM_OF_SAMPLES;
 }
 
 OBB::OBB(Eigen::Vector3f xAxis, Eigen::Vector3f yAxis, Eigen::Vector3f zAxis, Eigen::Vector3f centroid,
@@ -41,6 +42,8 @@ OBB::OBB(Eigen::Vector3f xAxis, Eigen::Vector3f yAxis, Eigen::Vector3f zAxis, Ei
 		m_color.setZ(COLORS[0][2]);
 	}
 
+	m_num_of_samples = NUM_OF_SAMPLES;
+
 	triangulate();
 }
 
@@ -59,7 +62,8 @@ OBB::OBB(const OBB &obb)
 	m_vertices = obb.getVertices();
 	m_faces = obb.getFaces();
 	m_faces_normals = obb.getFacesNormals();
-	m_sample_points = obb.getSamplePoints();
+	m_samples = obb.getSamples();
+	m_num_of_samples = obb.getNumOfSamples();
 }
 
 OBB::OBB(const OBB * obb)
@@ -77,13 +81,23 @@ OBB::OBB(const OBB * obb)
 	m_vertices = obb->getVertices();
 	m_faces = obb->getFaces();
 	m_faces_normals = obb->getFacesNormals();
-	m_sample_points = obb->getSamplePoints();
+	m_samples = obb->getSamples();
+	m_num_of_samples = obb->getNumOfSamples();
 }
 
 OBB::~OBB()
 {
 
 }
+
+const int OBB::k_face_corner_indices[k_num_faces][k_num_face_corners] = {
+	{ 7, 4, 0, 3 }, // POSITIVE_X_AXIS.
+	{ 6, 2, 1, 5 }, // NEGATIVE_X_AXIS.
+	{ 5, 1, 0, 4 }, // POSITIVE_Y_AXIS.
+	{ 6, 7, 3, 2 }, // NEGATIVE_Y_AXIS.
+	{ 2, 3, 0, 1 }, // POSITIVE_Z_AXIS.
+	{ 6, 5, 4, 7 }  // NEGATIVE_Z_AXIS.
+};
 
 Eigen::Vector3f OBB::getXAxis() const
 {
@@ -127,52 +141,14 @@ Matrix<float, 4, 3> OBB::getAugmentedAxes()
 
 void OBB::triangulate()
 {
-	m_vertices.resize(8);
-	
-	Eigen::Translation<float, 3> translations[8];
-	Eigen::Translation<float, 3> trans00(x_length / 2.0 * x_axis);
-	Eigen::Translation<float, 3> trans01(z_length / 2.0 * z_axis);
-	Eigen::Translation<float, 3> trans02(y_length / 2.0 * y_axis);
-	translations[0] = trans00 * trans01 * trans02;
-	Eigen::Translation<float, 3> trans10(-x_length / 2.0 * x_axis);
-	Eigen::Translation<float, 3> trans11(z_length / 2.0 * z_axis);
-	Eigen::Translation<float, 3> trans12(y_length / 2.0 * y_axis);
-	translations[1] = trans10 * trans11 * trans12;
-	Eigen::Translation<float, 3> trans20(-x_length / 2.0 * x_axis); 
-	Eigen::Translation<float, 3> trans21(-y_length / 2.0 * y_axis);
-	Eigen::Translation<float, 3> trans22(z_length / 2.0 * z_axis);
-	translations[2] = trans20 * trans21 * trans22;
-	Eigen::Translation<float, 3> trans30(x_length / 2.0 * x_axis);
-	Eigen::Translation<float, 3> trans31(-y_length / 2.0 * y_axis);
-	Eigen::Translation<float, 3> trans32(z_length / 2.0 * z_axis);
-	translations[3] = trans30 * trans31 * trans32;
-	Eigen::Translation<float, 3> trans40(x_length / 2.0 * x_axis);
-	Eigen::Translation<float, 3> trans41(y_length / 2.0 * y_axis);
-	Eigen::Translation<float, 3> trans42(-z_length / 2.0 * z_axis);
-	translations[4] = trans40 * trans41 * trans42;
-	Eigen::Translation<float, 3> trans50(-x_length / 2.0 * x_axis);
-	Eigen::Translation<float, 3> trans51(y_length / 2.0 * y_axis);
-	Eigen::Translation<float, 3> trans52(-z_length / 2.0 * z_axis);
-	translations[5] = trans50 * trans51 * trans52;
-	Eigen::Translation<float, 3> trans60(-x_length / 2.0 * x_axis);
-	Eigen::Translation<float, 3> trans61(-y_length / 2.0 * y_axis);
-	Eigen::Translation<float, 3> trans62(-z_length / 2.0 * z_axis);
-	translations[6] = trans60 * trans61 * trans62;
-	Eigen::Translation<float, 3> trans70(x_length / 2.0 * x_axis);
-	Eigen::Translation<float, 3> trans71(-y_length / 2.0 * y_axis);
-	Eigen::Translation<float, 3> trans72(-z_length / 2.0 * z_axis);
-	translations[7] = trans70 * trans71 * trans72;
-	
-
-	for (int i = 0; i < 8; i++)
-		m_vertices[i] = translations[i] * m_centroid;
+	updateCorners();
 
 	Eigen::Vector3f face_normals[6] = {
 		x_axis, y_axis, z_axis, -x_axis, -y_axis, -z_axis
 	};
 
 	m_faces.resize(12);
-	m_faces_normals.resize(12);
+
 	m_faces[0] = Vector3i(0, 1, 3);
 	m_faces[1] = Vector3i(1, 2, 3);
 	m_faces[2] = Vector3i(0, 3, 7);
@@ -185,23 +161,18 @@ void OBB::triangulate()
 	m_faces[9] = Vector3i(2, 5, 6);
 	m_faces[10] = Vector3i(2, 7, 3);
 	m_faces[11] = Vector3i(2, 6, 7);
-	m_faces_normals[0] = face_normals[2];
-	m_faces_normals[1] = face_normals[2];
-	m_faces_normals[2] = face_normals[0];
-	m_faces_normals[3] = face_normals[0];
-	m_faces_normals[4] = face_normals[1];
-	m_faces_normals[5] = face_normals[1];
-	m_faces_normals[6] = face_normals[5];
-	m_faces_normals[7] = face_normals[5];
-	m_faces_normals[8] = face_normals[3];
-	m_faces_normals[9] = face_normals[3];
-	m_faces_normals[10] = face_normals[4];
-	m_faces_normals[11] = face_normals[4];
+	
+	computeFaceNormals();
 }
 
 QVector<Eigen::Vector3f> OBB::getVertices() const
 {
 	return m_vertices;
+}
+
+Eigen::Vector3f OBB::getVertex(int index) const
+{
+	return m_vertices[index];
 }
 
 void OBB::setColor(QVector3D color)
@@ -213,16 +184,16 @@ int OBB::samplePoints(int num_of_samples)
 {
 	using namespace Utils_sampling;
 
-	if (!m_sample_points.empty())
-		m_sample_points.clear();
+	if (!m_samples.empty())
+		m_samples.clear();
 
 	if (vertexCount() < 4)
 		triangulate();
 
 	if (vertexCount() > 0)
 	{
-		if (num_of_samples == 0)
-			num_of_samples = 1000;
+		if (num_of_samples != m_num_of_samples)
+			num_of_samples = m_num_of_samples;
 
 		std::vector<Utils_sampling::Vec3> verts(vertexCount());
 		std::vector<Vec3> nors(vertexCount());
@@ -250,14 +221,14 @@ int OBB::samplePoints(int num_of_samples)
 
 		poisson_disk(0, num_of_samples, verts, nors, tris, samples_pos, samples_nor);
 
-		m_sample_points.resize(samples_pos.size());
+		m_samples.resize(samples_pos.size());
 
 		int idx = 0;
 		for (std::vector<Vec3>::iterator it = samples_pos.begin(); it != samples_pos.end(); ++it)
 		{
 			Vec3 point = *it;
-			Eigen::Vector3f sample_point(point.x, point.y, point.z);
-			m_sample_points[idx++] = sample_point;
+			SamplePoint sample_point(point.x, point.y, point.z);
+			m_samples[idx++] = sample_point;
 		}
 
 		return samples_pos.size();
@@ -266,23 +237,263 @@ int OBB::samplePoints(int num_of_samples)
 		return 0;
 }
 
+int OBB::createRandomSamples()
+{
+	m_samples.clear();
+	m_samples.reserve(m_num_of_samples);
+
+	Real all_faces_area = 0;
+	for (int face_index = 0; face_index < k_num_faces; ++face_index)
+		all_faces_area += getFaceArea(face_index);
+	assert(all_faces_area > 0);
+
+	/* Sample points on each face */
+	static SimpleRandomCong_t rng_cong;
+	simplerandom_cong_seed(&rng_cong, CUBOID_SURFACE_SAMPLING_RANDOM_SEED);
+
+	Matrix3f axes = getAxes();
+
+	for (int face_index = 0; face_index < k_num_faces; ++face_index)
+	{
+		const int *corner_indices = k_face_corner_indices[face_index];
+		std::array<Vector3f, k_num_face_corners> corner_point;
+		for (int i = 0; i < k_num_face_corners; i++)
+			corner_point[i] = m_vertices[corner_indices[i]];
+
+		Vector3f normal = axes.col(face_index / 2);
+		if ((face_index % 2) != 0)
+			normal = -normal;
+
+		Real face_area = getFaceArea(face_index);
+		int num_face_points = std::round(face_area / all_faces_area * m_num_of_samples);
+
+		for (int point_index = 0; point_index < num_face_points && m_samples.size() < m_num_of_samples; point_index++)
+		{
+			Real w1 = static_cast<Real>(simplerandom_cong_next(&rng_cong))
+				/ std::numeric_limits<uint32_t>::max();
+			Real w2 = static_cast<Real>(simplerandom_cong_next(&rng_cong))
+				/ std::numeric_limits<uint32_t>::max();
+
+			Vector3f p1 = w1 * (corner_point[1] - corner_point[0]) + corner_point[0];
+			Vector3f p2 = w1 * (corner_point[2] - corner_point[3]) + corner_point[3];
+			Vector3f point = w2 * (p2 - p1) + p1;
+
+			Real sum_corner_weights = 0;
+			std::array<Real, k_num_corners> corner_weights;
+			corner_weights.fill(0.0);
+
+			for (int i = 0; i < k_num_face_corners; i++)
+			{
+				corner_weights[corner_indices[i]] = (point - corner_point[i]).norm();
+				sum_corner_weights += corner_weights[corner_indices[i]];  /* !!Here is different from the original code */
+			}
+
+			assert(sum_corner_weights > 0);
+			for (int i = 0; i < k_num_face_corners; i++)
+			{
+				corner_weights[corner_indices[i]] =
+					(sum_corner_weights - corner_weights[corner_indices[i]]) / sum_corner_weights;
+			}
+
+#ifdef DEBUG_TEST
+			Vector3f same_point = Vector3f::Zero();
+			for (int i = 0; i < k_num_corners; i++)
+				same_point += corner_weights[i] * m_vertices[i];
+			Real error = (sample_point - point).norm();
+			CHECK_NUMERICAL_ERROR(__FUNCTION__, error);
+#endif
+			SamplePoint sample(point, normal, face_index, corner_weights);
+			m_samples.push_back(sample);
+		}
+	}
+
+	return m_samples.size();
+}
+
+int OBB::createGridSamples()
+{
+	m_samples.clear();
+	m_samples.reserve(m_num_of_samples);
+
+	Real all_faces_area = 0;
+	for (int face_index = 0; face_index < k_num_faces; ++face_index)
+		all_faces_area += getFaceArea(face_index);
+
+	/* NOTE:
+	   The number of ponts may not be exactly the same with the given num_of_samples. */
+	for (int face_index = 0; face_index < k_num_faces; ++face_index)
+	{
+		const int *corner_indices = k_face_corner_indices[face_index];
+		std::array<Eigen::Vector3f, k_num_face_corners> corner_point;
+		for (int i = 0; i < k_num_face_corners; i++)
+			corner_point[i] = m_vertices[corner_indices[i]];
+
+		Eigen::Vector3f normal = getAxes().col(face_index / 2);
+		if ((face_index % 2) != 0)
+			normal = -normal;
+
+		Real face_area = getFaceArea(face_index);
+		Real num_face_points = (face_area / all_faces_area * m_num_of_samples);
+
+		Real axis_length[2];
+		axis_length[0] = (corner_point[1] - corner_point[0]).norm() +
+			(m_vertices[2] - m_vertices[3]).norm();
+		axis_length[1] = (corner_point[3] - corner_point[0]).norm() +
+			(corner_point[2] - corner_point[1]).norm();
+
+		if (axis_length[0] <= MIN_CUBOID_SIZE || axis_length[1] <= MIN_CUBOID_SIZE)
+			continue;
+
+		Real ratio = std::sqrt(num_face_points / (axis_length[0] * axis_length[1]));
+
+		unsigned int num_axis_points[2];
+		for (unsigned int i = 0; i < 2; ++i)
+		{
+			num_axis_points[i] = static_cast<unsigned int>(std::round(ratio * axis_length[i]));
+			num_axis_points[i] = std::min(num_axis_points[i], static_cast<unsigned int>(num_face_points / 2));
+			num_axis_points[i] = std::max(num_axis_points[i], 2u);
+		}
+
+		for (int point_index_1 = 0; point_index_1 < num_axis_points[0]; ++point_index_1)
+		{
+			Real w1 = static_cast<Real>(point_index_1) / (num_axis_points[0] - 1);
+
+			for (int point_index_2 = 0; point_index_2 < num_axis_points[1]; ++point_index_2)
+			{
+				Real w2 = static_cast<Real>(point_index_2) / (num_axis_points[1] - 1);
+
+				Eigen::Vector3f p1 = w1 * (corner_point[1] - corner_point[0]) + corner_point[0];
+				Eigen::Vector3f p2 = w1 * (corner_point[2] - corner_point[3]) + corner_point[3];
+				Eigen::Vector3f point = w2 * (p2 - p1) + p1;
+
+				Real sum_corner_weights = 0;
+				std::array<Real, k_num_corners> corner_weights;
+				corner_weights.fill(0);
+
+				corner_weights[corner_indices[0]] = (1 - w1)*(1 - w2);
+				corner_weights[corner_indices[1]] = (w1)*(1 - w2);
+				corner_weights[corner_indices[2]] = (w1)*(w2);
+				corner_weights[corner_indices[3]] = (1 - w1)*(w2);
+
+#ifdef DEBUG_TEST
+				Eigen::Vector3f same_point = Eigen::Vector3f::Zero();
+				for (unsigned int i = 0; i < k_num_corners; ++i)
+					same_point += corner_weights[i] * m_vertices[i];
+				Real error = (same_point - point).length();
+				Utils::CHECK_NUMERICAL_ERROR(__FUNCTION__, error);
+#endif
+
+				SamplePoint cuboid_surface_point(point, normal, face_index, corner_weights);
+				m_samples.push_back(cuboid_surface_point);
+			}
+		}
+	}
+
+	/* If the number of sample points on the OBB is less than the number it shuold have, sample some point more */
+	/* Sample points on each face */
+	static SimpleRandomCong_t rng_cong;
+	simplerandom_cong_seed(&rng_cong, CUBOID_SURFACE_SAMPLING_RANDOM_SEED);
+	if (m_samples.size() < m_num_of_samples)
+	{
+		int diff = m_num_of_samples - m_samples.size();
+		
+		int num_points_more_on_each_face = diff / k_num_faces;
+
+		int second_diff = diff - num_points_more_on_each_face * k_num_faces;
+
+		if (num_points_more_on_each_face > 0)
+		{
+			for (int face_index = 0; face_index < k_num_faces; face_index++)
+			{
+				const int *corner_indices = k_face_corner_indices[face_index];
+				std::array<Vector3f, k_num_face_corners> corner_point;
+				for (int i = 0; i < k_num_face_corners; i++)
+					corner_point[i] = m_vertices[corner_indices[i]];
+
+				Vector3f normal = getAxes().col(face_index / 2);
+				if ((face_index % 2) != 0)
+					normal = -normal;
+
+				int num_face_points = num_points_more_on_each_face;
+				if (face_index < second_diff)
+					num_face_points++;
+
+				for (int point_index = 0; point_index < num_face_points && m_samples.size() < m_num_of_samples; point_index++)
+				{
+					Real w1 = static_cast<Real>(simplerandom_cong_next(&rng_cong))
+						/ std::numeric_limits<uint32_t>::max();
+					Real w2 = static_cast<Real>(simplerandom_cong_next(&rng_cong))
+						/ std::numeric_limits<uint32_t>::max();
+
+					Vector3f p1 = w1 * (corner_point[1] - corner_point[0]) + corner_point[0];
+					Vector3f p2 = w1 * (corner_point[2] - corner_point[3]) + corner_point[3];
+					Vector3f point = w2 * (p2 - p1) + p1;
+
+					Real sum_corner_weights = 0;
+					std::array<Real, k_num_corners> corner_weights;
+					corner_weights.fill(0.0);
+
+					for (int i = 0; i < k_num_face_corners; i++)
+					{
+						corner_weights[corner_indices[i]] = (point - corner_point[i]).norm();
+						sum_corner_weights += corner_weights[corner_indices[i]];  /* !!Here is different from the original code */
+					}
+
+					assert(sum_corner_weights > 0);
+					for (int i = 0; i < k_num_face_corners; i++)
+					{
+						corner_weights[corner_indices[i]] =
+							(sum_corner_weights - corner_weights[corner_indices[i]]) / sum_corner_weights;
+					}
+
+					SamplePoint sample(point, normal, face_index, corner_weights);
+					m_samples.push_back(sample);
+				}
+			}
+		}
+	}
+	else  /* If the number of sample points is more than it should have, randomly delete some points */
+	{
+		int diff = m_samples.size() - m_num_of_samples;
+
+		srand(time(NULL));
+
+		for (int i = 0; i < diff; i++)
+		{
+			int remove_index = rand() % m_samples.size();
+			m_samples.remove(remove_index);
+		}
+	}
+
+	return m_samples.size();
+}
+
 QVector<Eigen::Vector3f> OBB::getSamplePoints() const
 {
-	return m_sample_points;
+	QVector<Eigen::Vector3f> sample_points;
+
+	sample_points.resize(m_samples.size());
+	int sample_idx = 0;
+	for (QVector<SamplePoint>::const_iterator sample_it = m_samples.begin(); sample_it != m_samples.end(); ++sample_it)
+	{
+		Eigen::Vector3f point = sample_it->getVertex();
+		sample_points[sample_idx++] = point;
+	}
+	return sample_points;
 }
 
 void OBB::setSamplePoints(Eigen::MatrixXd samples_mat)
 {
-	if (!m_sample_points.empty())
-		m_sample_points.clear();
+	if (!m_samples.empty())
+		m_samples.clear();
 
-	m_sample_points.resize(samples_mat.size());
+	m_samples.resize(samples_mat.size());
 
 	for (int i = 0; i < samples_mat.cols(); i++)
 	{
 		Eigen::Vector3d col_sample = samples_mat.col(i);
-		Eigen::Vector3f sample((float)col_sample.x(), (float)col_sample.y(), (float)col_sample.z());
-		m_sample_points[i] = sample;
+		SamplePoint sample((float)col_sample.x(), (float)col_sample.y(), (float)col_sample.z());
+		m_samples[i] = sample;
 	}
 }
 
@@ -290,14 +501,14 @@ void OBB::setSamplePoints(pcl::PointCloud<pcl::PointXYZ> cloud)
 {
 	using namespace pcl;
 
-	m_sample_points.clear();
-	m_sample_points.resize(cloud.size());
+	m_samples.clear();
+	m_samples.resize(cloud.size());
 
 	int sample_idx = 0;
 	for (PointCloud<PointXYZ>::iterator point_it = cloud.begin(); point_it != cloud.end(); ++point_it)
 	{
-		Vector3f sample(point_it->x, point_it->y, point_it->z);
-		m_sample_points[sample_idx++] = sample;
+		SamplePoint sample(point_it->x, point_it->y, point_it->z);
+		m_samples[sample_idx++] = sample;
 	}
 }
 
@@ -342,9 +553,70 @@ void OBB::setZAxis(Vector3d zAxis)
 	z_axis = Vector3f((float)zAxis.x(), (float)zAxis.y(), (float)zAxis.z());
 }
 
+void OBB::setAxes(std::array<Vector3f, 3> new_axes)
+{
+	x_axis = new_axes[0];
+	y_axis = new_axes[1];
+	z_axis = new_axes[2];
+
+	computeFaceNormals();
+}
+
+void OBB::setAxes(Matrix3d new_axes)
+{
+	x_axis = new_axes.col(0).cast<float>();
+	y_axis = new_axes.col(1).cast<float>();
+	z_axis = new_axes.col(2).cast<float>();
+
+	computeFaceNormals();
+}
+
 void OBB::setCentroid(Vector3d centroid)
 {
 	m_centroid = Vector3f((float)centroid.x(), (float)centroid.y(), (float)centroid.z());
+}
+
+void OBB::setCorners(std::array<Vector3f, k_num_corners> new_corners)
+{
+	/* reset the corner vertices of the OBB */
+	int vertex_idx = 0;
+	for (std::array<Vector3f, k_num_corners>::iterator corner_it = new_corners.begin(); corner_it != new_corners.end(); ++corner_it)
+		m_vertices[vertex_idx++] = *corner_it;
+
+	/* Recompute the lenghth in each directions (recompute the scale) */
+	x_length = (m_vertices[0] - m_vertices[1]).norm();
+	y_length = (m_vertices[0] - m_vertices[3]).norm();
+	z_length = (m_vertices[0] - m_vertices[4]).norm();
+
+	//m_samples.clear();
+}
+
+void OBB::setScale(Vector3d scale)
+{
+	x_length = scale.x();
+	y_length = scale.y();
+	z_length = scale.z();
+}
+
+void OBB::computeFaceNormals()
+{
+	Eigen::Vector3f face_normals[6] = {
+		x_axis, y_axis, z_axis, -x_axis, -y_axis, -z_axis
+	};
+
+	m_faces_normals.resize(12);
+	m_faces_normals[0] = face_normals[2];
+	m_faces_normals[1] = face_normals[2];
+	m_faces_normals[2] = face_normals[0];
+	m_faces_normals[3] = face_normals[0];
+	m_faces_normals[4] = face_normals[1];
+	m_faces_normals[5] = face_normals[1];
+	m_faces_normals[6] = face_normals[5];
+	m_faces_normals[7] = face_normals[5];
+	m_faces_normals[8] = face_normals[3];
+	m_faces_normals[9] = face_normals[3];
+	m_faces_normals[10] = face_normals[4];
+	m_faces_normals[11] = face_normals[4];
 }
 
 void OBB::draw(int scale)
@@ -418,7 +690,7 @@ void OBB::drawSamples(int scale)
 	glColor4f(COLORS[m_label][0], COLORS[m_label][1], COLORS[m_label][2], 1.0);
 	glBegin(GL_POINTS);
 
-	for (QVector<Vector3f>::iterator sample_it = m_sample_points.begin(); sample_it != m_sample_points.end(); ++sample_it)
+	for (QVector<SamplePoint>::iterator sample_it = m_samples.begin(); sample_it != m_samples.end(); ++sample_it)
 		glVertex3f(scale * sample_it->x(), scale * sample_it->y(), scale * sample_it->z());
 
 	glEnd();
@@ -444,9 +716,14 @@ QVector<Vector3f> OBB::getFacesNormals() const
 	return m_faces_normals;
 }
 
-QVector<Vector3f> OBB::getSamples() const
+QVector<SamplePoint> OBB::getSamples() const
 {
-	return m_sample_points;
+	return m_samples;
+}
+
+SamplePoint OBB::getSample(int index)
+{
+	return m_samples[index];
 }
 
 void OBB::translate(float x, float y, float z)
@@ -457,8 +734,8 @@ void OBB::translate(float x, float y, float z)
 	for (QVector<Vector3f>::iterator vertex_it = m_vertices.begin(); vertex_it != m_vertices.end(); ++vertex_it)
 		*vertex_it = trans * (*vertex_it);
 
-	for (QVector<Vector3f>::iterator sample_it = m_sample_points.begin(); sample_it != m_sample_points.end(); ++sample_it)
-		*sample_it = trans * (*sample_it);
+	for (QVector<SamplePoint>::iterator sample_it = m_samples.begin(); sample_it != m_samples.end(); ++sample_it)
+		sample_it->setVertex(trans * sample_it->getVertex());
 }
 
 void OBB::rotate(float angle, float x, float y, float z)
@@ -474,7 +751,7 @@ void OBB::rotate(float angle, float x, float y, float z)
 	m_vertices.clear();
 	m_faces.clear();
 	m_faces_normals.clear();
-	m_sample_points.clear();
+	m_samples.clear();
 	x_length = 1.0;
 	y_length = 1.0;
 	z_length = 1.0;
@@ -535,7 +812,7 @@ void OBB::rotate(Matrix3d rotate_mat, Vector3d translate_vec, PointCloud<PointXY
 	m_vertices.clear();
 	m_faces.clear();
 	m_faces_normals.clear();
-	m_sample_points.clear();
+	m_samples.clear();
 	x_length = 1.0;
 	y_length = 1.0;
 	z_length = 1.0;
@@ -594,7 +871,7 @@ void OBB::transform(Matrix4f transform_mat, PointCloud<PointXYZ>::Ptr cloud)
 	m_vertices.clear();
 	m_faces.clear();
 	m_faces_normals.clear();
-	m_sample_points.clear();
+	m_samples.clear();
 	x_length = 1.0;
 	y_length = 1.0;
 	z_length = 1.0;
@@ -649,9 +926,39 @@ void OBB::transform(Matrix4f transform_mat, PointCloud<PointXYZ>::Ptr cloud)
 	}*/
 }
 
+void OBB::transform(Eigen::Matrix3d rotate_mat, Eigen::Vector3d trans_vec, std::vector<Eigen::Vector3f> cloud)
+{
+	Matrix3f rotate = rotate_mat.cast<float>();
+	Vector3f translation = trans_vec.cast<float>();
+
+	Vector4f rest(0, 0, 0, 1.0);
+
+	Matrix4f transform;
+	transform.block<3, 3>(0, 0) = rotate;
+	transform.block<3, 1>(0, 3) = translation;
+	transform.block<1, 4>(3, 0) = rest;
+
+	pcl::PointCloud<pcl::PointXYZ>::Ptr point_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+
+	point_cloud->width = cloud.size();
+	point_cloud->height = 1;
+	point_cloud->is_dense = false;
+	point_cloud->points.resize(point_cloud->width * point_cloud->height);
+
+	int point_idx = 0;
+	for (std::vector<Eigen::Vector3f>::iterator point_it = cloud.begin(); point_it != cloud.end(); ++point_it)
+	{
+		point_cloud->points[point_idx].x = point_it->x();
+		point_cloud->points[point_idx].y = point_it->y();
+		point_cloud->points[point_idx].z = point_it->z();
+	}
+
+	this->transform(transform, point_cloud);
+}
+
 int OBB::sampleCount() const
 {
-	return m_sample_points.size();
+	return m_samples.size();
 }
 
 void OBB::drawLine(int vert_no_0, int vert_no_1, float scale)
@@ -662,14 +969,24 @@ void OBB::drawLine(int vert_no_0, int vert_no_1, float scale)
 	glVertex3f(scale * vert1.x(), scale * vert1.y(), scale * vert1.z());
 }
 
-QVector<Vector3f>::iterator OBB::samples_begin()
+QVector<Vector3f>::iterator OBB::vertices_begin()
 {
-	return m_sample_points.begin();
+	return m_vertices.begin();
 }
 
-QVector<Vector3f>::iterator OBB::samples_end()
+QVector<Vector3f>::iterator OBB::vertices_end()
 {
-	return m_sample_points.end();
+	return m_vertices.end();
+}
+
+QVector<SamplePoint>::iterator OBB::samples_begin()
+{
+	return m_samples.begin();
+}
+
+QVector<SamplePoint>::iterator OBB::samples_end()
+{
+	return m_samples.end();
 }
 
 void OBB::normalize(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud)
@@ -696,7 +1013,7 @@ void OBB::normalize(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud)
 	m_vertices.clear();
 	m_faces.clear();
 	m_faces_normals.clear();
-	m_sample_points.clear();
+	m_samples.clear();
 	x_length = 1.0;
 	y_length = 1.0;
 	z_length = 1.0;
@@ -734,4 +1051,61 @@ void OBB::normalize(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud)
 	m_centroid = local_axes_mat * local_centroid;
 
 	triangulate();
+}
+
+double OBB::getFaceArea(int face_index)
+{
+	const int * corner_indices = k_face_corner_indices[face_index];
+	std::array<Vector3f, k_num_face_corners> corner_point;
+	for (int i = 0; i < k_num_face_corners; ++i)
+		corner_point[i] = m_vertices[corner_indices[i]];
+
+	Vector3f p = corner_point[2] - corner_point[0];
+	Vector3f q = corner_point[3] - corner_point[1];
+	double area = -0.5 * (double)(p.cross(q).norm());
+
+	return area;
+}
+
+void OBB::updateCorners()
+{
+	if (m_vertices.size != k_num_corners)
+		m_vertices.resize(k_num_corners);
+
+	Eigen::Translation<float, 3> translations[8];
+	Eigen::Translation<float, 3> trans00(x_length / 2.0 * x_axis);
+	Eigen::Translation<float, 3> trans01(z_length / 2.0 * z_axis);
+	Eigen::Translation<float, 3> trans02(y_length / 2.0 * y_axis);
+	translations[0] = trans00 * trans01 * trans02;
+	Eigen::Translation<float, 3> trans10(-x_length / 2.0 * x_axis);
+	Eigen::Translation<float, 3> trans11(z_length / 2.0 * z_axis);
+	Eigen::Translation<float, 3> trans12(y_length / 2.0 * y_axis);
+	translations[1] = trans10 * trans11 * trans12;
+	Eigen::Translation<float, 3> trans20(-x_length / 2.0 * x_axis);
+	Eigen::Translation<float, 3> trans21(-y_length / 2.0 * y_axis);
+	Eigen::Translation<float, 3> trans22(z_length / 2.0 * z_axis);
+	translations[2] = trans20 * trans21 * trans22;
+	Eigen::Translation<float, 3> trans30(x_length / 2.0 * x_axis);
+	Eigen::Translation<float, 3> trans31(-y_length / 2.0 * y_axis);
+	Eigen::Translation<float, 3> trans32(z_length / 2.0 * z_axis);
+	translations[3] = trans30 * trans31 * trans32;
+	Eigen::Translation<float, 3> trans40(x_length / 2.0 * x_axis);
+	Eigen::Translation<float, 3> trans41(y_length / 2.0 * y_axis);
+	Eigen::Translation<float, 3> trans42(-z_length / 2.0 * z_axis);
+	translations[4] = trans40 * trans41 * trans42;
+	Eigen::Translation<float, 3> trans50(-x_length / 2.0 * x_axis);
+	Eigen::Translation<float, 3> trans51(y_length / 2.0 * y_axis);
+	Eigen::Translation<float, 3> trans52(-z_length / 2.0 * z_axis);
+	translations[5] = trans50 * trans51 * trans52;
+	Eigen::Translation<float, 3> trans60(-x_length / 2.0 * x_axis);
+	Eigen::Translation<float, 3> trans61(-y_length / 2.0 * y_axis);
+	Eigen::Translation<float, 3> trans62(-z_length / 2.0 * z_axis);
+	translations[6] = trans60 * trans61 * trans62;
+	Eigen::Translation<float, 3> trans70(x_length / 2.0 * x_axis);
+	Eigen::Translation<float, 3> trans71(-y_length / 2.0 * y_axis);
+	Eigen::Translation<float, 3> trans72(-z_length / 2.0 * z_axis);
+	translations[7] = trans70 * trans71 * trans72;
+
+	for (int i = 0; i < k_num_corners; i++)
+		m_vertices[i] = translations[i] * m_centroid;
 }

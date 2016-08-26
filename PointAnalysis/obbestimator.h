@@ -13,6 +13,7 @@
 #include <qdebug.h>
 #include "pcmodel.h"
 #include "utils.h"
+#include "SamplePoint.h"
 #include "ICP.h"
 
 class OBBEstimator

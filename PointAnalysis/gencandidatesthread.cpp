@@ -63,7 +63,6 @@ void GenCandidatesThread::generateCandidates()
 		onDebugTextAdded("Generating parts candidates...");
 		qDebug() << "Generating parts candidates...";
 
-		const float CLASS_CONFIDENCE = 0.7;
 		int numOfClasses = m_distribution[0].size();
 		int size = m_pointcloud->size();
 		int overall_cand_count = 0;
@@ -149,7 +148,7 @@ void GenCandidatesThread::generateCandidates()
 				float score_sum = 0;
 				for (QVector<int>::iterator label_it = group.begin(); label_it != group.end(); label_it++)
 					score_sum += distribution.value(*label_it);
-				if (score_sum > 0.7)
+				if (score_sum > MIN_POINT_CONFIDENCE)
 				{
 					parts_clouds[group[0]]->push_back(PointXYZ(point.x(), point.y(), point.z()));
 					vertices_indices[group[0]].push_back(i);
@@ -164,7 +163,7 @@ void GenCandidatesThread::generateCandidates()
 				for (int j = 0; j < keys.size(); j++)
 				{
 					int label = keys[j];
-					if (!symmetry_set.contains(label) && (distribution.value(label) > 0.7 || Utils::float_equal(distribution.value(label), 0.7)))
+					if (!symmetry_set.contains(label) && (distribution.value(label) > MIN_POINT_CONFIDENCE || Utils::float_equal(distribution.value(label), MIN_POINT_CONFIDENCE)))
 					{
 						parts_clouds[label]->push_back(PointXYZ(point.x(), point.y(), point.z()));
 						vertices_indices[label].push_back(i);
@@ -306,10 +305,30 @@ void GenCandidatesThread::generateCandidates()
 							/* Create PAPart object from OBB */
 							onDebugTextAdded("Part-" + QString::number(label_name) + ": Create a part for OBB-" + QString::number(cluster_count) + "-" + QString::number(num_of_candidates) + " as a candidate.");
 							qDebug("Part-%d: Create a part for OBB-%d-%d as a candidate.", label_name, cluster_count, num_of_candidates);
+
 							PAPart candidate(cand_obbs[k]);
 							candidate.setClusterNo(cluster_count);  /* Set the cluster number to the index of the current connected component */
+
 							/* Set the indices of points assigned to this part to the PAPart object */
-							candidate.setVerticesIndices(components_indices[j]);
+							QList<int> vertices_indices = components_indices[j];
+							candidate.setVerticesIndices(vertices_indices);
+
+							/* Set the vertices list and vertices normals list of the part */
+							std::vector<Eigen::Vector3f> vertices, normals;
+							vertices.resize(vertices_indices.size());
+							normals.resize(vertices_indices.size());
+							int index = 0;
+							for (QList<int>::iterator point_idx_it = vertices_indices.begin(); point_idx_it != vertices_indices.end(); ++point_idx_it)
+							{
+								PAPoint point = m_pointcloud->operator[](*point_idx_it);
+								vertices[index] = point.getPosition();
+								normals[index++] = point.getNormal();
+							}
+							candidate.setVertices(vertices);
+							candidate.setVerticesNormals(normals);
+
+							candidate.ICP_adjust_OBB();
+
 							candidates.push_back(candidate);
 							/* Save the candidate to local file */
 							candidate.saveToFile(m_model_name + "/" + std::to_string(overall_cand_count++));

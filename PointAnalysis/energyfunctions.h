@@ -14,10 +14,9 @@
 #include "PAPointCloud.h"
 #include "papartrelation.h"
 #include "PAPoint.h"
-#include "gencandidatesthread.h"
+#include "definitions.h"
 #include "utils.h"
-
-#define INF 1E8 /* The infinite value */
+#include "constants.h"
 
 class EnergyFunctions
 {
@@ -39,9 +38,12 @@ public:
 	 part - the candidate part.
 	 distributions - points classifier probability distribution.
 	 label - the assumed label.
+	 use_symmetry - whether to use symmetry information, only be true when first iteration of the algorithm.
 	 Return value: the Epnt energy value of the candidate with certain assumed label.
 	 */
-	double Epnt(PAPart part, int label);
+	double Epnt(PAPart *part, int label);
+	double Epnt(PAPart *part, int label, bool use_symmetry);
+
 	/* Epnt_single 
 	   The function computing the point classification energy for a single point 
 	   Parameters:
@@ -87,7 +89,8 @@ private:
 	PAPointCloud *m_pointcloud;
 	pcl::KdTreeFLANN<pcl::PointXYZ> m_cloud_kdtree;  /* The kd-tree for searching nearest neighbor in the whole point cloud */
 	int m_null_label;
-	QList<QVector<int>> m_symmetry_groups;  /* Symmetry groups, all parts contained in a group are symmetry to each other */
+	QList<QVector<int>> m_symmetry_groups;  /* Symmetry groups, all parts contained in a group are symmetry to each other.
+											   If a symmetry group vector only has one element, that means the part is self-symmetric */
 	QSet<int> m_symmetry_set;    /* The sets of parts which are symmetry to other parts */
 	QMap<int, OBB *> m_obbs; /* The container storing the OBBs of all the winner candidate parts */
 	QMap<int, pcl::KdTreeFLANN<pcl::PointXYZ>> m_kdtrees;   /* The kd-trees of each part for searching the nearest neighbor in samples of a particular part */

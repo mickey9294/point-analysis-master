@@ -18,10 +18,10 @@
 #include "obbestimator.h"
 #include "papart.h"
 #include "utils.h"
+#include "constants.h"
+#include "definitions.h"
 
 typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS> Graph;
-typedef QVector<PAPart> Part_Candidates;
-Q_DECLARE_METATYPE(Part_Candidates)
 
 class GenCandidatesThread : public QThread
 {

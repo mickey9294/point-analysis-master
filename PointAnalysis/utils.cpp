@@ -19,8 +19,7 @@ using namespace Eigen;
 
 double Utils::sdf(pcl::PointCloud<pcl::PointXYZ>::Ptr points, pcl::PointCloud<pcl::Normal>::Ptr normals, int searchPointIdx)
 {
-	const double pi = 3.14159265359;
-	double raysAngle = 30.0 / 180.0 * pi;  /* angle of the cone */
+	double raysAngle = 30.0 / 180.0 * PI;  /* angle of the cone */
 	PointXYZ searchPoint = points->at(searchPointIdx);
 	Normal searchPointNormal = normals->at(searchPointIdx);
 
@@ -519,4 +518,109 @@ Eigen::Matrix3f Utils::skew_symmetric_cross(Eigen::Vector3f v)
 		-v.y(), v.x(), 0;
 
 	return ssc;
+}
+
+void Utils::CHECK_NUMERICAL_ERROR(const std::string& _desc, const double& _error)
+{
+	if (std::abs(_error) > NUMERIAL_ERROR_THRESHOLD)
+	{
+		std::cerr << "(" << _desc << "): Numerical Error (" << _error << ")" << std::endl;
+		do {
+			std::cout << '\n' << "Press the Enter key to continue.";
+		} while (std::cin.get() != '\n');
+	}
+}
+
+void Utils::CHECK_NUMERICAL_ERROR(const std::string & _desc, const double & _value1, const double & _value_2)
+{
+	CHECK_NUMERICAL_ERROR(_desc, _value_1 - _value_2);
+}
+
+int Utils::downSample(std::vector<Eigen::Vector3f> input, std::vector<Eigen::Vector3f> & output, int num_of_samples)
+{
+	std::vector<SC_Point> points;
+	points.resize(input.size());
+
+	int point_idx = 0;
+	for (std::vector<Eigen::Vector3f>::iterator point_it = input.begin(); point_it != input.end(); point_it++)
+	{
+		points[point_idx++] = SC_Point(point_it->x(), point_it->y(), point_it->z());
+	}
+
+	std::vector<SC_Point> output_points;
+
+	//parameters
+	const double retain_percentage = (double)num_of_samples / points.size() * 100.0;   // percentage of points to retain.
+	const double neighbor_radius = -0.5;   // neighbors size.
+
+	/* Execute WLOP downsampling algorithm */
+	CGAL::wlop_simplify_and_regularize_point_set
+		<Concurrency_tag>
+		(points.begin(),
+		points.end(),
+		std::back_inserter(output),
+		retain_percentage,
+		neighbor_radius
+		);
+
+	output.resize(output_points.size());
+	point_idx = 0;
+	for (std::vector<SC_Point>::iterator point_it = output_points.begin(); point_it != output_points.end(); ++point_it)
+	{
+		output[point_idx++] = Eigen::Vector3f(point_it->x(), point_it->y(), point_it->z());
+	}
+
+	return output.size();
+}
+
+int Utils::upSample(std::vector<Eigen::Vector3f> input, std::vector<Eigen::Vector3f> input_normals, 
+	std::vector<Eigen::Vector3f> & output, std::vector<Eigen::Vector3f> & output_normals, int num_of_samples)
+{
+	std::vector<SC_PointVectorPair> points;
+
+	assert(input.size() == normals.size());
+	points.resize(input.size());
+
+	for (int i = 0; i < input.size(); i++)
+	{
+		Eigen::Vector3f p = input[i];
+		Eigen::Vector3f n = input_normals[i];
+		SC_Point point(p.x(), p.y(), p.z());
+		SC_Vector norm(n.x(), n.y(), n.z());
+		SC_PointVectorPair pair(point, norm);
+		points[i] = pair;
+	}
+
+	//Algorithm parameters
+	const double sharpness_angle = 25;   // control sharpness of the result.
+	const double edge_sensitivity = 0;    // higher values will sample more points near the edges          
+	const double neighbor_radius = 0;  // initial size of neighborhood.
+	const std::size_t number_of_output_points = num_of_samples;
+	//Run algorithm 
+	CGAL::edge_aware_upsample_point_set<Concurrency_tag>(
+		points.begin(),
+		points.end(),
+		std::back_inserter(points),
+		CGAL::First_of_pair_property_map<PointVectorPair>(),
+		CGAL::Second_of_pair_property_map<PointVectorPair>(),
+		sharpness_angle,
+		edge_sensitivity,
+		neighbor_radius,
+		number_of_output_points);
+
+	output.resize(points.size());
+	output_normals.resize(points.size());
+
+	int index = 0;
+	for (std::vector<SC_PointVectorPair>::iterator pair_it = points.begin(); pair_it != points.end(); ++pair_it)
+	{
+		SC_Point p = pair_it->first;
+		SC_Vector n = pair_it->second;
+		Eigen::Vector3f point(p.x(), p.y(), p.z());
+		Eigen::Vector3f norm(n.x(), n.y(), n.z());
+		output[index] = point;
+		output_normals[index++] = norm;
+	}
+
+	return output.size();
 }

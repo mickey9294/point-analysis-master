@@ -17,36 +17,13 @@
 #include "utils.h"
 #include "model.h"
 #include <utils_sampling.h>
+#include "SamplePoint.h"
 
 typedef Seb::Point<float> MiniPoint;
 typedef std::vector<MiniPoint> PointVector;
 typedef Seb::Smallest_enclosing_ball<float> Miniball;
 
-class Sample
-{
-public:
-	Sample();
-	Sample(const Sample &sample);
-	Sample(Eigen::Vector3f vertex, Eigen::Vector3f normal);
-	Sample(float x, float y, float z, float nx, float ny, float nz);
-
-	float x() const;
-	float y() const;
-	float z() const;
-	float nx() const;
-	float ny() const;
-	float nz() const;
-	Eigen::Vector3f getVertex() const;
-	Eigen::Vector3f getNormal() const;
-	void setVertex(Eigen::Vector3f vertex);
-	void setNormal(Eigen::Vector3f normal);
-
-private:
-	Eigen::Vector3f m_vertex;
-	Eigen::Vector3f m_normal;
-};
-
-typedef QMap<int, QVector<Sample>> Parts_Samples;
+typedef QMap<int, QVector<SamplePoint>> Parts_Samples;
 
 class MeshModel : public QObject, public Model
 {
@@ -67,6 +44,7 @@ public:
 	int sampleCount() const;
 	int faceCount();
 	Eigen::Vector3f getCentroid() const;
+	double getRadius() const;
 	void draw(int scale);
 	void drawSamples(int scale);
 	void samplePoints();
@@ -75,6 +53,7 @@ public:
 	QVector<int> getFacesLabels() const;
 	QVector<int> getLabelNames() const;
 	Parts_Samples getPartsSamples() const;
+	Eigen::Vector3f getVertexNormal(int index);
 	void rotate(float angle, float x, float y, float z);
 	void output(const char *file_path);
 	int numOfClasses();
@@ -101,6 +80,7 @@ private:
 	std::string m_input_filepath;
 	Parts_Samples m_parts_samples;
 	int m_sample_count;
+	double m_radius;
 
 	void load_from_file(const char * file_path);
 	void normalize();

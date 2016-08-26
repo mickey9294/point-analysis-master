@@ -20,8 +20,7 @@
 #include "model.h"
 #include "meshmodel.h"
 #include "utils.h"
-
-#define NUM_OF_THREADS 6
+#include "constants.h"
 
 typedef CGAL::Cartesian_d<double>              K;
 typedef CGAL::Min_sphere_annulus_d_traits_d<K> Traits;

@@ -13,7 +13,6 @@ EnergyFunctions::EnergyFunctions(string modelClassName) : m_modelClassName(model
 {
 	cout << "Consruct EnegerFunctions" << endl;
 	/* Load the part relations priors from file */
-	const int DIMENSION = 32;
 	//string covariance_path = "../data/parts_relations/" + m_modelClassName + "_covariance.txt";
 	//string mean_path = "../data/parts_relations/" + m_modelClassName + "_mean.txt";
 	string covariance_path = "../data/parts_relations/coseg_chairs_covariance_t.txt";
@@ -38,13 +37,13 @@ EnergyFunctions::EnergyFunctions(string modelClassName) : m_modelClassName(model
 				label2 = labels.section(' ', 1, 1).toInt();
 
 				/* Read covariance matrix row by row */
-				MatrixXf covariance(DIMENSION, DIMENSION);
-				for (int i = 0; i < DIMENSION; i++)
+				MatrixXf covariance(PART_RELATION_DIMEN, PART_RELATION_DIMEN);
+				for (int i = 0; i < PART_RELATION_DIMEN; i++)
 				{
-					VectorXf row(DIMENSION);
+					VectorXf row(PART_RELATION_DIMEN);
 					cov_in.getline(buffer, 512);
 					QStringList row_str = QString(buffer).split(' ');
-					for (int j = 0; j < DIMENSION; j++)
+					for (int j = 0; j < PART_RELATION_DIMEN; j++)
 						row(j) = row_str[j].toFloat();
 
 					covariance.row(i) = row;
@@ -75,7 +74,7 @@ EnergyFunctions::EnergyFunctions(string modelClassName) : m_modelClassName(model
 
 
 				/* Read the mean vectors */
-				VectorXf mean_vec(DIMENSION);
+				VectorXf mean_vec(PART_RELATION_DIMEN);
 				mean_in.getline(buffer, 512);
 				QStringList vec_str = QString(buffer).split(' ');
 				for (int j = 0; j < vec_str.size(); j++)
@@ -142,7 +141,7 @@ void EnergyFunctions::setOBBs(QMap<int, OBB *> obbs)
 	{
 		int label = obb_it.key();
 		if ((*obb_it)->sampleCount() < 3)  /* If the OBB has not been sampled */
-			(*obb_it)->samplePoints();    /* Sample point on the OBB */
+			(*obb_it)->sampleRandomPoints();    /* Sample point on the OBB */
 
 		m_obbs.insert(label, *obb_it);
 
@@ -183,12 +182,12 @@ void EnergyFunctions::setDistributions(QVector<QMap<int, float>> distributions)
 	m_null_label = m_distributions[0].keys().last();
 }
 
-double EnergyFunctions::Epnt(PAPart part, int label)
+double EnergyFunctions::Epnt(PAPart *part, int label)
 {
 	double energy = 0;
 	int count = 0;
 
-	vector<int> vertices_indices = part.getVerticesIndices();  /* The indices of the points belonging to the part in m_pointcloud */
+	vector<int> vertices_indices = part->getVerticesIndices();  /* The indices of the points belonging to the part in m_pointcloud */
 
 	//for (int i = 0; i < m_pointcloud->size(); i++)
 	//{
@@ -233,10 +232,15 @@ double EnergyFunctions::Epnt(PAPart part, int label)
 			score = distribution.value(label);    /* The score is just the score of the label */
 
 		double e;
-		if (Utils::float_equal(score, 0.0))
-			e = 1e8;
+		//if (Utils::float_equal(score, 0.0))
+		//	e = 1e8;
+		//else
+		//	e = -log(score);
+		if (score < MIN_POINT_CONFIDENCE)
+			e = INF_POTENTIAL;
 		else
-			e = -log(score);
+			e = 0;
+
 		energy += e;
 		count++;
 	}
@@ -244,6 +248,31 @@ double EnergyFunctions::Epnt(PAPart part, int label)
 	energy /= (double)count;
 	energy *= w1;
 	return energy;
+}
+
+double EnergyFunctions::Epnt(PAPart *part, int label, bool use_symmetry)
+{
+	double energy = 0;
+
+	if (part->getLabel() == label)
+		return 0;
+
+	if (use_symmetry)
+	{
+		for (QList<QVector<int>>::iterator sym_group_it = m_symmetry_groups.begin(); sym_group_it != m_symmetry_groups.end(); ++sym_group_it)
+		{
+			if (sym_group_it->size() < 2)
+				continue;
+
+			QSet<int> sym_set;
+			for (QVector<int>::iterator sym_it = sym_group_it->begin(); sym_it != sym_group_it->end(); ++sym_it)
+				sym_set.insert(*sym_it);
+			if (sym_set.contains(part->getLabel()) && sym_set.contains(label))
+				return 0;
+		}
+	}
+
+	return INF_POTENTIAL;
 }
 
 double EnergyFunctions::Epnt_single(int point_index, int label)
@@ -314,8 +343,7 @@ double EnergyFunctions::Ep_q(int point_index, int assigned_label)
 QVector<Eigen::Triplet<double>> EnergyFunctions::Esmooth(int point_index)
 {
 	double energy = 0;
-	float radius = m_pointcloud->getRadius() * 0.05;
-	const int param_num_point_neighbors = 8;
+	float radius = m_pointcloud->getRadius() * SPARSE_NEIGHBOR_DISTANCE;
 	int num_of_neighbors = min(param_num_point_neighbors, m_pointcloud->size());
 
 	PAPoint point = m_pointcloud->operator[](point_index);

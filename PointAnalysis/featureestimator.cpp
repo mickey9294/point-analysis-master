@@ -8,7 +8,7 @@ FeatureEstimator::FeatureEstimator(QObject *parent)
 }
 
 FeatureEstimator::FeatureEstimator(Model *model, PHASE phase, QObject *parent)
-	: QObject(parent), finish_count(NUM_OF_THREADS), m_phase(phase)
+	: QObject(parent), finish_count(NUM_FEATURE_THREAD), m_phase(phase)
 {
 	qDebug() << "Initializing the feature estimator...";
 	emit addDebugText("Initializing the feature estimator...");
@@ -37,6 +37,7 @@ FeatureEstimator::FeatureEstimator(Model *model, PHASE phase, QObject *parent)
 				pcl::Normal normal(sample_it->nx(), sample_it->ny(), sample_it->nz());
 				m_normals->push_back(normal);
 				m_pointcloud->at(sample_idx).setPosition(sample_it->x(), sample_it->y(), sample_it->z());
+				m_pointcloud->at(sample_idx).setNormal(sample_it->nx(), sample_it->ny(), sample_it->nz());
 				m_pointcloud->at(sample_idx++).setLabel(label);
 			}
 		}
@@ -56,13 +57,14 @@ FeatureEstimator::FeatureEstimator(Model *model, PHASE phase, QObject *parent)
 			pcl::Normal normal(normal_it->x(), normal_it->y(), normal_it->z());
 			m_normals->push_back(normal);
 			m_pointcloud->at(vertex_idx).setPosition(vertex_it->x(), vertex_it->y(), vertex_it->z());
+			m_pointcloud->at(vertex_idx).setNormal(normal_it->x(), normal_it->y(), normal_it->z());
 			m_pointcloud->at(vertex_idx++).setLabel(10);
 		}
 	}
 
 	m_pointcloud->setRadius(1.0);
 	m_radius = 1.0;
-	finish_count = NUM_OF_THREADS;
+	finish_count = NUM_FEATURE_THREAD;
 
 	qRegisterMetaType<QVector<QVector<double>>>("FeatureVector");
 	qDebug() << "Initialization done.";
@@ -138,7 +140,7 @@ void FeatureEstimator::reset(Model *model)
 
 	m_pointcloud->setRadius(1.0);
 	m_radius = 1.0;
-	finish_count = NUM_OF_THREADS;
+	finish_count = NUM_FEATURE_THREAD;
 	qDebug() << "Resetting done.";
 	emit addDebugText("Resetting done.");
 }
@@ -161,14 +163,14 @@ FeatureEstimator::~FeatureEstimator()
 
 void FeatureEstimator::estimateFeatures()
 {
-	finish_count = NUM_OF_THREADS;
+	finish_count = NUM_FEATURE_THREAD;
 	qDebug() << "Estimating the point features...";
 	emit addDebugText("Estimating the point features...");
 	/* Create subthread to estimate point features in 5 different search radius */
 	qDebug() << "Create 6 FeatureThreads, each of which esitmate the point features in a particular search radius.";
 	emit addDebugText("Create 6 FeatureThreads, each of which esitmate the point features in a particular search radius.");
 
-	for (int i = 0; i < NUM_OF_THREADS; i++)
+	for (int i = 0; i < NUM_FEATURE_THREAD; i++)
 	{
 		double coefficient = 0.1 * (i + 1);
 		FeatureThread * thread = new FeatureThread(i, m_cloud, m_normals, m_radius, coefficient, this);
@@ -189,7 +191,7 @@ void FeatureEstimator::receiveFeatures(int sid, QVector<QVector<double>> points_
 
 	int size = points_feats.size();
 	
-	if (sid < NUM_OF_THREADS - 1)   /* It is the thread which computes features based on neighborhood */
+	if (sid < NUM_FEATURE_THREAD - 1)   /* It is the thread which computes features based on neighborhood */
 	{
 		for (int i = 0; i < size; i++)
 		{
@@ -216,7 +218,7 @@ void FeatureEstimator::receiveFeatures(int sid, QVector<QVector<double>> points_
 	if (finish_count == 0)
 	{
 		emit estimateCompleted(m_pointcloud);
-		finish_count = NUM_OF_THREADS;
+		finish_count = NUM_FEATURE_THREAD;
 	}
 }
 

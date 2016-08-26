@@ -5,6 +5,7 @@
 #include <pcl/point_types.h>
 #include <pcl/features/normal_3d.h>
 #include <fstream>
+#include <assert.h>
 #include <string>
 #include <cstdlib>
 #include <QDebug>
@@ -22,6 +23,9 @@
 #include <CGAL/boost/graph/graph_traits_Polyhedron_3.h>
 #include <CGAL/IO/Polyhedron_iostream.h>
 #include <CGAL/mesh_segmentation.h>
+#include <CGAL/Simple_cartesian.h>
+#include <CGAL/wlop_simplify_and_regularize_point_set.h>
+#include <CGAL/edge_aware_upsample_point_set.h>
 #include <utility> // defines std::pair
 #include <list>
 #include <Eigen/Core>
@@ -29,6 +33,7 @@
 #include <boost/accumulators/statistics.hpp>
 #include <boost/date_time/posix_time/posix_time_types.hpp>
 #include <cmath>
+#include "constants.h"
 
 typedef CGAL::Cartesian_d<double>              K;
 typedef CGAL::Min_sphere_annulus_d_traits_d<K> Traits;
@@ -53,6 +58,13 @@ typedef CGAL::Sequential_tag Concurrency_tag;
 
 typedef CGAL::Polyhedron_3<Kernel> Polyhedron;
 typedef Polyhedron::Halfedge_around_facet_const_circulator Halfedge_facet_circulator;
+
+// types used for downsampling and upsampling
+typedef CGAL::Simple_cartesian<double> Simple_Cartesian_Kernel;
+typedef Simple_Cartesian_Kernel::Point_3 SC_Point;
+typedef Simple_Cartesian_Kernel::Vector_3 SC_Vector;
+// Point with normal vector stored in a std::pair.
+typedef std::pair<SC_Point, SC_Vector> SC_PointVectorPair;
 
 enum PHASE{
 	TRAINING,
@@ -90,6 +102,11 @@ public:
 	static std::string getFileFormat(const char *file_path);
 	static Eigen::Matrix3f rotation_matrix(Eigen::Vector3f v0, Eigen::Vector3f v1);
 	static Eigen::Matrix3f skew_symmetric_cross(Eigen::Vector3f v);
+	static void CHECK_NUMERICAL_ERROR(const std::string& _desc, const double& _error);
+	static void CHECK_NUMERICAL_ERROR(const std::string & _desc, const double & _value1, const double & _value_2);
+	static int downSample(std::vector<Eigen::Vector3f> input, std::vector<Eigen::Vector3f> & output, int num_of_samples);
+	static int upSample(std::vector<Eigen::Vector3f> input, std::vector<Eigen::Vector3f> input_normals, 
+		std::vector<Eigen::Vector3f> & output, std::vector<Eigen::Vector3f> & output_normals, int num_of_samples);
 
 private:
 	static void sort(QList<double> &lens, QList<int> &indices, int low, int high);

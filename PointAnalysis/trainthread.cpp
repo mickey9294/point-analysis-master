@@ -67,8 +67,6 @@ void TrainThread::readFeatures(QString featFilename, int mode)
 	emit reportStatus(stat_msg);
 	emit addDebugText(stat_msg);
 
-	const int DIMEN = 27;
-
 	ClassificationDataset set;
  	importCSV(set, featFilename.toStdString().c_str(), LAST_COLUMN);
 

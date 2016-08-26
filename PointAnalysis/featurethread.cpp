@@ -2,7 +2,7 @@
 
 FeatureThread::FeatureThread(int idno, pcl::PointCloud<pcl::PointXYZ>::Ptr c, pcl::PointCloud<pcl::Normal>::Ptr n,
 	double rad, double coef, QObject *parent)
-	: QThread(parent), finish_count(NUM_OF_SUBTHREAD)
+	: QThread(parent), finish_count(NUM_POINT_FEATURE_THREAD)
 {
 	if (idno == 5)
 		qDebug() << " ";
@@ -77,7 +77,7 @@ void FeatureThread::estimate()
 		{
 			curv = cloud_normals->at(i).curvature;
 			if (!(curv >= 0 && curv <= 1.0))
-				curv = FLOAT_INF;
+				curv = FEATURE_THREAD_FLOAT_INF;
 			normals->at(i).curvature = curv;
 		}
 
@@ -114,7 +114,7 @@ void FeatureThread::receiveFeatures(int sid, QList<QVector<double>> points_feats
 		+ QString::number(id) + "-" + QString::number(sid) + ".";
 	emit addDebugText(dtext);
 
-	int one = cloud->size() / NUM_OF_SUBTHREAD;    /* The number of data items a PointFeatureThread processed */
+	int one = cloud->size() / NUM_POINT_FEATURE_THREAD;    /* The number of data items a PointFeatureThread processed */
 	for (int i = sid * one; i < sid * one + points_feats.size(); i++)
 	{
 		QVector<double> *feats = cloud_feats.data() + sid * one;
@@ -127,7 +127,7 @@ void FeatureThread::receiveFeatures(int sid, QList<QVector<double>> points_feats
 	finish_count--;
 	if (finish_count == 0)
 	{
-		finish_count = NUM_OF_SUBTHREAD;
+		finish_count = NUM_POINT_FEATURE_THREAD;
 		emit estimateCompleted(id, cloud_feats);
 	}
 }
@@ -139,10 +139,10 @@ void FeatureThread::nextEstimateStep()
 	QString dtext = "FeatureThread-" + QString::number(id) + ": Creating subthreads, each of which estimate part of points...";
 	emit addDebugText(dtext);
 
-	int one = cloud->size() / NUM_OF_SUBTHREAD;
-	for (int i = 0; i < NUM_OF_SUBTHREAD; i++)
+	int one = cloud->size() / NUM_POINT_FEATURE_THREAD;
+	for (int i = 0; i < NUM_POINT_FEATURE_THREAD; i++)
 	{
-		int end = (i == NUM_OF_SUBTHREAD - 1) ? (cloud->size() - 1) : ((i + 1) * one - 1);
+		int end = (i == NUM_POINT_FEATURE_THREAD - 1) ? (cloud->size() - 1) : ((i + 1) * one - 1);
 		int begin = i * one;
 		PointFeatureThread * pointThread = new PointFeatureThread(id, i, cloud, normals, kdtree, coefficient, radius, begin, end, this);
 		connect(pointThread, SIGNAL(estimateCompleted(int, QList<QVector<double>>)), this, SLOT(receiveFeatures(int, QList<QVector<double>>)));

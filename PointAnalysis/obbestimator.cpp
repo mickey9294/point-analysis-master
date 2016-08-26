@@ -112,9 +112,7 @@ OBB *OBBEstimator::computeOBB()
 
 	OBB *obb = new OBB(local_axes.col(0), local_axes.col(1), local_axes.col(2), centroid, x_length, y_length, z_length, m_label);
 	obb->triangulate();
-	if (m_phase == PHASE::TESTING)
-		ICP_pcl(obb);
-	else
+	if (m_phase == PHASE::TRAINING)
 		obb->normalize(m_cloud);
 
 	return obb; 
@@ -332,7 +330,7 @@ QVector<OBB *> OBBEstimator::computeOBBCandidates()
 					local_axes.col(2),    /* The z axis */
 					Eigen::Vector3f(obb_centroid.x, obb_centroid.y, obb_centroid.z),     /* the centroid of the OBB */
 					x_length, y_length, z_length, m_label);
-				ICP_pcl(obb_cand);
+				//ICP_pcl(obb_cand);
 				obb_candidates[index++] = obb_cand;
 			}
 		}
@@ -361,7 +359,7 @@ void OBBEstimator::ICP_procedure(OBB *obb)
 {
 	int sample_size = 0;
 	if (obb->sampleCount() < 3)
-		sample_size = obb->samplePoints();
+		sample_size = obb->createGridSamples();
 	else
 		sample_size = obb->sampleCount();
 
@@ -412,7 +410,7 @@ void OBBEstimator::ICP_pcl(OBB* obb)
 	/* Set the samples on the OBB as the input point cloud */
 	int sample_size = 0;
 	if (obb->sampleCount() < 3)
-		sample_size = obb->samplePoints();
+		sample_size = obb->createGridSamples();
 	else
 		sample_size = obb->sampleCount();
 
@@ -422,7 +420,7 @@ void OBBEstimator::ICP_pcl(OBB* obb)
 	cloud_in->points.resize(cloud_in->width * cloud_in->height);
 
 	int sample_idx = 0;
-	for (QVector<Vector3f>::iterator sample_it = obb->samples_begin(); sample_it != obb->samples_end(); ++sample_it)
+	for (QVector<SamplePoint>::iterator sample_it = obb->samples_begin(); sample_it != obb->samples_end(); ++sample_it)
 	{
 		cloud_in->points[sample_idx].x = sample_it->x();
 		cloud_in->points[sample_idx].y = sample_it->y();

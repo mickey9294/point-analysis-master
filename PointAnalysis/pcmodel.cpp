@@ -454,6 +454,11 @@ QVector<int> PCModel::getVerticesLabels() const
 	return QVector<int>(m_labels);
 }
 
+Vector3f PCModel::getVertexNormal(int index)
+{
+	return m_normals_list[index];
+}
+
 void PCModel::setLabels(QVector<int> labels)
 {
 	emit addDebugText("Set the labels of PCModel.");

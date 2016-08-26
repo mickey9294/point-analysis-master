@@ -55,6 +55,7 @@ public:
 	void setInputFilename(std::string name);
 	std::string getInputFilepath() const;
 	QVector<int> getVerticesLabels() const;
+	Eigen::Vector3f getVertexNormal(int index);
 	QVector<double> getSdf() const;
 	void setSdf(QVector<double> sdf);
 	QVector<int> getLabelNames() const;
