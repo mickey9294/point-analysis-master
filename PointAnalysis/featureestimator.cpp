@@ -29,7 +29,7 @@ FeatureEstimator::FeatureEstimator(Model *model, PHASE phase, QObject *parent)
 			int label = part_it.key();
 			//qDebug("Part_%d:", label);
 			
-			for (QVector<Sample>::iterator sample_it = part_it->begin(); sample_it != part_it->end(); ++sample_it)
+			for (QVector<SamplePoint>::iterator sample_it = part_it->begin(); sample_it != part_it->end(); ++sample_it)
 			{
 				//qDebug("Add sample_%d.", sample_idx);
 				pcl::PointXYZ p(sample_it->x(), sample_it->y(), sample_it->z());
@@ -108,13 +108,13 @@ void FeatureEstimator::reset(Model *model)
 		{
 			int label = part_it.key();
 			
-			for (QVector<Sample>::iterator sample_it = part_it->begin(); sample_it != part_it->end(); ++sample_it)
+			for (QVector<SamplePoint>::iterator sample_it = part_it->begin(); sample_it != part_it->end(); ++sample_it)
 			{
-				pcl::PointXYZ p(sample_it->x(), sample_it->y(), sample_it->z());
+				pcl::PointXYZ p((*sample_it).nx(), (*sample_it).y(), (*sample_it).z());
 				m_cloud->push_back(p);
-				pcl::Normal normal(sample_it->nx(), sample_it->ny(), sample_it->nz());
+				pcl::Normal normal((*sample_it).nx(), (*sample_it).ny(), (*sample_it).nz());
 				m_normals->push_back(normal);
-				m_pointcloud->at(sample_idx).setPosition(sample_it->x(), sample_it->y(), sample_it->z());
+				m_pointcloud->at(sample_idx).setPosition((*sample_it).x(), (*sample_it).y(), (*sample_it).z());
 				m_pointcloud->at(sample_idx++).setLabel(label);
 			}
 		}

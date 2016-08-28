@@ -1121,10 +1121,9 @@ void CuboidNonLinearSolver::update_cuboids(const std::vector< Number >& _values)
 		cuboid->updateFromOBB();
 
 		// Update cuboid surface points.
-		for (unsigned int point_index = 0; point_index < cuboid_obb->sampleCount();
-			++point_index)
+		for (unsigned int point_index = 0; point_index < cuboid_obb->sampleCount(); ++point_index)
 		{
-			SamplePoint cuboid_surface_point = cuboid_obb->getSample(point_index);
+			SamplePoint cuboid_surface_point = cuboid_obb->getSampleReference(point_index);
 
 			Eigen::Vector3f new_point = Eigen::Vector3f::Zero();
 			for (unsigned int corner_index = 0; corner_index < OBB::k_num_corners; ++corner_index)

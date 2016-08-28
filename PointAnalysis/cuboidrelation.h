@@ -1,14 +1,15 @@
 #ifndef CUBOIDRELATION_H
-#define CUBOIDREALTION_H
+#define CUBOIDRELATION_H
 
 #include <vector>
 #include <Eigen/Core>
-#include "obb.h"
+#include "papart.h"
 #include "utils.h"
 
 class CuboidAttributes{
 public:
 	CuboidAttributes();
+	CuboidAttributes(const std::string object_name);
 	CuboidAttributes(const CuboidAttributes &other);
 	virtual ~CuboidAttributes();
 
@@ -21,17 +22,21 @@ public:
 
 	void init();
 	void compute_attributes(const OBB *obb);
+	void compute_attributes(const PAPart *part);
 	const Eigen::VectorXd get_attributes() const { return m_attributes; }
 	bool has_nan() const { return m_attributes.hasNaN(); }
 	static void get_attribute_collection_matrix(const std::list<CuboidAttributes *>& _stats, Eigen::MatrixXd & _values);
+	static bool save_attribute_collection(const std::list<CuboidAttributes *> & _stats, const char *_filename);
 
 private:
+	std::string m_object_name;
 	Eigen::VectorXd m_attributes;
 };
 
 class CuboidFeatures{
 public:
 	CuboidFeatures();
+	CuboidFeatures(const std::string object_name);
 	CuboidFeatures(const CuboidFeatures &other);
 	virtual ~CuboidFeatures();
 
@@ -48,21 +53,27 @@ public:
 
 	void init();
 	void compute_features(const OBB *obb, Eigen::MatrixXd *attributes_to_features_map = NULL);
+	void compute_features(const PAPart *part, Eigen::MatrixXd *attributes_to_features_map = NULL);
 	const Eigen::VectorXd get_features() const { return m_features; }
 	bool has_nan() const { return m_features.hasNaN(); }
 	static void get_feature_collection_matrix(const std::list<CuboidFeatures *>& _stats, Eigen::MatrixXd &_values);
+	static bool load_feature_collection(const char *_filename, std::list<CuboidFeatures *> & _stats);
+	static bool save_feature_collection(const char *_filename, const std::list<CuboidFeatures *> & _stats);
 
 private:
+	std::string m_object_name;
 	Eigen::VectorXd m_features;
 };
 
 class CuboidTransformation{
 public:
 	CuboidTransformation();
+	CuboidTransformation(const std::string object_name);
 	virtual ~CuboidTransformation();
 
 	void init();
 	void compute_transformation(const OBB *obb);
+	void compute_transformation(const PAPart *part);
 	Eigen::VectorXd get_transformed_features(const CuboidFeatures & _other_features) const;
 	Eigen::VectorXd get_transformed_features(const OBB * other_obb) const;
 	Eigen::VectorXd get_inverse_transformed_features(const CuboidFeatures & other_features) const;
@@ -73,7 +84,11 @@ public:
 	void get_linear_map_transformation(Eigen::MatrixXd & rotation, Eigen::MatrixXd & translation) const;
 	void get_linear_map_inverse_transformation(Eigen::MatrixXd & rotation, Eigen::MatrixXd & translation) const;
 
+	static bool load_transformation_collection(const char * _filename, std::list<CuboidTransformation *> & _stats);
+	static bool save_transformation_collection(const char * _filename, const std::list<CuboidTransformation *> & _stats);
+
 private:
+	std::string m_object_name;
 	Eigen::Vector3d m_first_translation;
 	Eigen::Matrix3d m_second_rotation;
 };

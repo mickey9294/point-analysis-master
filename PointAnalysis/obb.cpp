@@ -726,6 +726,11 @@ SamplePoint OBB::getSample(int index)
 	return m_samples[index];
 }
 
+SamplePoint & OBB::getSampleReference(int index)
+{
+	return m_samples[index];
+}
+
 void OBB::translate(float x, float y, float z)
 {
 	Translation<float, 3> trans(x, y, z);
@@ -1069,7 +1074,7 @@ double OBB::getFaceArea(int face_index)
 
 void OBB::updateCorners()
 {
-	if (m_vertices.size != k_num_corners)
+	if (m_vertices.size() != k_num_corners)
 		m_vertices.resize(k_num_corners);
 
 	Eigen::Translation<float, 3> translations[8];

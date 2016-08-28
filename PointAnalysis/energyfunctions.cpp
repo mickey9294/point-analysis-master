@@ -141,7 +141,7 @@ void EnergyFunctions::setOBBs(QMap<int, OBB *> obbs)
 	{
 		int label = obb_it.key();
 		if ((*obb_it)->sampleCount() < 3)  /* If the OBB has not been sampled */
-			(*obb_it)->sampleRandomPoints();    /* Sample point on the OBB */
+			(*obb_it)->createGridSamples();    /* Sample point on the OBB */
 
 		m_obbs.insert(label, *obb_it);
 
@@ -152,7 +152,7 @@ void EnergyFunctions::setOBBs(QMap<int, OBB *> obbs)
 		cloud->points.resize(cloud->width * cloud->height);
 
 		int sample_idx = 0;
-		for (QVector<Eigen::Vector3f>::iterator sample_it = (*obb_it)->samples_begin();
+		for (QVector<SamplePoint>::iterator sample_it = (*obb_it)->samples_begin();
 			sample_it != (*obb_it)->samples_end(); ++sample_it)
 		{
 			cloud->points[sample_idx].x = sample_it->x();

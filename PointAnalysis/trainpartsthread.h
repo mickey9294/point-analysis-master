@@ -20,6 +20,7 @@
 #include "papartrelation.h"
 #include "papart.h"
 #include "utils.h"
+#include "cuboidrelation.h"
 
 class TrainPartsThread : public QThread
 {
@@ -49,6 +50,10 @@ private:
 	QMap<QPair<int, int>, Eigen::MatrixXd> cov_mats;
 	int currentId;
 	std::string class_name;
+	int m_num_labels;
+
+	std::vector<std::list<CuboidFeatures *>> m_feature_list;
+	std::vector<std::list<CuboidTransformation *>> m_transformation_list;
 
 	void analyseProbPartModel();
 	void savePartRelationPriors();

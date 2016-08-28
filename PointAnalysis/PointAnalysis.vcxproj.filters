@@ -317,15 +317,6 @@
     <ClCompile Include="GeneratedFiles\Release\moc_pointsegmentationthread.cpp">
       <Filter>Generated Files\Release</Filter>
     </ClCompile>
-    <ClCompile Include="optimizeattributesthread.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="GeneratedFiles\Debug\moc_optimizeattributesthread.cpp">
-      <Filter>Generated Files\Debug</Filter>
-    </ClCompile>
-    <ClCompile Include="GeneratedFiles\Release\moc_optimizeattributesthread.cpp">
-      <Filter>Generated Files\Release</Filter>
-    </ClCompile>
     <ClCompile Include="partssolver.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -361,6 +352,18 @@
     </ClCompile>
     <ClCompile Include="NLPVectorExpression.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PartsStructure.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="partposeoptthread.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneratedFiles\Debug\moc_partposeoptthread.cpp">
+      <Filter>Generated Files\Debug</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneratedFiles\Release\moc_partposeoptthread.cpp">
+      <Filter>Generated Files\Release</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -457,7 +460,7 @@
     <CustomBuild Include="pointsegmentationthread.h">
       <Filter>Header Files</Filter>
     </CustomBuild>
-    <CustomBuild Include="optimizeattributesthread.h">
+    <CustomBuild Include="partposeoptthread.h">
       <Filter>Header Files</Filter>
     </CustomBuild>
   </ItemGroup>
@@ -553,6 +556,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="NLPVectorExpression.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PartsStructure.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

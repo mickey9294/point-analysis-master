@@ -6,6 +6,7 @@ PartsStructure::PartsStructure(const Model *model)
 {
 	assert(model);
 	m_radius = model->getRadius();
+	m_points_assignments.resize(model->vertexCount());
 }
 
 PartsStructure::PartsStructure(const PartsStructure & other)
@@ -33,6 +34,16 @@ int PartsStructure::num_of_labels() const
 int PartsStructure::num_of_points() const
 {
 	return m_model->vertexCount();
+}
+
+int PartsStructure::num_of_parts() const
+{
+	int count = 0;
+	for (std::vector<std::vector<PAPart *>>::const_iterator it = m_label_parts.begin();
+		it != m_label_parts.end(); ++it)
+		count += it->size();
+
+	return count;
 }
 
 void PartsStructure::clear()
@@ -125,7 +136,7 @@ void PartsStructure::deep_copy(const PartsStructure & other)
 	}
 }
 
-bool PartsStructure::load_label_symmetries(const char *_filename, bool _verbose = true)
+bool PartsStructure::load_label_symmetries(const char *_filename, bool _verbose)
 {
 	std::ifstream file(_filename);
 	if (!file)
@@ -156,7 +167,7 @@ bool PartsStructure::load_label_symmetries(const char *_filename, bool _verbose 
 			std::getline(sstr, token, ' ');
 
 			LabelIndex label_index = getLabelName(token);
-			assert(label_index < num_labels());
+			assert(label_index < num_of_labels());
 			label_symmetry.push_back(label_index);
 		}
 
@@ -229,7 +240,7 @@ bool PartsStructure::load_labels(const char *_filename, bool _verbose)
 		m_label_names.push_back(new_label);
 		m_label_paraphrases.push_back(tokens[0]);
 		//label_children_.push_back(std::list<LabelIndex>());
-		//label_cuboids_.push_back(std::vector<MeshCuboid *>());
+		m_label_parts.resize(m_label_names.size());
 		++new_label;
 	}
 
@@ -323,7 +334,7 @@ bool PartsStructure::load_symmetry_groups(const char *_filename, bool _verbose)
 			for (unsigned int i = 0; i < num_tokens; ++i)
 			{
 				LabelIndex label_index = atoi(tokens[i].c_str());
-				assert(label_index < labels_.size());
+				assert(label_index < m_label_names.size());
 				new_symmetry_group.single_label_indices_.push_back(label_index);
 			}
 		}
@@ -340,8 +351,8 @@ bool PartsStructure::load_symmetry_groups(const char *_filename, bool _verbose)
 				{
 					LabelIndex label_index_1 = atoi(tokens[2 * i + 0].c_str());
 					LabelIndex label_index_2 = atoi(tokens[2 * i + 1].c_str());
-					assert(label_index_1 < labels_.size());
-					assert(label_index_2 < labels_.size());
+					assert(label_index_1 < m_label_names.size());
+					assert(label_index_2 < m_label_names.size());
 					new_symmetry_group.pair_label_indices_.push_back(
 						std::make_pair(label_index_1, label_index_2));
 				}
@@ -430,10 +441,12 @@ void PartsStructure::set_model(Model * model)
 {
 	m_model = model;
 	m_radius = model->getRadius();
+	m_points_assignments.resize(model->vertexCount());
 }
 
 void PartsStructure::set_pointcloud(PAPointCloud *pointcloud)
 {
+	assert(pointcloud->size() == num_of_points());
 	m_pointcloud = pointcloud;
 }
 
@@ -451,7 +464,7 @@ void PartsStructure::set_points_assignments(QVector<int> assignments)
 	}
 }
 
-PAPoint PartsStructure::get_point(int index)
+PAPoint & PartsStructure::get_point(int index)
 {
 	assert(m_pointcloud);
 	return m_pointcloud->operator[](index);

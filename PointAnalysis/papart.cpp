@@ -588,7 +588,7 @@ void PAPart::setTranslation(Vector3f centroid)
 
 void PAPart::updateFromOBB()
 {
-	assert(m_OBB);
+	assert(m_obb);
 
 	m_label = m_obb->getLabel();
 	Eigen::Vector3f centroid = m_obb->getCentroid();

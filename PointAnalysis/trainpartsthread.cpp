@@ -3,7 +3,7 @@
 using namespace std;
 
 TrainPartsThread::TrainPartsThread(QObject *parent)
-	: QThread(parent), currentId(0)
+	: QThread(parent), currentId(0), m_num_labels(8)
 {
 	qRegisterMetaType<QVector<PAPart>>("QVector<PAPart>");
 	cout << "TrainPartsThread is created." << endl;
@@ -73,6 +73,28 @@ void TrainPartsThread::receiveParts(QVector<PAPart> parts)
 		labels_indices.insert(labels[i], i);
 	}
 
+	/* Create CuboidFeatures and CuboidTransformation for the model and add them to the cuboid relation list */
+	std::string model_name = Utils::getModelName(file_list[currentId]);
+	for (int label_index = 0; label_index < m_num_labels; label_index++)
+	{
+		CuboidTransformation *transformation = new CuboidTransformation(model_name);
+		CuboidFeatures * features = new CuboidFeatures(model_name);
+
+		PAPart * cuboid = NULL;
+		int cuboid_index = labels_indices.value(label_index, -1);
+		if (cuboid_index > -1)
+			cuboid = &parts[cuboid_index];
+
+		if (cuboid)
+		{
+			transformation->compute_transformation(cuboid);
+			features->compute_features(cuboid);
+		}
+
+		m_transformation_list[label_index].push_back(transformation);
+		m_feature_list[label_index].push_back(features);
+	}
+
 	//QVector<QPair<int, int>> part_pairs = Utils::getCombinations(labels);
 	//for (int i = 0; i < part_pairs.size(); i++)
 	//{
@@ -122,6 +144,22 @@ void TrainPartsThread::receiveParts(QVector<PAPart> parts)
 			QPair<int, int> label_pair = it.key();
 			QList<PAPartRelation> relations = it.value();
 			qDebug("(%d, %d) has %d pairwise part relations.", label_pair.first, label_pair.second, relations.size());
+		}
+
+		/* Output the all the CuboidFeatures and CuboidTransformations to files */
+		for (int label_index_1 = 0; label_index_1 < m_num_labels; label_index_1++)
+		{
+			std::stringstream transformation_filename_sstr;
+			transformation_filename_sstr << training_dir << std::string("/") << transformation_filename_prefix
+				<< label_index_1 << std::string(".csv");
+			CuboidTransformation::save_transformation_collection(transformation_filename_sstr.str().c_str(),
+				m_transformation_list[label_index_1]);
+
+			std::stringstream feature_filename_sstr;
+			feature_filename_sstr << training_dir << std::string("/") << feature_filename_prefix
+				<< label_index_1 << std::string(".csv");
+			CuboidFeatures::save_feature_collection(feature_filename_sstr.str().c_str(),
+				m_feature_list[label_index_1]);
 		}
 
 		/* Start to analysis each parts pair */

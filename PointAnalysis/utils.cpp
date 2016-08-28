@@ -326,6 +326,11 @@ QString Utils::getModelName(QString filepath)
 	return file_list.at(size - 1).section('.', 0, 0);
 }
 
+std::string Utils::getModelName(std::string filepath)
+{
+	return getModelName(QString::fromStdString(filepath)).toStdString();
+}
+
 int Utils::comb(int n, int i)
 {
 	int numerator = 1;
@@ -531,7 +536,7 @@ void Utils::CHECK_NUMERICAL_ERROR(const std::string& _desc, const double& _error
 	}
 }
 
-void Utils::CHECK_NUMERICAL_ERROR(const std::string & _desc, const double & _value1, const double & _value_2)
+void Utils::CHECK_NUMERICAL_ERROR(const std::string & _desc, const double & _value_1, const double & _value_2)
 {
 	CHECK_NUMERICAL_ERROR(_desc, _value_1 - _value_2);
 }
@@ -554,14 +559,14 @@ int Utils::downSample(std::vector<Eigen::Vector3f> input, std::vector<Eigen::Vec
 	const double neighbor_radius = -0.5;   // neighbors size.
 
 	/* Execute WLOP downsampling algorithm */
-	CGAL::wlop_simplify_and_regularize_point_set
+	/*CGAL::wlop_simplify_and_regularize_point_set
 		<Concurrency_tag>
 		(points.begin(),
 		points.end(),
 		std::back_inserter(output),
 		retain_percentage,
 		neighbor_radius
-		);
+		);*/
 
 	output.resize(output_points.size());
 	point_idx = 0;
@@ -578,7 +583,7 @@ int Utils::upSample(std::vector<Eigen::Vector3f> input, std::vector<Eigen::Vecto
 {
 	std::vector<SC_PointVectorPair> points;
 
-	assert(input.size() == normals.size());
+	assert(input.size() == input_normals.size());
 	points.resize(input.size());
 
 	for (int i = 0; i < input.size(); i++)
@@ -597,30 +602,35 @@ int Utils::upSample(std::vector<Eigen::Vector3f> input, std::vector<Eigen::Vecto
 	const double neighbor_radius = 0;  // initial size of neighborhood.
 	const std::size_t number_of_output_points = num_of_samples;
 	//Run algorithm 
-	CGAL::edge_aware_upsample_point_set<Concurrency_tag>(
-		points.begin(),
-		points.end(),
-		std::back_inserter(points),
-		CGAL::First_of_pair_property_map<PointVectorPair>(),
-		CGAL::Second_of_pair_property_map<PointVectorPair>(),
-		sharpness_angle,
-		edge_sensitivity,
-		neighbor_radius,
-		number_of_output_points);
+	//CGAL::edge_aware_upsample_point_set<Concurrency_tag>(
+	//	points.begin(),
+	//	points.end(),
+	//	std::back_inserter(points),
+	//	CGAL::First_of_pair_property_map<PointVectorPair>(),
+	//	CGAL::Second_of_pair_property_map<PointVectorPair>(),
+	//	sharpness_angle,
+	//	edge_sensitivity,
+	//	neighbor_radius,
+	//	number_of_output_points);
 
-	output.resize(points.size());
-	output_normals.resize(points.size());
+	//output.resize(points.size());
+	//output_normals.resize(points.size());
 
-	int index = 0;
-	for (std::vector<SC_PointVectorPair>::iterator pair_it = points.begin(); pair_it != points.end(); ++pair_it)
-	{
-		SC_Point p = pair_it->first;
-		SC_Vector n = pair_it->second;
-		Eigen::Vector3f point(p.x(), p.y(), p.z());
-		Eigen::Vector3f norm(n.x(), n.y(), n.z());
-		output[index] = point;
-		output_normals[index++] = norm;
-	}
+	//int index = 0;
+	//for (std::vector<SC_PointVectorPair>::iterator pair_it = points.begin(); pair_it != points.end(); ++pair_it)
+	//{
+	//	SC_Point p = pair_it->first;
+	//	SC_Vector n = pair_it->second;
+	//	Eigen::Vector3f point(p.x(), p.y(), p.z());
+	//	Eigen::Vector3f norm(n.x(), n.y(), n.z());
+	//	output[index] = point;
+	//	output_normals[index++] = norm;
+	//}
 
 	return output.size();
+}
+
+Eigen::MatrixXd Utils::regularized_inverse(const Eigen::MatrixXd& _mat)
+{
+	return (_mat + 1.0E-3 * Eigen::MatrixXd::Identity(_mat.rows(), _mat.cols())).inverse();
 }

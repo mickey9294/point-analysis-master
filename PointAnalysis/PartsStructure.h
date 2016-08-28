@@ -43,6 +43,7 @@ public:
 
 	int num_of_labels() const;
 	int num_of_points() const;
+	int num_of_parts() const;
 	int getLabelName(const std::string label_paraphrase);
 
 	std::vector<PAPart *> get_all_parts() const;
@@ -52,7 +53,7 @@ public:
 	void set_pointcloud(PAPointCloud *pointcloud);
 	void set_points_assignments(QVector<int> assignments);
 
-	PAPoint get_point(int index);
+	PAPoint & get_point(int index);
 	int get_point_assignment(int index);
 };
 

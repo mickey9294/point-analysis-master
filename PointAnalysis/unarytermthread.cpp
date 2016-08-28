@@ -36,7 +36,7 @@ void UnaryTermThread::computeUnaryPotentials()
 		double * D = new double[labelNum];
 
 		for (int j = 0; j < labelNum; j++)
-			D[j] = m_energy_functions->Epnt(cand, m_label_names[j]);
+			D[j] = m_energy_functions->Epnt(&cand, m_label_names[j]);
 
 		unary_potentials[i - m_start] = D;
 	}

@@ -86,6 +86,7 @@ public:
 	static QString getSegFilename(QString model_file_name);
 	static std::string getSegFilename(std::string model_file_name);
 	static QString getModelName(QString filepath);
+	static std::string getModelName(std::string filepath);
 	static std::string getSegFilename(const char *model_file_name);
 	static int comb(int n, int i);
 	static QVector<QPair<int, int>> getCombinations(QVector<int> nums);
@@ -107,6 +108,7 @@ public:
 	static int downSample(std::vector<Eigen::Vector3f> input, std::vector<Eigen::Vector3f> & output, int num_of_samples);
 	static int upSample(std::vector<Eigen::Vector3f> input, std::vector<Eigen::Vector3f> input_normals, 
 		std::vector<Eigen::Vector3f> & output, std::vector<Eigen::Vector3f> & output_normals, int num_of_samples);
+	static Eigen::MatrixXd regularized_inverse(const Eigen::MatrixXd& _mat);
 
 private:
 	static void sort(QList<double> &lens, QList<int> &indices, int low, int high);

@@ -2,14 +2,12 @@
 
 using namespace std;
 
-PointSegmentationThread::PointSegmentationThread(PAPointCloud *pointcloud, QVector<int> label_names, 
-	EnergyFunctions *energy_functions, QObject *parent)
+PointSegmentationThread::PointSegmentationThread(PartsStructure *parts_structure, QVector<int> label_names,  QObject *parent)
 	: QThread(parent)
 {
 	cout << "PointSegmentationThread is created." << endl;
 
-	m_pointcloud = pointcloud;
-	m_energy_functions = energy_functions;
+	m_parts_structure = parts_structure;
 	m_label_names = label_names;
 }
 
@@ -21,136 +19,15 @@ PointSegmentationThread::~PointSegmentationThread()
 void PointSegmentationThread::run()
 {
 	cout << "Start segmenting..." << endl;
-	int changed_count = optimize();
+	int changed_count = segment_sample_points();
 	cout << "Segmentation done. The labels of " << changed_count << " points have changed." << endl;
 }
 
-int PointSegmentationThread::optimize()
-{
-	double squared_neighbor_distance = pow(param_sparse_neighbor_distance * m_pointcloud->getRadius(), 2);
-	double lambda = -squared_neighbor_distance / log(param_null_cuboid_probability);
-
-	MRFEnergy<TypePotts>* mrf_trw;
-	MRFEnergy<TypePotts> *mrf_bp;
-	MRFEnergy<TypePotts>::NodeId* nodes_trw;
-	MRFEnergy<TypePotts>::NodeId *nodes_bp;
-	MRFEnergy<TypePotts>::Options options_trw;
-	MRFEnergy<TypePotts>::Options options_bp;
-	TypePotts::REAL energy, lowerBound;
-
-	const int labelNum = m_label_names.size();
-	const int nodeNum = m_pointcloud->size();
-
-	mrf_trw = new MRFEnergy<TypePotts>(TypePotts::GlobalSize(labelNum));
-	nodes_trw = new MRFEnergy<TypePotts>::NodeId[nodeNum];
-	mrf_bp = new MRFEnergy<TypePotts>(TypePotts::GlobalSize(labelNum));
-	nodes_bp = new MRFEnergy<TypePotts>::NodeId[nodeNum];
-
-	TypePotts::REAL *D = new TypePotts::REAL[labelNum];
-	TypePotts::REAL *V = new TypePotts::REAL[labelNum * labelNum];
-
-	/* Set the unary potentisals */
-	cout << "Set unary potentials." << endl;
-	for (int i = 0; i < nodeNum; i++)
-	{
-		for (int j = 0; j < labelNum; j++)
-		{
-			double unary = lambda * m_energy_functions->Epnt_single(i, j) + m_energy_functions->Ep_q(i, j);
-			D[j] = unary;
-		}
-
-		nodes_trw[i] = mrf_trw->AddNode(TypePotts::LocalSize(), TypePotts::NodeData(D));
-		nodes_bp[i] = mrf_bp->AddNode(TypePotts::LocalSize(), TypePotts::NodeData(D));
-	}
-
-	/* Set the pairwise potentials */
-	cout << "Set pairwise potentials." << endl;
-	for (int i = 0; i < nodeNum; i++)
-	{
-		QVector<Eigen::Triplet<double>> pairwise_potentials = m_energy_functions->Esmooth(i);
-		for (QVector<Eigen::Triplet<double>>::iterator potentials_it = pairwise_potentials.begin(); potentials_it != pairwise_potentials.end();
-			++potentials_it)
-		{
-			int j = potentials_it->col();
-			double potential = potentials_it->value();
-			mrf_trw->AddEdge(nodes_trw[i], nodes_trw[j], TypePotts::EdgeData(potential));
-			mrf_bp->AddEdge(nodes_bp[i], nodes_bp[j], TypePotts::EdgeData(potential));
-		}
-	}
-
-	/* Function below is optional - it may help if, for example, nodes are added in a random order */
-	//mrf->SetAutomaticOrdering();
-
-	/* Execute TRW-S algorithm */
-	cout << "Do TRW_S algorithm." << endl;
-	options_trw.m_iterMax = 100; // maximum number of iterations
-	options_trw.m_printIter = 10;
-	options_trw.m_printMinIter = 0;
-	mrf_trw->ZeroMessages();
-	mrf_trw->AddRandomMessages(0, 0.0, 1.0);
-	mrf_trw->Minimize_TRW_S(options_trw, lowerBound, energy);
-	cout << "Minimization done." << endl;
-
-	/* Execute BP algorithm */
-	cout << "Do BP algorithm." << endl;
-	TypeGeneral::REAL energy_bp;
-	options_bp.m_iterMax = 100;
-	options_bp.m_printIter = 10;
-	options_bp.m_printMinIter = 0;
-	mrf_bp->ZeroMessages();
-	mrf_bp->AddRandomMessages(0, 0.0, 1.0);
-	mrf_bp->Minimize_BP(options_bp, energy_bp);
-	cout << "Minimization done." << endl;
-
-	/* Take the lower energy as the result */
-	MRFEnergy<TypePotts>* mrf_optimized = NULL;
-	MRFEnergy<TypePotts>::NodeId* nodes_optimized = NULL;
-	if (energy < energy_bp)
-	{
-		cout << "TRW_S algorithm is more optimized. Energy = " << energy << endl;
-		mrf_optimized = mrf_trw;
-		nodes_optimized = nodes_trw;
-	}
-	else
-	{
-		cout << "BP algorithm is more optimized. Energy = " << energy_bp << endl;
-		mrf_optimized = mrf_bp;
-		nodes_optimized = nodes_bp;
-	}
-
-	/* Read the solutions */
-	vector<int> output_labels(nodeNum);
-	for (int node_index = 0; node_index < nodeNum; node_index++)
-		output_labels[node_index] = mrf_optimized->GetSolution(nodes_optimized[node_index]);
-
-	/* Count the number of changed labels */
-	int changed_count = 0;
-	QVector<int> previous_assignments = m_energy_functions->getPointAssignments();
-	assert(previous_assignments.size() == output_labels.size());
-	for (int i = 0; i < previous_assignments.size(); i++)
-	{
-		if (previous_assignments[i] != output_labels[i])
-			changed_count++;
-	}
-
-	/* update the point assignments of the EnergyFunctions */
-	QVector<int> new_point_assignments = QVector<int>::fromStdVector(output_labels);
-	m_energy_functions->setPointAssignments(new_point_assignments);
-
-	emit pointSegmentationDone(new_point_assignments);
-
-	delete[] nodes_trw;
-	delete[] nodes_bp;
-	delete mrf_trw;
-	delete mrf_bp;
-	return changed_count;
-}
-
-void PointSegmentationThread::segment_sample_points()
+int PointSegmentationThread::segment_sample_points()
 {
 	float param_null_cuboid_probability = 0.1;
 
-	assert(m_parts_structure.m_model);
+	assert(m_parts_structure->m_model != NULL);
 	double squared_neighbor_distance = SPARSE_NEIGHBOR_DISTANCE * SPARSE_NEIGHBOR_DISTANCE * m_parts_structure->m_radius;
 	double lambda = -squared_neighbor_distance / std::log(param_null_cuboid_probability);
 
@@ -195,7 +72,7 @@ void PointSegmentationThread::segment_sample_points()
 
 	for (unsigned int point_index = 0; point_index < num_parts_points; ++point_index)
 	{
-		PAPoint part_point = m_parts_structure->get_point[point_index];
+		PAPoint part_point = m_parts_structure->get_point(point_index);
 		for (unsigned int i = 0; i < 3; ++i)
 			q[i] = part_point.getPosition()[i];
 
@@ -394,9 +271,52 @@ void PointSegmentationThread::segment_sample_points()
 		nodes_optimized = nodes_bp;
 	}
 
+	/* Read the solutions */
 	std::vector<int> output_labels(num_nodes);
 	for (unsigned int node_index = 0; node_index < num_nodes; ++node_index)
 		output_labels[node_index] = mrf_optimized->GetSolution(nodes_optimized[node_index]);
+
+	/* Count the number of changed labels */
+	int changed_count = 0;
+	assert(m_parts_structure->num_of_points() == output_labels.size());
+	for (int i = 0; i < m_parts_structure->num_of_points(); i++)
+	{
+		if (m_parts_structure->get_point_assignment(i) != output_labels[i])
+			changed_count++;
+	}
+
+	QVector<int> new_point_assignments = QVector<int>::fromStdVector(output_labels);
+	emit pointSegmentationDone(new_point_assignments);
+
+	/* Reassign points to the parts */
+	std::vector<PAPart *> all_parts = m_parts_structure->get_all_parts();
+	int num_parts = all_parts.size();
+	/* Clear previous points assignments in each part */
+	for (std::vector<PAPart *>::iterator it = all_parts.begin(); it != all_parts.end(); ++it)
+		(*it)->clearVertices();
+
+	/* Reassign */
+	for (int point_index = 0; point_index < new_point_assignments.size(); point_index++)
+	{
+		int point_assignment = new_point_assignments[point_index];
+		PAPoint point = m_parts_structure->get_point(point_index);
+		point.setLabel(point_assignment);
+
+		if (point_assignment >= 0 && point_assignment != m_parts_structure->m_null_label)
+		{
+			all_parts[point_assignment]->addVertex(point_index, point.getPosition(), point.getNormal());
+			m_parts_structure->m_points_assignments[point_index] = point_assignment;
+		}
+		else
+			m_parts_structure->m_points_assignments[point_index] = m_parts_structure->m_null_label;
+	}
+
+	/* Update the samples of the parts and the samples correspondences */
+	for (std::vector<PAPart *>::iterator part_it = all_parts.begin(); part_it != all_parts.end(); ++part_it)
+	{
+		(*part_it)->samplePoints();
+		(*part_it)->update_sample_correspondences();
+	}
 
 	for (std::list<TypeGeneral::REAL *>::iterator it = energy_term_list.end();
 		it != energy_term_list.end(); ++it)
@@ -405,4 +325,6 @@ void PointSegmentationThread::segment_sample_points()
 	delete[] nodes_bp;
 	delete mrf_trw;
 	delete mrf_bp;
+
+	return changed_count;
 }

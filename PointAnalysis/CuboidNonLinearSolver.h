@@ -4,7 +4,7 @@
 #include "papart.h"
 #include "CuboidRelation.h"
 #include "CuboidPredictor.h"
-#include "CuboidSYmmetryGroup.h"
+#include "CuboidSymmetryGroup.h"
 
 /* IPOPT */
 #include "NLPFormulation.h"

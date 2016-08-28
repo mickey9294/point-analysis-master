@@ -2,11 +2,6 @@
 
 using namespace Eigen;
 
-SamplePoint::SamplePoint()
-{
-}
-
-
 SamplePoint::~SamplePoint()
 {
 }

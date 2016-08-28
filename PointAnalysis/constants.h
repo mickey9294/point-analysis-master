@@ -33,10 +33,13 @@ const int opt_max_iterations = 5;
 const int k_num_attributes = 24;
 const int min_num_symmetric_point_pairs = 50;
 const int param_min_num_cuboid_sample_points = 10;
+const int param_max_inference_iteration = 20;
 
 const bool optimize_individual_reflection_symmetry_group = true;
 const bool disable_per_point_classifier_terms = false;
 const bool disable_label_smoothness_terms = false;
+const bool disable_symmetry_terms = false;
+const bool disable_part_relation_terms = false;
 
 using namespace std;
 
@@ -44,5 +47,8 @@ const string label_info_path = "../data/dataset_name/";
 const string label_info_filename = "regions.txt";
 const string label_symmetry_info_filename = "regions_symmetry.txt";
 const string symmetry_group_info_filename = "symmetry_groups.txt";
+const string training_dir = "../training";
+const string transformation_filename_prefix = "transformation_";
+const string feature_filename_prefix = "feature_";
 
 #endif

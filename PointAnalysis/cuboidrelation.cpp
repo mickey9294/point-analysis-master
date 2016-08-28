@@ -7,6 +7,12 @@ CuboidAttributes::CuboidAttributes()
 	init();
 }
 
+CuboidAttributes::CuboidAttributes(const std::string object_name)
+	: m_object_name(object_name)
+{
+
+}
+
 CuboidAttributes::CuboidAttributes(const CuboidAttributes &other)
 	: m_attributes(other.m_attributes)
 {
@@ -50,6 +56,13 @@ void CuboidAttributes::compute_attributes(const OBB *obb)
 	}
 }
 
+void CuboidAttributes::compute_attributes(const PAPart * part)
+{
+	OBB * obb = part->getOBB();
+	assert(obb);
+	compute_attributes(obb);
+}
+
 void CuboidAttributes::get_attribute_collection_matrix(const std::list<CuboidAttributes *> & _stats, Eigen::MatrixXd &_values)
 {
 	int num_objects = _stats.size();
@@ -66,7 +79,56 @@ void CuboidAttributes::get_attribute_collection_matrix(const std::list<CuboidAtt
 	}
 }
 
+bool CuboidAttributes::save_attribute_collection(const std::list<CuboidAttributes *> & _stats, const char *_filename)
+{
+	const int num_attributes = static_cast<int>(k_num_attributes);
+
+	std::ofstream file(_filename);
+	if (!file)
+	{
+		std::cerr << "Can't save file: \"" << _filename << "\"" << std::endl;
+		return false;
+	}
+	std::setprecision(std::numeric_limits<long double>::digits10 + 1);
+	std::cout << std::scientific;
+
+	//unsigned int num_objects = _stats.size();
+
+	// Write attribute values.
+	unsigned int object_index = 0;
+	for (std::list<CuboidAttributes *>::const_iterator stat_it = _stats.begin(); stat_it != _stats.end();
+		++stat_it, ++object_index)
+	{
+		assert(*stat_it);
+
+		for (int attribute_index = 0; attribute_index < num_attributes; ++attribute_index)
+		{
+			Real value = (*stat_it)->m_attributes[attribute_index];
+			if (std::isnan(value))
+			{
+				// Note:
+				// Undefined attributes are recorded as NaN.
+				file << "NaN,";
+			}
+			else
+			{
+				file << value << ",";
+			}
+		}
+		file << std::endl;
+	}
+
+	file.close();
+	return true;
+}
+
 CuboidFeatures::CuboidFeatures()
+{
+	init();
+}
+
+CuboidFeatures::CuboidFeatures(const std::string object_name)
+	: m_object_name(object_name)
 {
 	init();
 }
@@ -157,17 +219,24 @@ void CuboidFeatures::compute_features(const OBB *obb, Eigen::MatrixXd *_attribut
 #ifdef DEBUG_TEST
 	CuboidAttributes attributes;
 	attributes.compute_attributes(obb);
-	Eigen::VectorXd samme_features = attreibutes_to_features_map * attributes.get_attributes();
+	Eigen::VectorXd same_features = attributes_to_features_map * attributes.get_attributes();
 
 	assert(same_features.rows() == CuboidFeatures::k_num_features);
-	dobule error = (same_features - m_features).array().abs().sum();
+	double error = (same_features - m_features).array().abs().sum();
 
-	CHECK_NUMERICAL_ERROR(__FUNCTION__, error);
+	Utils::CHECK_NUMERICAL_ERROR(__FUNCTION__, error);
 #endif
 
 	/* Optional */
 	if (_attributes_to_features_map)
 		(*_attributes_to_features_map) = attributes_to_features_map;
+}
+
+void CuboidFeatures::compute_features(const PAPart *part, Eigen::MatrixXd *_attributes_to_features_map)
+{
+	OBB * obb = part->getOBB();
+	assert(obb);
+	compute_features(obb, _attributes_to_features_map);
 }
 
 void CuboidFeatures::get_feature_collection_matrix(const std::list<CuboidFeatures *> & _stats, Eigen::MatrixXd & _values)
@@ -186,7 +255,122 @@ void CuboidFeatures::get_feature_collection_matrix(const std::list<CuboidFeature
 	}
 }
 
+bool CuboidFeatures::load_feature_collection(const char *_filename, std::list<CuboidFeatures *> & _stats)
+{
+	for (std::list<CuboidFeatures *>::iterator it = _stats.begin(); it != _stats.end(); ++it)
+		delete (*it);
+	_stats.clear();
+
+	std::ifstream file(_filename);
+	if (!file)
+	{
+		std::cerr << "Can't load file: \"" << _filename << "\"" << std::endl;
+		return false;
+	}
+
+	std::string buffer;
+	std::stringstream strstr;
+	std::string token;
+	bool succeded = true;
+
+	while (!file.eof())
+	{
+		std::getline(file, buffer);
+		if (buffer == "") break;
+
+		strstr.str(std::string());
+		strstr.clear();
+		strstr.str(buffer);
+
+		CuboidFeatures *new_features = new CuboidFeatures();
+		assert(new_features);
+
+		for (int feature_index = 0; feature_index < CuboidFeatures::k_num_features; ++feature_index)
+		{
+			std::getline(strstr, token, ',');
+			if (strstr.eof())
+			{
+				std::cerr << "Wrong file format: \"" << _filename << "\"" << std::endl;
+				succeded = false;
+				break;
+			}
+
+			if (token == "NaN")
+			{
+				// Note:
+				// Undefined attributes are recorded as NaN.
+				new_features->m_features[feature_index] = std::numeric_limits<Real>::quiet_NaN();
+			}
+			else
+			{
+				new_features->m_features[feature_index] = std::stof(token);
+			}
+		}
+
+		if (!succeded) break;
+		_stats.push_back(new_features);
+	}
+
+	if (!succeded)
+	{
+		for (std::list<CuboidFeatures *>::iterator it = _stats.begin(); it != _stats.end(); ++it)
+			delete (*it);
+		_stats.clear();
+		return false;
+	}
+
+	return true;
+}
+
+bool CuboidFeatures::save_feature_collection(const char *_filename, const std::list<CuboidFeatures *> & _stats)
+{
+	std::ofstream file(_filename);
+	if (!file)
+	{
+		std::cerr << "Can't save file: \"" << _filename << "\"" << std::endl;
+		return false;
+	}
+	std::setprecision(std::numeric_limits<long double>::digits10 + 1);
+	std::cout << std::scientific;
+
+	//unsigned int num_objects = _stats.size();
+
+	// Write attribute values.
+	unsigned int object_index = 0;
+	for (std::list<CuboidFeatures *>::const_iterator stat_it = _stats.begin(); stat_it != _stats.end();
+		++stat_it, ++object_index)
+	{
+		assert(*stat_it);
+
+		for (int feature_index = 0; feature_index < CuboidFeatures::k_num_features; ++feature_index)
+		{
+			Real value = (*stat_it)->m_features[feature_index];
+			if (std::isnan(value))
+			{
+				// Note:
+				// Undefined attributes are recorded as NaN.
+				file << "NaN,";
+			}
+			else
+			{
+				file << value << ",";
+			}
+		}
+		file << std::endl;
+	}
+
+	file.close();
+	return true;
+}
+
 CuboidTransformation::CuboidTransformation()
+	: m_object_name("")
+{
+	init();
+}
+
+CuboidTransformation::CuboidTransformation(const std::string object_name)
+	: m_object_name(object_name)
 {
 	init();
 }
@@ -218,6 +402,13 @@ void CuboidTransformation::compute_transformation(const OBB *obb)
 	}
 }
 
+void CuboidTransformation::compute_transformation(const PAPart * part)
+{
+	OBB * obb = part->getOBB();
+	assert(obb);
+	compute_transformation(obb);
+}
+
 Eigen::VectorXd CuboidTransformation::get_transformed_features(const CuboidFeatures & other_features) const
 {
 	Eigen::VectorXd transformed_features = other_features.get_features();
@@ -235,7 +426,7 @@ Eigen::VectorXd CuboidTransformation::get_transformed_features(const CuboidFeatu
 
 Eigen::VectorXd CuboidTransformation::get_transformed_features(const OBB *other_obb) const
 {
-	assert(obb);
+	assert(other_obb);
 	CuboidFeatures other_features;
 	other_features.compute_features(other_obb);
 
@@ -326,6 +517,115 @@ void CuboidTransformation::get_linear_map_inverse_transformation(
 			}
 		}
 	}
+}
+
+bool CuboidTransformation::load_transformation_collection(const char * _filename, std::list<CuboidTransformation *> & _stats)
+{
+	for (std::list<CuboidTransformation *>::iterator it = _stats.begin(); it != _stats.end(); ++it)
+		delete (*it);
+	_stats.clear();
+
+	std::ifstream file(_filename);
+	if (!file)
+	{
+		std::cerr << "Can't load file: \"" << _filename << "\"" << std::endl;
+		return false;
+	}
+
+	std::string buffer;
+	std::stringstream strstr;
+	std::string token;
+	bool succeded = true;
+
+	while (!file.eof())
+	{
+		std::getline(file, buffer);
+		if (buffer == "") break;
+
+		strstr.str(std::string());
+		strstr.clear();
+		strstr.str(buffer);
+
+		CuboidTransformation *new_transformation = new CuboidTransformation();
+		assert(new_transformation);
+
+		for (unsigned int axis_index = 0; axis_index < 3; ++axis_index)
+		{
+			for (unsigned int i = 0; i < 3; ++i)
+			{
+				std::getline(strstr, token, ',');
+				if (strstr.eof())
+				{
+					std::cerr << "Wrong file format: \"" << _filename << "\"" << std::endl;
+					succeded = false;
+					break;
+				}
+
+				if (!succeded) break;
+				new_transformation->m_second_rotation.col(axis_index)(i) = std::stof(token);
+			}
+		}
+
+		for (unsigned int axis_index = 0; axis_index < 3; ++axis_index)
+		{
+			std::getline(strstr, token, ',');
+			if (strstr.eof())
+			{
+				std::cerr << "Wrong file format: \"" << _filename << "\"" << std::endl;
+				succeded = false;
+				break;
+			}
+
+			new_transformation->m_first_translation(axis_index) = std::stof(token);
+		}
+
+		if (!succeded) break;
+		_stats.push_back(new_transformation);
+	}
+
+	if (!succeded)
+	{
+		for (std::list<CuboidTransformation *>::iterator it = _stats.begin(); it != _stats.end(); ++it)
+			delete (*it);
+		_stats.clear();
+		return false;
+	}
+
+	return true;
+}
+
+bool CuboidTransformation::save_transformation_collection(const char * _filename, const std::list<CuboidTransformation *> & _stats)
+{
+	std::ofstream file(_filename);
+	if (!file)
+	{
+		std::cerr << "Can't save file: \"" << _filename << "\"" << std::endl;
+		return false;
+	}
+	std::setprecision(std::numeric_limits<long double>::digits10 + 1);
+	std::cout << std::scientific;
+
+	//unsigned int num_objects = _stats.size();
+
+	// Write attribute values.
+	unsigned int object_index = 0;
+	for (std::list<CuboidTransformation *>::const_iterator stat_it = _stats.begin(); stat_it != _stats.end();
+		++stat_it, ++object_index)
+	{
+		assert(*stat_it);
+
+		for (unsigned int axis_index = 0; axis_index < 3; ++axis_index)
+			for (unsigned int i = 0; i < 3; ++i) 
+				file << (*stat_it)->m_second_rotation.col(axis_index)(i) << ",";
+
+		for (unsigned int axis_index = 0; axis_index < 3; ++axis_index)
+			file << (*stat_it)->m_first_translation(axis_index) << ",";
+
+		file << std::endl;
+	}
+
+	file.close();
+	return true;
 }
 
 CuboidJointNormalRelations::CuboidJointNormalRelations()

@@ -59,6 +59,7 @@ public:
 	QVector<Eigen::Vector3f> getFacesNormals() const;
 	QVector<SamplePoint> getSamples() const;
 	SamplePoint getSample(int index);
+	SamplePoint & getSampleReference(int index);
 	void setLabel(int label) { m_label = label; }
 	void setColor(QVector3D color);
 	int samplePoints(int num_of_samples);

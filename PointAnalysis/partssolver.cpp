@@ -1,10 +1,7 @@
 #include "partssolver.h"
 
 
-PartsSolver::PartsSolver(float radius,
-	std::vector<CuboidReflectionSymmetryGroup *> reflection_symmetry_groups,
-	std::vector<CuboidRotationSymmetryGroup *> rotation_symmetry_groups)
-	: m_radius(radius), m_reflection_symmetry_groups(reflection_symmetry_groups), m_rotation_symmetry_groups(rotation_symmetry_groups)
+PartsSolver::PartsSolver()
 {
 }
 
@@ -13,7 +10,7 @@ PartsSolver::~PartsSolver()
 {
 }
 
-void PartsSolver::optimizeAttributes(Parts_Vector parts,
+void PartsSolver::optimizeAttributes(PartsStructure & parts_structure,
 	const CuboidPredictor &_predictor,
 	const double _single_energy_term_weight,
 	const double _symmetry_energy_term_weight,
@@ -22,8 +19,10 @@ void PartsSolver::optimizeAttributes(Parts_Vector parts,
 {
 	std::stringstream sstr;
 
-	int num_labels = m_label_names.size();
-	int num_parts = parts.size();
+	int num_labels = parts_structure.num_of_labels();
+
+	std::vector<PAPart *> all_parts = parts_structure.get_all_parts();
+	int num_parts = all_parts.size();
 
 	double single_total_energy, pair_total_energy, total_energy;
 
@@ -31,8 +30,11 @@ void PartsSolver::optimizeAttributes(Parts_Vector parts,
 	// NOTE: Keep the lowest energy cuboids.
 	double final_total_energy = std::numeric_limits<double>::max();
 	unsigned int final_cuboid_iteration = 0;
+	PartsStructure final_parts_structure = parts_structure;
 
-	get_optimization_error(parts, _predictor, single_total_energy, pair_total_energy);
+	update_cuboid_surface_points(parts_structure);
+
+	get_optimization_error(all_parts, _predictor, single_total_energy, pair_total_energy);
 	total_energy = pair_total_energy + _single_energy_term_weight * single_total_energy;
 	std::cout << "Energy: (pair = " << pair_total_energy << ", single = " << _single_energy_term_weight * single_total_energy
 		<< ", total = " << total_energy << ")" << std::endl << std::endl;
@@ -51,7 +53,7 @@ void PartsSolver::optimizeAttributes(Parts_Vector parts,
 		if (optimize_individual_reflection_symmetry_group)
 		{
 			const std::vector<CuboidReflectionSymmetryGroup *> all_reflection_symmetry_groups
-				= m_reflection_symmetry_groups;
+				= parts_structure.m_reflection_symmetry_groups;
 
 			for (std::vector<CuboidReflectionSymmetryGroup *>::const_iterator it =
 				all_reflection_symmetry_groups.begin(); it != all_reflection_symmetry_groups.end(); ++it)
@@ -60,25 +62,25 @@ void PartsSolver::optimizeAttributes(Parts_Vector parts,
 
 				std::vector<CuboidReflectionSymmetryGroup *> each_reflection_symmetry_groups;
 				each_reflection_symmetry_groups.push_back(reflection_symmetry_groups);
-				m_reflection_symmetry_groups = each_reflection_symmetry_groups;
+				parts_structure.m_reflection_symmetry_groups = each_reflection_symmetry_groups;
 
 				optimize_attributes_once(
-					parts, _predictor,
+					parts_structure, _predictor,
 					_single_energy_term_weight, _symmetry_energy_term_weight,
 					_use_symmetry);
 			}
 
-			m_reflection_symmetry_groups = all_reflection_symmetry_groups;
+			parts_structure.m_reflection_symmetry_groups = all_reflection_symmetry_groups;
 		}
 		else
 		{
 			optimize_attributes_once(
-				parts, _predictor,
+				parts_structure, _predictor,
 				_single_energy_term_weight, _symmetry_energy_term_weight,
 				_use_symmetry);
 		}
 
-		get_optimization_error(parts, _predictor, single_total_energy, pair_total_energy);
+		get_optimization_error(all_parts, _predictor, single_total_energy, pair_total_energy);
 		total_energy = pair_total_energy + _single_energy_term_weight * single_total_energy;
 		sstr.str(std::string());
 		sstr << " - After optimization" << std::endl;
@@ -91,18 +93,18 @@ void PartsSolver::optimizeAttributes(Parts_Vector parts,
 		if (_use_symmetry)
 		{
 			/* Cuboid axes are estimated in the optimization. */
-			for (QVector<PAPart *>::const_iterator it = parts.begin(); it != parts.end(); ++it)
+			for (std::vector<PAPart *>::const_iterator it = all_parts.begin(); it != all_parts.end(); ++it)
 				(*it)->update_center_size_corner_points();
 		}
 		else
 		{
-			for (QVector<PAPart *>::const_iterator it = parts.begin(); it != parts.end(); ++it)
+			for (std::vector<PAPart *>::const_iterator it = all_parts.begin(); it != all_parts.end(); ++it)
 				(*it)->update_axes_center_size_corner_points();
 		}
 
-		update_cuboid_surface_points(parts);
+		update_cuboid_surface_points(parts_structure);
 
-		get_optimization_error(parts, _predictor,
+		get_optimization_error(all_parts, _predictor,
 			single_total_energy, pair_total_energy);
 		total_energy = pair_total_energy + _single_energy_term_weight * single_total_energy;
 		sstr.str(std::string());
@@ -120,7 +122,7 @@ void PartsSolver::optimizeAttributes(Parts_Vector parts,
 		{
 			final_total_energy = total_energy;
 			final_cuboid_iteration = iteration;
-			//final_cuboid_structure = _cuboid_structure;
+			final_parts_structure = parts_structure;
 		}
 		else if (total_energy > 1.5 * final_total_energy)
 		{
@@ -141,10 +143,29 @@ void PartsSolver::optimizeAttributes(Parts_Vector parts,
 		std::cout << sstr.str();
 	}
 	
+	/* Copy final result */
+	parts_structure = final_parts_structure;
+	all_parts = parts_structure.get_all_parts();
+	num_parts = all_parts.size();
+
+	update_cuboid_surface_points(parts_structure);
+
+	sstr.str(std::string());
+	sstr << "Final cuboid iteration: " << final_cuboid_iteration << std::endl;
+	std::cout << sstr.str();
+
+	get_optimization_error(all_parts, _predictor,
+		single_total_energy, pair_total_energy);
+	total_energy = pair_total_energy + _single_energy_term_weight * single_total_energy;
+	sstr.str(std::string());
+	sstr << "Energy: (pair = " << pair_total_energy
+		<< ", single = " << _single_energy_term_weight * single_total_energy
+		<< ", total = " << total_energy << ")" << std::endl;
+	std::cout << sstr.str();
 }
 
 void PartsSolver::get_optimization_error(
-	const Parts_Vector parts,
+	const std::vector<PAPart *> & parts,
 	const CuboidPredictor &_predictor,
 	double &_single_total_energy, double &_pair_total_energy)
 {
@@ -161,7 +182,7 @@ void PartsSolver::get_optimization_error(
 }
 
 void PartsSolver::get_optimization_formulation(
-	const Parts_Vector parts,
+	const std::vector<PAPart *> & parts,
 	const CuboidPredictor &_predictor,
 	Eigen::VectorXd &_init_values,
 	Eigen::MatrixXd &_single_quadratic_term, Eigen::MatrixXd &_pair_quadratic_term,
@@ -262,27 +283,28 @@ void PartsSolver::get_optimization_formulation(
 	_pair_total_energy += _pair_constant_term;
 
 #ifdef DEBUG_TEST
-	CHECK_NUMERICAL_ERROR(__FUNCTION__, _pair_total_energy, same_pair_total_energy);
+	Utils::CHECK_NUMERICAL_ERROR(__FUNCTION__, _pair_total_energy, same_pair_total_energy);
 #endif
 }
 
 void PartsSolver::optimize_attributes_once(
-	const Parts_Vector parts,
+	PartsStructure & parts_structure,
 	const CuboidPredictor& _predictor,
 	const double _single_energy_term_weight,
 	const double _symmetry_energy_term_weight,
 	bool _use_symmetry)
 {
 	const Real squared_neighbor_distance = SPARSE_NEIGHBOR_DISTANCE * SPARSE_NEIGHBOR_DISTANCE
-		* m_radius;
+		* parts_structure.m_radius;
 	
+	std::vector<PAPart *> all_parts = parts_structure.get_all_parts();
 	std::vector<CuboidReflectionSymmetryGroup *> all_reflection_symmetry_groups =
-		m_reflection_symmetry_groups;
+		parts_structure.m_reflection_symmetry_groups;
 	std::vector<CuboidRotationSymmetryGroup *> all_rotation_symmetry_groups =
-		m_rotation_symmetry_groups;
+		parts_structure.m_rotation_symmetry_groups;
 
 	const int num_attributes = CuboidAttributes::k_num_attributes;
-	int num_cuboids = parts.size();
+	int num_cuboids = all_parts.size();
 	int mat_size = num_cuboids * num_attributes;
 
 	Eigen::VectorXd init_values;
@@ -291,7 +313,7 @@ void PartsSolver::optimize_attributes_once(
 	double single_constant_term, pair_constant_term;  /* 一元常数项，二元常数项 */
 	double single_total_energy, pair_total_energy;  /* 一元总能量， 二元总能量 */
 
-	get_optimization_formulation(parts, _predictor, init_values,
+	get_optimization_formulation(all_parts, _predictor, init_values,
 		single_quadratic_term, pair_quadratic_term,
 		single_linear_term, pair_linear_term,
 		single_constant_term, pair_constant_term,
@@ -308,7 +330,7 @@ void PartsSolver::optimize_attributes_once(
 	}
 
 	CuboidNonLinearSolver non_linear_solver(
-		parts.toStdVector(),
+		all_parts,
 		all_reflection_symmetry_groups,
 		all_rotation_symmetry_groups,
 		squared_neighbor_distance,
@@ -318,11 +340,12 @@ void PartsSolver::optimize_attributes_once(
 	non_linear_solver.optimize(quadratic_term, linear_term, constant_term, &init_values);
 }
 
-void PartsSolver::update_cuboid_surface_points(Parts_Vector parts)
+void PartsSolver::update_cuboid_surface_points(PartsStructure & parts_structure)
 {
-	const Real radius = param_occlusion_test_neighbor_distance * m_radius;
+	const Real radius = param_occlusion_test_neighbor_distance * parts_structure.m_radius;
 	
-	for (Parts_Vector::iterator it = parts.begin(); it != parts.end(); ++it)
+	std::vector<PAPart *> all_parts = parts_structure.get_all_parts();
+	for (std::vector<PAPart *>::iterator it = all_parts.begin(); it != all_parts.end(); ++it)
 	{
 		PAPart *cuboid = *it;
 		cuboid->create_grid_points_on_obb_surface();

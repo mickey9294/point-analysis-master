@@ -205,7 +205,7 @@ void CuboidPredictor::get_single_quadratic_form(
 
 #ifdef DEBUG_TEST
 		Real error = std::abs(((A0 * x) - Y_point).norm());
-		CHECK_NUMERICAL_ERROR(__FUNCTION__, error);
+		Utils::CHECK_NUMERICAL_ERROR(__FUNCTION__, error);
 #endif
 
 		Eigen::Vector3d b = -X_point;  /* 与模型上的点关于原点对称的点 */
@@ -367,8 +367,8 @@ Real CuboidJointNormalRelationPredictor::get_pair_potential(
 		const CuboidJointNormalRelations *relation_21 = relations_[_label_index_2][_label_index_1];
 		if (relation_21)
 		{
-			Real potential_21 = relation_12->compute_error(_cuboid_1, _cuboid_2, _transformation_1, _transformation_2);
-			CHECK_NUMERICAL_ERROR(__FUNCTION__, potential_12, potential_21);
+			Real potential_21 = relation_12->compute_error(_cuboid_1->getOBB(), _cuboid_2->getOBB(), _transformation_1, _transformation_2);
+			Utils::CHECK_NUMERICAL_ERROR(__FUNCTION__, potential_12, potential_21);
 		}
 #endif
 	}
@@ -522,8 +522,8 @@ Real CuboidJointNormalRelationPredictor::get_pair_quadratic_form(
 
 
 #ifdef DEBUG_TEST
-	Real same_potential = relation_12->compute_error(_cuboid_1, _cuboid_2, &transformation_1, &transformation_2);
-	CHECK_NUMERICAL_ERROR(__FUNCTION__, potential, same_potential);
+	Real same_potential = relation_12->compute_error(_cuboid_1->getOBB(), _cuboid_2->getOBB(), &transformation_1, &transformation_2);
+	Utils::CHECK_NUMERICAL_ERROR(__FUNCTION__, potential, same_potential);
 #endif
 
 	//Eigen::IOFormat csv_format(Eigen::StreamPrecision, 0, ",");
@@ -662,8 +662,8 @@ Real CuboidJointNormalRelationPredictor::get_pair_conditional_quadratic_form(
 
 
 #ifdef DEBUG_TEST
-	Real same_potential = relation_12->compute_conditional_error(_cuboid_1, _cuboid_2, &transformation_1);
-	CHECK_NUMERICAL_ERROR(__FUNCTION__, potential, same_potential);
+	Real same_potential = relation_12->compute_conditional_error(_cuboid_1->getOBB(), _cuboid_2->getOBB(), &transformation_1);
+	Utils::CHECK_NUMERICAL_ERROR(__FUNCTION__, potential, same_potential);
 #endif
 
 	//Eigen::IOFormat csv_format(Eigen::StreamPrecision, 0, ",");
@@ -869,8 +869,8 @@ Real CuboidCondNormalRelationPredictor::get_pair_quadratic_form(
 
 
 #ifdef DEBUG_TEST
-	Real same_potential = relation_12->compute_error(_cuboid_1, _cuboid_2, &transformation_1, &transformation_2);
-	CHECK_NUMERICAL_ERROR(__FUNCTION__, potential, same_potential);
+	Real same_potential = relation_12->compute_error(_cuboid_1->getOBB(), _cuboid_2->getOBB(), &transformation_1, &transformation_2);
+	Utils::CHECK_NUMERICAL_ERROR(__FUNCTION__, potential, same_potential);
 #endif
 
 	//std::stringstream filename_sstr;
