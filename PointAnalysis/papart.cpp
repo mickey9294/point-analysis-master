@@ -639,11 +639,11 @@ void PAPart::update_axes_center_size_corner_points()
 
 			bits[axis_index] = true;
 			unsigned int pos_corner_index = static_cast<unsigned int>(bits.to_ulong());
-			Eigen::Vector3d pos_corner_point = m_obb->getVertex(pos_corner_index);
+			Eigen::Vector3d pos_corner_point = m_obb->getVertex(pos_corner_index).cast<double>();
 
 			bits[axis_index] = false;
 			unsigned int neg_corner_index = static_cast<unsigned int>(bits.to_ulong());
-			Eigen::Vector3d neg_corner_point = m_obb->getVertex(neg_corner_index);
+			Eigen::Vector3d neg_corner_point = m_obb->getVertex(neg_corner_index).cast<double>();
 
 			Eigen::Vector3d direction = pos_corner_point - neg_corner_point;
 			sum_length += direction.norm();
