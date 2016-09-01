@@ -44,7 +44,7 @@ public:
 	int sampleCount() const;
 	int faceCount();
 	Eigen::Vector3f getCentroid() const;
-	double getRadius() const;
+	double getRadius() const { return m_radius; }
 	void draw(int scale);
 	void drawSamples(int scale);
 	void samplePoints();

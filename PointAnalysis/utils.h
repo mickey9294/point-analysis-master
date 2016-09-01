@@ -59,13 +59,6 @@ typedef CGAL::Sequential_tag Concurrency_tag;
 typedef CGAL::Polyhedron_3<Kernel> Polyhedron;
 typedef Polyhedron::Halfedge_around_facet_const_circulator Halfedge_facet_circulator;
 
-// types used for downsampling and upsampling
-typedef CGAL::Simple_cartesian<double> Simple_Cartesian_Kernel;
-typedef Simple_Cartesian_Kernel::Point_3 SC_Point;
-typedef Simple_Cartesian_Kernel::Vector_3 SC_Vector;
-// Point with normal vector stored in a std::pair.
-typedef std::pair<SC_Point, SC_Vector> SC_PointVectorPair;
-
 enum PHASE{
 	TRAINING,
 	TESTING
@@ -105,9 +98,9 @@ public:
 	static Eigen::Matrix3f skew_symmetric_cross(Eigen::Vector3f v);
 	static void CHECK_NUMERICAL_ERROR(const std::string& _desc, const double& _error);
 	static void CHECK_NUMERICAL_ERROR(const std::string & _desc, const double & _value1, const double & _value_2);
-	static int downSample(std::vector<Eigen::Vector3f> input, std::vector<Eigen::Vector3f> & output, int num_of_samples);
-	static int upSample(std::vector<Eigen::Vector3f> input, std::vector<Eigen::Vector3f> input_normals, 
-		std::vector<Eigen::Vector3f> & output, std::vector<Eigen::Vector3f> & output_normals, int num_of_samples);
+	//static int downSample(std::vector<Eigen::Vector3f> input, std::vector<Eigen::Vector3f> & output, int num_of_samples);
+	/*static int upSample(std::vector<Eigen::Vector3f> input, std::vector<Eigen::Vector3f> input_normals, 
+		std::vector<Eigen::Vector3f> & output, std::vector<Eigen::Vector3f> & output_normals, int num_of_samples);*/
 	static Eigen::MatrixXd regularized_inverse(const Eigen::MatrixXd& _mat);
 
 private:

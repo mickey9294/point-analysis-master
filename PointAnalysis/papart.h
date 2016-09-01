@@ -12,10 +12,26 @@
 #include <fstream>
 #include <cmath>
 #include "obb.h"
-#include "utils.h"
+//#include "utils.h"
 #include "ICP.h"
 #include "SamplePoint.h"
 #include "constants.h"
+#include <CGAL/Simple_cartesian.h>
+#include <CGAL/wlop_simplify_and_regularize_point_set.h>
+#include <CGAL/edge_aware_upsample_point_set.h>
+
+// types
+typedef CGAL::Simple_cartesian<double> SC_Kernel;
+typedef SC_Kernel::Point_3 SC_Point;
+typedef SC_Kernel::Vector_3 SC_Vector;
+// Point with normal vector stored in a std::pair.
+typedef std::pair<SC_Point, SC_Vector> SC_PointVectorPair;
+// Concurrency
+//#ifdef CGAL_LINKED_WITH_TBB
+//typedef CGAL::Parallel_tag Concurrency_tag;
+//#else
+//typedef CGAL::Sequential_tag Concurrency_tag;
+//#endif
 
 class PAPart
 {
@@ -102,6 +118,9 @@ private:
 	OBB *m_obb;
 	std::vector<int> m_sample_to_cuboid_surface_correspondence;
 	std::vector<int> m_cuboid_surface_to_sample_correspondence;
+
+	void upsample();
+	void downsample();
 };
 
 Q_DECLARE_METATYPE(PAPart)

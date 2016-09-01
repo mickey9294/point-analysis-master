@@ -373,40 +373,15 @@ void PAPart::setVerticesNormals(std::vector<Vector3f> vertices_normals)
 
 void PAPart::samplePoints()
 {
-	m_samples.clear();
-
-	std::vector<Eigen::Vector3f> output;
+	num_of_samples = NUM_OF_SAMPLES;
 
 	if (m_vertices.size() > NUM_OF_SAMPLES)  /* If the points in the part is greater than 1000, than do downsampling */
 	{
-		num_of_samples = Utils::downSample(m_vertices, output, NUM_OF_SAMPLES);
-
-		m_samples.resize(num_of_samples);
-
-		int sample_idx = 0;
-		for (std::vector<Eigen::Vector3f>::iterator sample_it = output.begin(); sample_it != output.end(); ++sample_it)
-		{
-			SamplePoint sample(*sample_it);
-			m_samples[sample_idx++] = sample;
-		}
+		downsample();
 	}
 	else   /* If the points in the part is less than 1000, than do upsampling */
 	{
-		if (m_vertices.size() > m_vertices_normals.size())
-			m_vertices_normals.resize(m_vertices.size());
-		
-		std::vector<Eigen::Vector3f> output_normals;
-
-		num_of_samples = Utils::upSample(m_vertices, m_vertices_normals, output, output_normals, NUM_OF_SAMPLES);
-
-		m_samples.resize(num_of_samples);
-
-		for (int sample_idx = 0; sample_idx < num_of_samples; ++sample_idx)
-		{
-			Eigen::Vector3f sample = output[sample_idx];
-			Eigen::Vector3f norm = output_normals[sample_idx];
-			m_samples[sample_idx] = SamplePoint(sample, norm);
-		}
+		upsample();
 	}
 
 	if (m_obb != NULL)
@@ -780,4 +755,93 @@ int PAPart::num_cuboid_surface_points()
 {
 	assert(m_obb);
 	return m_obb->sampleCount();
+}
+
+void PAPart::upsample()
+{
+	std::vector<SC_PointVectorPair> points;
+
+	for (int i = 0; i < m_vertices.size(); i++)
+	{
+		Eigen::Vector3f p = m_vertices[i];
+		Eigen::Vector3f n = m_vertices_normals[i];
+
+		SC_Point point(p.x(), p.y(), p.z());
+		SC_Vector norm(n.x(), n.y(), n.z());
+		SC_PointVectorPair pair(point, norm);
+		points.push_back(pair);
+	}
+
+	//Algorithm parameters
+	const double sharpness_angle = 25;   // control sharpness of the result.
+	const double edge_sensitivity = 0;    // higher values will sample more points near the edges          
+	const double neighbor_radius = 0;  // initial size of neighborhood.
+	const std::size_t number_of_output_points = num_of_samples;
+	//Run algorithm 
+	CGAL::edge_aware_upsample_point_set<Concurrency_tag>(
+		points.begin(),
+		points.end(),
+		std::back_inserter(points),
+		CGAL::First_of_pair_property_map<SC_PointVectorPair>(),
+		CGAL::Second_of_pair_property_map<SC_PointVectorPair>(),
+		sharpness_angle,
+		edge_sensitivity,
+		neighbor_radius,
+		number_of_output_points);
+
+	m_samples.clear();
+	m_samples.resize(points.size());
+
+	int idx = 0;
+	for (std::vector<SC_PointVectorPair>::iterator it = points.begin(); it != points.end() && idx < num_of_samples; ++it)
+	{
+		SC_Point p = it->first;
+		SC_Vector n = it->second;
+
+		SamplePoint sample(p.x(), p.y(), p.z(), n.x(), n.y(), n.z());
+		m_samples[idx++] = sample;
+	}
+
+	num_of_samples = m_samples.size();
+}
+
+void PAPart::downsample()
+{
+	std::vector<SC_Point> points;
+
+	for (int i = 0; i < m_vertices.size(); i++)
+	{
+		Eigen::Vector3f p = m_vertices[i];
+		Eigen::Vector3f n = m_vertices_normals[i];
+
+		SC_Point point(p.x(), p.y(), p.z());
+		points.push_back(point);
+	}
+
+	std::vector<SC_Point> output;
+
+	/* Parameters */
+	const double retain_percentage = (double)num_of_samples / m_vertices.size() * 100.0;
+	const double neighbor_radius = -0.5;
+
+	CGAL::wlop_simplify_and_regularize_point_set
+		<Concurrency_tag>
+		(points.begin(),
+		points.end(),
+		std::back_inserter(output),
+		retain_percentage,
+		neighbor_radius
+		);
+
+	m_samples.clear();
+	m_samples.resize(output.size());
+
+	int idx = 0;
+	for (std::vector<SC_Point>::iterator it = output.begin(); it != output.end() && idx < num_of_samples; ++it)
+	{
+		SamplePoint sample(it->x(), it->y(), it->z());
+		m_samples[idx++] = sample;
+	}
+
+	num_of_samples = m_samples.size();
 }

@@ -4,9 +4,11 @@
 PartsStructure::PartsStructure(const Model *model)
 	: m_model(model), m_null_label(-1)
 {
-	assert(model);
-	m_radius = model->getRadius();
-	m_points_assignments.resize(model->vertexCount());
+	if (m_model != NULL)
+	{
+		m_radius = model->getRadius();
+		m_points_assignments.resize(model->vertexCount());
+	}
 }
 
 PartsStructure::PartsStructure(const PartsStructure & other)
@@ -439,6 +441,7 @@ void PartsStructure::add_part(int label, PAPart * part)
 
 void PartsStructure::set_model(Model * model)
 {
+	assert(model);
 	m_model = model;
 	m_radius = model->getRadius();
 	m_points_assignments.resize(model->vertexCount());
