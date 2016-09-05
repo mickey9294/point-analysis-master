@@ -3,11 +3,11 @@
 using namespace std;
 using namespace Eigen;
 
-float EnergyFunctions::w1 = 25;
+float EnergyFunctions::w1 = 0.0025;
 float EnergyFunctions::w2 = 1.0;
 float EnergyFunctions::w3 = 1.0;
-float EnergyFunctions::w4 = 1.0;
-float EnergyFunctions::w5 = 100.0;
+float EnergyFunctions::w4 = 1.0e-4;
+float EnergyFunctions::w5 = 1e2;
 
 EnergyFunctions::EnergyFunctions(string modelClassName) : m_modelClassName(modelClassName), m_null_label(10)
 {
@@ -136,7 +136,7 @@ void EnergyFunctions::setOBBs(QMap<int, OBB *> obbs)
 
 	/* Set OBBs and generate kd-trees for each part */
 	m_kdtrees.clear();  /* Clear the previous used kd-trees */
-	int tree_idx = 0;
+
 	for (QMap<int, OBB *>::iterator obb_it = obbs.begin(); obb_it != obbs.end(); ++obb_it)
 	{
 		int label = obb_it.key();
@@ -290,7 +290,7 @@ double EnergyFunctions::Epair(PAPartRelation relation, int cluster_no_1, int clu
 	if (cluster_no_1 == cluster_no_2)
 	{
 		if (label1 != m_null_label && label2 != m_null_label)
-			return  1e8;
+			return  1e10;
 		else
 			return 0;
 	}

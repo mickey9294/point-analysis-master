@@ -12,6 +12,7 @@ SamplePoint::SamplePoint()
 	m_normal.setZero();
 	m_visibility = 1.0;
 	m_face_index = -1;
+	m_corner_weights.fill(0);
 }
 
 SamplePoint::SamplePoint(const SamplePoint &sample)
@@ -45,6 +46,7 @@ SamplePoint::SamplePoint(Vector3f vertex)
 	m_normal.setZero();
 	m_visibility = 1.0;
 	m_face_index = -1;
+	m_corner_weights.fill(0);
 }
 
 SamplePoint::SamplePoint(float x, float y, float z)
@@ -55,6 +57,7 @@ SamplePoint::SamplePoint(float x, float y, float z)
 	m_normal.setZero();
 	m_visibility = 1.0;
 	m_face_index = -1;
+	m_corner_weights.fill(0);
 }
 
 SamplePoint::SamplePoint(float x, float y, float z, float nx, float ny, float nz)
@@ -67,6 +70,34 @@ SamplePoint::SamplePoint(float x, float y, float z, float nx, float ny, float nz
 	m_normal[2] = nz;
 	m_face_index = -1;
 	m_visibility = 1.0;
+	m_corner_weights.fill(0);
+}
+
+SamplePoint::SamplePoint(std::string str)
+{
+	QString qstr = QString::fromStdString(str);
+	QStringList list = qstr.split(' ');
+
+	int pos = 0;
+	/* Load the coordinates */
+	for (int i = 0; i < 3; i++)
+		m_vertex[i] = list[i].toFloat();
+	pos += 3;
+
+	/* Load the normal */
+	for (int i = 0; i < 3; i++)
+		m_normal[i] = list[pos + i].toFloat();
+	pos += 3;
+
+	/* Load visibility */
+	m_visibility = list[pos++].toFloat();
+
+	/* Load face index */
+	m_face_index = list[pos++].toFloat();
+
+	/* Load corner weights */
+	for (int i = 0; i < 8; i++)
+		m_corner_weights[i] = list[pos + i].toFloat();
 }
 
 float SamplePoint::x() const
@@ -135,7 +166,7 @@ void SamplePoint::setVisibility(double visibility)
 
 float & SamplePoint::operator[](int index)
 {
-	assert(index > 5);
+	assert(index <= 5);
 
 	switch (index)
 	{
@@ -167,4 +198,27 @@ void SamplePoint::setCornerWeights(std::array<Real, 8> corner_weights)
 int SamplePoint::getFaceIndex() const
 {
 	return m_face_index;
+}
+
+std::string SamplePoint::toString()
+{
+	std::string str;
+	/* Append the coordinates */
+	str += std::to_string(m_vertex.x()) + " " + std::to_string(m_vertex.y()) + " " + std::to_string(m_vertex.z()) + " ";
+
+	/* Append the normal */
+	str += std::to_string(m_normal.x()) + " " + std::to_string(m_normal.y()) + " " + std::to_string(m_normal.z()) + " ";
+
+	/* Append visibility */
+	str += std::to_string(m_visibility) + " ";
+
+	/* Append face index */
+	str += std::to_string(m_face_index) + " ";
+
+	/* Append corner weights */
+	for (int i = 0; i < 7; i++)
+		str += std::to_string(m_corner_weights[i]) + " ";
+	str += std::to_string(m_corner_weights[7]);
+
+	return str;
 }

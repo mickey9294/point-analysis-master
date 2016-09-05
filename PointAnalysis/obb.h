@@ -30,6 +30,7 @@ public:
 	OBB(QObject *parent = 0);
 	OBB(const OBB &obb);
 	OBB(const OBB * obb);
+	OBB(std::ifstream & in);
 	OBB(Eigen::Vector3f xAxis, Eigen::Vector3f yAxis, Eigen::Vector3f zAxis, Eigen::Vector3f centroid, 
 		double xLength, double yLength, double zLength, int label, QObject *parent = 0);
 	~OBB();
@@ -88,7 +89,7 @@ public:
 	void rotate(float angle, float x, float y, float z, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
 	void rotate(Eigen::Matrix3d rotate_mat, Eigen::Vector3d translate_vec, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
 	void transform(Eigen::Matrix4f transform_mat, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
-	void transform(Eigen::Matrix3d rotate_mat, Eigen::Vector3d trans_vec, std::vector<Eigen::Vector3f> cloud);
+	void transform(Eigen::Matrix3d rotate_mat, Eigen::Vector3d trans_vec, const std::vector<Eigen::Vector3f> &cloud);
 	QVector<SamplePoint>::iterator samples_begin();
 	QVector<SamplePoint>::iterator samples_end();
 	QVector<Eigen::Vector3f>::iterator vertices_begin();
@@ -96,6 +97,9 @@ public:
 	void normalize(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);  /* used to adjust the obb to have the consensus orientation in training process */
 	double getFaceArea(int face_index);
 	void updateCorners();
+	void writeToFile(std::ofstream &  out);
+
+	void updateWithNewPoints(const std::vector<Eigen::Vector3f> &points);
 
 private:
 	Eigen::Vector3f x_axis;

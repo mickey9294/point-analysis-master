@@ -47,7 +47,7 @@ const string label_info_path = "../data/dataset_name/";
 const string label_info_filename = "regions.txt";
 const string label_symmetry_info_filename = "regions_symmetry.txt";
 const string symmetry_group_info_filename = "symmetry_groups.txt";
-const string training_dir = "../training";
+const string training_dir = "../data/training";
 const string transformation_filename_prefix = "transformation_";
 const string feature_filename_prefix = "feature_";
 

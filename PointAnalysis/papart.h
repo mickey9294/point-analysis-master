@@ -96,6 +96,7 @@ public:
 	std::vector<SamplePoint>::iterator samples_end();
 
 	void updateFromOBB();
+	void updateOBB();
 	void update_axes_center_size_corner_points();
 	void update_center_size_corner_points();
 

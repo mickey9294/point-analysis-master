@@ -5,7 +5,7 @@ using namespace std;
 PointSegmentationThread::PointSegmentationThread(PartsStructure *parts_structure, QVector<int> label_names,  QObject *parent)
 	: QThread(parent)
 {
-	cout << "PointSegmentationThread is created." << endl;
+	std::cout << "PointSegmentationThread is created." << std::endl;
 
 	m_parts_structure = parts_structure;
 	m_label_names = label_names;
@@ -18,9 +18,9 @@ PointSegmentationThread::~PointSegmentationThread()
 
 void PointSegmentationThread::run()
 {
-	cout << "Start segmenting..." << endl;
+	std::cout << "Start segmenting..." << std::endl;
 	int changed_count = segment_sample_points();
-	cout << "Segmentation done. The labels of " << changed_count << " points have changed." << endl;
+	std::cout << "Segmentation done. The labels of " << changed_count << " points have changed." << std::endl;
 }
 
 int PointSegmentationThread::segment_sample_points()
@@ -37,8 +37,9 @@ int PointSegmentationThread::segment_sample_points()
 	std::vector<PAPart *> all_cuboids = m_parts_structure->get_all_parts();
 	int num_cuboids = all_cuboids.size();
 
-	std::vector<ANNpointArray> cuboid_ann_points(num_cuboids);
-	std::vector<ANNkd_tree*> cuboid_ann_kd_tree(num_cuboids);
+	//std::vector<ANNpointArray> cuboid_ann_points(num_cuboids);
+	//std::vector<ANNkd_tree*> cuboid_ann_kd_tree(num_cuboids);
+	std::vector<pcl::KdTreeFLANN<pcl::PointXYZ>> cuboid_flann_kd_tree(num_cuboids);
 
 	for (unsigned int cuboid_index = 0; cuboid_index < num_cuboids; ++cuboid_index)
 	{
@@ -46,25 +47,37 @@ int PointSegmentationThread::segment_sample_points()
 		OBB * cuboid_obb = cuboid->getOBB();
 
 		unsigned int num_cuboid_surface_points = cuboid->num_cuboid_surface_points();
-		Eigen::MatrixXd cuboid_surface_points(3, num_cuboid_surface_points);
+		//Eigen::MatrixXd cuboid_surface_points(3, num_cuboid_surface_points);
 		assert(num_cuboid_surface_points > 0);
+
+		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_for_flann(new pcl::PointCloud<pcl::PointXYZ>);
+		cloud_for_flann->width = num_cuboid_surface_points;
+		cloud_for_flann->height = 1;
+		cloud_for_flann->points.resize(cloud_for_flann->width * cloud_for_flann->height);
 
 		for (unsigned int point_index = 0; point_index < num_cuboid_surface_points; ++point_index)
 		{
-			for (unsigned int i = 0; i < 3; ++i)
-				cuboid_surface_points.col(point_index)(i) =
-				cuboid_obb->getSample(point_index)[i];
+			//for (unsigned int i = 0; i < 3; ++i)
+			//	cuboid_surface_points.col(point_index)(i) =
+			//	cuboid_obb->getSample(point_index)[i];
+
+			cloud_for_flann->points[point_index].x = cuboid_obb->getSample(point_index).x();
+			cloud_for_flann->points[point_index].y = cuboid_obb->getSample(point_index).y();
+			cloud_for_flann->points[point_index].z = cuboid_obb->getSample(point_index).z();
 		}
 
-		cuboid_ann_kd_tree[cuboid_index] = ICP::create_kd_tree(cuboid_surface_points,
-			cuboid_ann_points[cuboid_index]);
-		assert(cuboid_ann_points[cuboid_index]);
-		assert(cuboid_ann_kd_tree[cuboid_index]);
+		//cuboid_ann_kd_tree[cuboid_index] = ICP::create_kd_tree(cuboid_surface_points,
+		//	cuboid_ann_points[cuboid_index]);
+
+		cuboid_flann_kd_tree[cuboid_index].setInputCloud(cloud_for_flann);
+
+		//assert(cuboid_ann_points[cuboid_index]);
+		//assert(cuboid_ann_kd_tree[cuboid_index]);
 	}
 
-	ANNpoint q = annAllocPt(3);
-	ANNidxArray nn_idx = new ANNidx[1];
-	ANNdistArray dd = new ANNdist[1];
+	//ANNpoint q = annAllocPt(3);
+	//ANNidxArray nn_idx = new ANNidx[1];
+	//ANNdistArray dd = new ANNdist[1];
 
 	// Single potential.
 	// NOTE: The last column is for the null cuboid.
@@ -73,27 +86,41 @@ int PointSegmentationThread::segment_sample_points()
 	for (unsigned int point_index = 0; point_index < num_parts_points; ++point_index)
 	{
 		PAPoint part_point = m_parts_structure->get_point(point_index);
-		for (unsigned int i = 0; i < 3; ++i)
-			q[i] = part_point.getPosition()[i];
+		//for (unsigned int i = 0; i < 3; ++i)
+		//	q[i] = part_point.getPosition()[i];
+
+		pcl::PointXYZ searchPoint;
+		searchPoint.x = part_point.getPosition().x();
+		searchPoint.y = part_point.getPosition().y();
+		searchPoint.z = part_point.getPosition().z();
 
 		for (unsigned int cuboid_index = 0; cuboid_index < num_cuboids; ++cuboid_index)
 		{
 			PAPart *cuboid = all_cuboids[cuboid_index];
 			unsigned int label_index = cuboid->getLabel();
 
-			assert(cuboid_ann_kd_tree[cuboid_index]);
-			cuboid_ann_kd_tree[cuboid_index]->annkSearch(q, 1, nn_idx, dd);
-			double squared_distance = dd[0];
-			assert(squared_distance >= 0);
+			//assert(cuboid_ann_kd_tree[cuboid_index]);
+			//cuboid_ann_kd_tree[cuboid_index]->annkSearch(q, 1, nn_idx, dd);
+			//double squared_distance = dd[0];
+			//assert(squared_distance >= 0);
+
+			std::vector<int> pointIdxNKNSearch(1);
+			std::vector<float> pointNKNSquaredDistance(1);
+			cuboid_flann_kd_tree[cuboid_index].nearestKSearch(searchPoint, 1, pointIdxNKNSearch, pointNKNSquaredDistance);
+			double flann_squared_distance = pointNKNSquaredDistance.front();
+			assert(flann_squared_distance >= 0);
 
 			double label_probability = part_point.getClassConfidence(label_index);
+			if (std::fabs(label_probability) < 1.0e-8)
+				label_probability = 1.0e-8;
 
 			//
 			if (disable_per_point_classifier_terms)
 				label_probability = 1.0;
 			//
 
-			double energy = squared_distance - lambda * std::log(label_probability);
+			//double energy = squared_distance - lambda * std::log(label_probability);
+			double energy = flann_squared_distance - lambda * std::log(label_probability);
 
 			//if (cuboid->is_group_cuboid())
 			//	energy = FLAGS_param_max_potential;
@@ -107,15 +134,15 @@ int PointSegmentationThread::segment_sample_points()
 	}
 
 	// Deallocate ANN.
-	annDeallocPt(q);
-	delete[] nn_idx;
-	delete[] dd;
+	//annDeallocPt(q);
+	//delete[] nn_idx;
+	//delete[] dd;
 
-	for (unsigned int cuboid_index = 0; cuboid_index < num_cuboids; ++cuboid_index)
-	{
-		annDeallocPts(cuboid_ann_points[cuboid_index]);
-		delete cuboid_ann_kd_tree[cuboid_index];
-	}
+	//for (unsigned int cuboid_index = 0; cuboid_index < num_cuboids; ++cuboid_index)
+	//{
+	//	annDeallocPts(cuboid_ann_points[cuboid_index]);
+	//	delete cuboid_ann_kd_tree[cuboid_index];
+	//}
 
 
 	// Construct a KD-tree.
@@ -127,19 +154,31 @@ int PointSegmentationThread::segment_sample_points()
 			m_parts_structure->get_point(point_index).getPosition()[i];
 	}
 
-	const int dim = 3;
-	ANNpointArray sample_ann_points = annAllocPts(num_parts_points, dim);	// allocate data points
+	//const int dim = 3;
+	//ANNpointArray sample_ann_points = annAllocPts(num_parts_points, dim);	// allocate data points
+
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_for_flann(new pcl::PointCloud<pcl::PointXYZ>);
+	cloud_for_flann->width = num_parts_points;
+	cloud_for_flann->height = 1;
+	cloud_for_flann->points.resize(cloud_for_flann->width * cloud_for_flann->height);
 
 	for (SamplePointIndex point_index = 0; point_index < num_parts_points; ++point_index)
 	{
-		for (int i = 0; i < dim; i++)
-			sample_ann_points[point_index][i] = parts_points.col(point_index)[i];
+		//for (int i = 0; i < dim; i++)
+			//sample_ann_points[point_index][i] = parts_points.col(point_index)[i];
+
+		cloud_for_flann->points[point_index].x = parts_points.col(point_index)[0];
+		cloud_for_flann->points[point_index].y = parts_points.col(point_index)[1];
+		cloud_for_flann->points[point_index].z = parts_points.col(point_index)[2];
 	}
 
-	ANNkd_tree *sample_kd_tree = new ANNkd_tree(sample_ann_points, num_parts_points, dim);
-	q = annAllocPt(dim);
-	nn_idx = new ANNidx[num_neighbors];
-	dd = new ANNdist[num_neighbors];
+	//ANNkd_tree *sample_kd_tree = new ANNkd_tree(sample_ann_points, num_parts_points, dim);
+	//q = annAllocPt(dim);
+	//nn_idx = new ANNidx[num_neighbors];
+	//dd = new ANNdist[num_neighbors];
+
+	pcl::KdTreeFLANN<pcl::PointXYZ> sample_flann_kd_tree;
+	sample_flann_kd_tree.setInputCloud(cloud_for_flann);
 
 	// Pair potentials.
 	std::vector< Eigen::Triplet<double> > pair_potentials;
@@ -148,43 +187,59 @@ int PointSegmentationThread::segment_sample_points()
 	{
 		pair_potentials.reserve(num_parts_points * num_neighbors);
 
+		std::vector<int> pointIdxRadiusSearch;
+		std::vector<float> pointRadiusSquaredDistantce;
+
 		for (unsigned int point_index = 0; point_index < num_parts_points; ++point_index)
 		{
-			for (unsigned int i = 0; i < 3; ++i)
-				q[i] = parts_points.col(point_index)[i];
+			//for (unsigned int i = 0; i < 3; ++i)
+			//	q[i] = parts_points.col(point_index)[i];
 
-			int num_searched_neighbors = sample_kd_tree->annkFRSearch(q,
-				squared_neighbor_distance, num_neighbors, nn_idx, dd);
+			pcl::PointXYZ searchPoint;
+			searchPoint.x = parts_points.col(point_index)[0];
+			searchPoint.y = parts_points.col(point_index)[1];
+			searchPoint.z = parts_points.col(point_index)[2];
 
-			for (int i = 0; i < std::min(num_neighbors, num_searched_neighbors); i++)
+			//int num_searched_neighbors = sample_kd_tree->annkFRSearch(q,
+			//	squared_neighbor_distance, num_neighbors, nn_idx, dd);
+
+			sample_flann_kd_tree.radiusSearch(searchPoint, std::sqrt(squared_neighbor_distance), pointIdxRadiusSearch, pointRadiusSquaredDistantce, num_neighbors);
+			int num_flann_searched_neighbors = pointIdxRadiusSearch.size();
+			int max_neighbors = std::min(num_neighbors, num_flann_searched_neighbors);
+
+			for (int i = 0; i < std::min(num_neighbors, num_flann_searched_neighbors); i++)
 			{
-				unsigned int n_point_index = (int)nn_idx[i];
+				//unsigned int n_point_index = (int)nn_idx[i];
+				int flann_n_point_index = pointIdxRadiusSearch[i];
 
 				// NOTE: Avoid symmetric pairs.
-				if (n_point_index <= point_index)
+				if (flann_n_point_index <= point_index)
 					continue;
 
 				/* Make sure that the assignments of two point are different */
-				if (m_parts_structure->get_point_assignment(n_point_index) == m_parts_structure->get_point_assignment(point_index))
+				if (m_parts_structure->get_point_assignment(flann_n_point_index) == m_parts_structure->get_point_assignment(point_index))
 					continue;
 
 				//
-				double distance = (std::sqrt(squared_neighbor_distance) - std::sqrt(dd[0]));
-				assert(distance >= 0);
+				//double nd = dd[0];
+				//double distance = (std::sqrt(squared_neighbor_distance) - std::sqrt(dd[0]));
+				//assert(distance >= 0);
 				//
 
-				double energy = distance * distance;
-				pair_potentials.push_back(Eigen::Triplet<double>(point_index, n_point_index, energy));
+				double flann_distance = (std::sqrt(squared_neighbor_distance) - std::sqrt(pointRadiusSquaredDistantce[i])); 
+
+				double energy = flann_distance * flann_distance;
+				pair_potentials.push_back(Eigen::Triplet<double>(point_index, flann_n_point_index, energy));
 			}
 		}
 	}
 
-	delete[] nn_idx;
-	delete[] dd;
-	annDeallocPt(q);
-	annDeallocPts(sample_ann_points);
-	delete sample_kd_tree;
-	annClose();
+	//delete[] nn_idx;
+	//delete[] dd;
+	//annDeallocPt(q);
+	//annDeallocPts(sample_ann_points);
+	//delete sample_kd_tree;
+	//annClose();
 
 	// MRF.
 	MRFEnergy<TypePotts>* mrf_trw;
@@ -242,31 +297,31 @@ int PointSegmentationThread::segment_sample_points()
 	options_bp.m_printMinIter = 0;
 
 	//////////////////////// BP algorithm ////////////////////////
-	cout << "Execute BP algorithm." << endl;
+	std::cout << "Execute BP algorithm." << std::endl;
 	mrf_bp->ZeroMessages();
 	mrf_bp->AddRandomMessages(0, 0.0, 1.0);
 	mrf_bp->Minimize_BP(options_bp, energy_bp);
-	cout << "done." << endl;
+	std::cout << "done." << std::endl;
 
 	/////////////////////// TRW-S algorithm //////////////////////
-	cout << "Execute TRW_S algorithm." << endl;
+	std::cout << "Execute TRW_S algorithm." << std::endl;
 	mrf_trw->ZeroMessages();
 	mrf_trw->AddRandomMessages(0, 0.0, 1.0);
 	mrf_trw->Minimize_TRW_S(options_trw, lower_bound, energy);
-	cout << "done." << endl;
+	std::cout << "done." << std::endl;
 
 	/* Take the lower energy as the result */
 	MRFEnergy<TypePotts>* mrf_optimized = NULL;
 	MRFEnergy<TypePotts>::NodeId* nodes_optimized = NULL;
 	if (energy < energy_bp)
 	{
-		cout << "TRW_S algorithm is more optimized. Energy = " << energy << endl;
+		std::cout << "TRW_S algorithm is more optimized. Energy = " << energy << std::endl;
 		mrf_optimized = mrf_trw;
 		nodes_optimized = nodes_trw;
 	}
 	else
 	{
-		cout << "BP algorithm is more optimized. Energy = " << energy_bp << endl;
+		std::cout << "BP algorithm is more optimized. Energy = " << energy_bp << std::endl;
 		mrf_optimized = mrf_bp;
 		nodes_optimized = nodes_bp;
 	}
@@ -281,12 +336,20 @@ int PointSegmentationThread::segment_sample_points()
 	assert(m_parts_structure->num_of_points() == output_labels.size());
 	for (int i = 0; i < m_parts_structure->num_of_points(); i++)
 	{
-		if (m_parts_structure->get_point_assignment(i) != output_labels[i])
+		int assignment_index = output_labels[i];
+		int new_assignment;
+		if (assignment_index >= 0 && assignment_index < num_cuboids)
+			new_assignment = m_parts_structure->get_part(assignment_index)->getLabel();
+		else
+			new_assignment = m_parts_structure->m_null_label;
+
+		if (m_parts_structure->get_point_assignment(i) != new_assignment)
 			changed_count++;
 	}
 
 	QVector<int> new_point_assignments = QVector<int>::fromStdVector(output_labels);
-	emit pointSegmentationDone(new_point_assignments);
+	//emit pointSegmentationDone(new_point_assignments);
+	QVector<int> old_point_assignments = QVector<int>::fromStdVector(m_parts_structure->m_points_assignments);
 
 	/* Reassign points to the parts */
 	std::vector<PAPart *> all_parts = m_parts_structure->get_all_parts();
@@ -302,10 +365,10 @@ int PointSegmentationThread::segment_sample_points()
 		PAPoint point = m_parts_structure->get_point(point_index);
 		point.setLabel(point_assignment);
 
-		if (point_assignment >= 0 && point_assignment != m_parts_structure->m_null_label)
+		if (point_assignment >= 0 && point_assignment < num_cuboids)
 		{
 			all_parts[point_assignment]->addVertex(point_index, point.getPosition(), point.getNormal());
-			m_parts_structure->m_points_assignments[point_index] = point_assignment;
+			m_parts_structure->m_points_assignments[point_index] = all_parts[point_assignment]->getLabel();
 		}
 		else
 			m_parts_structure->m_points_assignments[point_index] = m_parts_structure->m_null_label;
@@ -314,9 +377,21 @@ int PointSegmentationThread::segment_sample_points()
 	/* Update the samples of the parts and the samples correspondences */
 	for (std::vector<PAPart *>::iterator part_it = all_parts.begin(); part_it != all_parts.end(); ++part_it)
 	{
+		(*part_it)->updateOBB();
 		(*part_it)->samplePoints();
 		(*part_it)->update_sample_correspondences();
 	}
+
+	QVector<int> returned_point_assignments = QVector<int>::fromStdVector(m_parts_structure->m_points_assignments);
+
+	std::ofstream ass_out("../data/assignments.csv");
+	for (int i = 0; i < returned_point_assignments.size(); i++)
+	{
+		ass_out << old_point_assignments[i] << "," << new_point_assignments[i] << "," << returned_point_assignments[i] << endl;
+	}
+	ass_out.close();
+
+	emit pointSegmentationDone(returned_point_assignments);
 
 	for (std::list<TypeGeneral::REAL *>::iterator it = energy_term_list.end();
 		it != energy_term_list.end(); ++it)

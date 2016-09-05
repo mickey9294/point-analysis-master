@@ -14,7 +14,7 @@ class PAPartRelation
 public:
 	PAPartRelation();
 	PAPartRelation(const PAPartRelation & relation);
-	PAPartRelation(PAPart part1, PAPart part2);
+	PAPartRelation(const PAPart &part1, const PAPart &part2);
 	~PAPartRelation();
 
 	QPair<int, int> getLabelPair();

@@ -3,6 +3,8 @@
 
 PAPoint::PAPoint() : part_label(NULL_LABEL)
 {
+	m_position.setZero();
+	m_normal.setZero();
 }
 
 PAPoint::PAPoint(double feats[POINT_FEATURES_DIMEN]) : part_label(NULL_LABEL)
@@ -13,6 +15,8 @@ PAPoint::PAPoint(double feats[POINT_FEATURES_DIMEN]) : part_label(NULL_LABEL)
 PAPoint::PAPoint(QVector<double> feats) : part_label(NULL_LABEL)
 {
 	memcpy(features, feats.data(), POINT_FEATURES_DIMEN * sizeof(double));
+	m_position.setZero();
+	m_normal.setZero();
 }
 
 PAPoint::PAPoint(const PAPoint &point)
@@ -24,6 +28,8 @@ PAPoint::PAPoint(const PAPoint &point)
 	m_position[1] = point.y();
 	m_position[2] = point.z();
 	m_normal = point.getNormal();
+
+	m_class_confidences = point.getClassConfidences();
 }
 
 PAPoint::~PAPoint()
@@ -142,3 +148,7 @@ float PAPoint::getClassConfidence(int label)
 	return m_class_confidences.value(label);
 }
 
+const QMap<int, float> & PAPoint::getClassConfidences() const
+{
+	return m_class_confidences;
+}

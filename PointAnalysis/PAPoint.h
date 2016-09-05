@@ -43,6 +43,7 @@ public:
 	Eigen::Vector3f getPosition() const;
 	Eigen::Vector3f getNormal() const;
 	float getClassConfidence(int label);
+	const QMap<int, float> & getClassConfidences() const;
 
 private:
 	double features[POINT_FEATURES_DIMEN];

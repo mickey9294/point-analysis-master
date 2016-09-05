@@ -434,6 +434,11 @@ std::vector<PAPart *> PartsStructure::get_all_parts() const
 	return all_parts;
 }
 
+PAPart * PartsStructure::get_part(int index)
+{
+	return m_label_parts[index].front();
+}
+
 void PartsStructure::add_part(int label, PAPart * part)
 {
 	m_label_parts[label].push_back(part);
@@ -445,6 +450,7 @@ void PartsStructure::set_model(Model * model)
 	m_model = model;
 	m_radius = model->getRadius();
 	m_points_assignments.resize(model->vertexCount());
+	cout << "The size of m_points_assignments of PartsStructure = " << m_points_assignments.size() << endl;
 }
 
 void PartsStructure::set_pointcloud(PAPointCloud *pointcloud)
@@ -477,4 +483,28 @@ int PartsStructure::get_point_assignment(int index)
 {
 	assert(index < m_points_assignments.size());
 	return m_points_assignments[index];
+}
+
+QVector<OBB *> PartsStructure::get_all_obb_copies()
+{
+	QVector<OBB *> obbs;
+
+	/*int part_idx = 0;
+	for (std::vector<std::vector<PAPart *>>::iterator part_it = m_label_parts.begin();
+		part_it != m_label_parts.end(); ++part_it)
+	{
+		OBB * obb = new OBB(part_it->front()->getOBB());
+		obbs[part_idx++] = obb;
+	}*/
+
+	for (int i = 0; i < m_label_parts.size(); i++)
+	{
+		if (m_label_parts[i].size() > 0)
+		{
+			OBB * obb = new OBB(m_label_parts[i][0]->getOBB());
+			obbs.push_back(obb);
+		}
+	}
+
+	return obbs;
 }

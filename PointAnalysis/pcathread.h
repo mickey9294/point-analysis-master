@@ -21,6 +21,7 @@
 #include "utils.h"
 #include "ICP.h"
 #include "meshmodel.h"
+#include "definitions.h"
 
 class PCAThread : public QThread
 {
@@ -32,11 +33,12 @@ public:
 	~PCAThread();
 
 	void setPointCloud(Model * model);
+	void setPhase(PHASE phase);
 
 signals:
 	void estimateOBBsCompleted(QVector<OBB*> obbs);
 	void addDebugText(QString text);
-	void estimatePartsDone(QVector<PAPart> parts);
+	void estimatePartsDone(Parts_Vector parts);
 	void sendSamples(Samples_Vec samples);
 
 protected:
@@ -44,7 +46,7 @@ protected:
 
 private:
 	QMap<int, pcl::PointCloud<pcl::PointXYZ>::Ptr> m_part_clouds;
-	QMap<int, PAPart> m_parts;
+	QMap<int, PAPart *> m_parts;
 	Model * m_model;
 	QVector<OBB *> m_OBBs;
 	PHASE m_phase;

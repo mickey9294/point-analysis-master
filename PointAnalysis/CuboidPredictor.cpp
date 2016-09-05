@@ -884,3 +884,4 @@ Real CuboidCondNormalRelationPredictor::get_pair_quadratic_form(
 
 	return potential;
 }
+\

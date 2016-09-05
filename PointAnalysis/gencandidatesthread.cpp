@@ -136,40 +136,53 @@ void GenCandidatesThread::generateCandidates()
 		qDebug() << "Assign each point to a certain part point cloud.";
 		for (int i = 0; i < size; i++)
 		{
-			QMap<int, float> distribution = m_distribution[i];
+			//QMap<int, float> distribution = m_distribution[i];
+			//PAPoint point = m_pointcloud->at(i);
+			//bool ok = false;
+
+			//QVector<float> symmetry_scores(symmetry_groups.size());    /* The classification scores of symmetry groups */
+			///* Check whether the point belongs to a symmetry group first */
+			//for (QList<QVector<int>>::iterator it = symmetry_groups.begin(); it != symmetry_groups.end(); ++it)
+			//{
+			//	QVector<int> group = *it;
+			//	float score_sum = 0;
+			//	for (QVector<int>::iterator label_it = group.begin(); label_it != group.end(); label_it++)
+			//		score_sum += distribution.value(*label_it);
+			//	if (score_sum > MIN_POINT_CONFIDENCE)
+			//	{
+			//		parts_clouds[group[0]]->push_back(PointXYZ(point.x(), point.y(), point.z()));
+			//		vertices_indices[group[0]].push_back(i);
+			//		ok = true;
+			//		break;
+			//	}
+			//}
+
+			//if (!ok)    /* If the point is not likely belonging to the parts in symmetry groups */
+			//{
+			//	float score = 0;
+			//	for (int j = 0; j < keys.size(); j++)
+			//	{
+			//		int label = keys[j];
+			//		if (!symmetry_set.contains(label) && (distribution.value(label) > MIN_POINT_CONFIDENCE || Utils::float_equal(distribution.value(label), MIN_POINT_CONFIDENCE)))
+			//		{
+			//			parts_clouds[label]->push_back(PointXYZ(point.x(), point.y(), point.z()));
+			//			vertices_indices[label].push_back(i);
+			//			ok = true;
+			//			break;
+			//		}
+			//	}
+			//}
+
 			PAPoint point = m_pointcloud->at(i);
-			bool ok = false;
+			QMap<int, float> class_confidences = point.getClassConfidences();
 
-			QVector<float> symmetry_scores(symmetry_groups.size());    /* The classification scores of symmetry groups */
-			/* Check whether the point belongs to a symmetry group first */
-			for (QList<QVector<int>>::iterator it = symmetry_groups.begin(); it != symmetry_groups.end(); ++it)
+			for (QMap<int, float>::iterator it = class_confidences.begin(); it != class_confidences.end(); ++it)
 			{
-				QVector<int> group = *it;
-				float score_sum = 0;
-				for (QVector<int>::iterator label_it = group.begin(); label_it != group.end(); label_it++)
-					score_sum += distribution.value(*label_it);
-				if (score_sum > MIN_POINT_CONFIDENCE)
+				if (*it > MIN_POINT_CONFIDENCE || Utils::float_equal(*it, MIN_POINT_CONFIDENCE))
 				{
-					parts_clouds[group[0]]->push_back(PointXYZ(point.x(), point.y(), point.z()));
-					vertices_indices[group[0]].push_back(i);
-					ok = true;
+					parts_clouds[it.key()]->push_back(PointXYZ(point.x(), point.y(), point.z()));
+					vertices_indices[it.key()].push_back(i);
 					break;
-				}
-			}
-
-			if (!ok)    /* If the point is not likely belonging to the parts in symmetry groups */
-			{
-				float score = 0;
-				for (int j = 0; j < keys.size(); j++)
-				{
-					int label = keys[j];
-					if (!symmetry_set.contains(label) && (distribution.value(label) > MIN_POINT_CONFIDENCE || Utils::float_equal(distribution.value(label), MIN_POINT_CONFIDENCE)))
-					{
-						parts_clouds[label]->push_back(PointXYZ(point.x(), point.y(), point.z()));
-						vertices_indices[label].push_back(i);
-						ok = true;
-						break;
-					}
 				}
 			}
 		}
@@ -182,8 +195,8 @@ void GenCandidatesThread::generateCandidates()
 		for (part_cloud_it = parts_clouds.begin(); part_cloud_it != parts_clouds.end(); ++part_cloud_it)
 		{
 			int label_name = part_cloud_it.key();
-			PointCloud<PointXYZ>::Ptr part_cloud = part_cloud_it.value();
-			QList<int> part_indices = vertices_indices.value(label_name);
+			PointCloud<PointXYZ>::Ptr part_cloud = *part_cloud_it;
+			QList<int> part_indices = vertices_indices[label_name];
 
 			onDebugTextAdded("Generate candidates for part " + QString::number(label_name));
 			qDebug("Generating candidates for part-%d...", label_name);
@@ -206,22 +219,30 @@ void GenCandidatesThread::generateCandidates()
 				std::vector<int> pointIdxRadiusSearch;
 				std::vector<float> pointRadiusSquaredDistance;
 
-				float radius = 0.2 * (m_pointcloud->getRadius() == 0 ? 1.0 : m_pointcloud->getRadius());
+				float radius = 0.2 * ((std::fabs(m_pointcloud->getRadius()) < 1e-6 || m_pointcloud->getRadius() > 1.0)? 1.0 : m_pointcloud->getRadius());
 
 				for (int j = 0; j < nvertices; j++)
 				{
 					//qDebug("Part-%d: Find neighbors of vertex-%d/%d.", label_name, j, nvertices);
 					PointXYZ searchPoint = part_cloud->at(j);
-					if (kdtree.radiusSearch(searchPoint, radius, pointIdxRadiusSearch, pointRadiusSquaredDistance) > 0)
+					//if (kdtree.radiusSearch(searchPoint, radius, pointIdxRadiusSearch, pointRadiusSquaredDistance) > 0)
+					//{
+					//	for (int k = 0; k < pointIdxRadiusSearch.size(); k++)
+					//	{
+					//		int idx = pointIdxRadiusSearch[k];
+					//		if (idx > j)    /* Only add edge between j and vertices behind it */
+					//		{
+					//			boost::add_edge(j, idx, graph);
+					//		}
+					//	}
+					//}
+
+					for (int k = j + 1; k < nvertices; k++)
 					{
-						for (int k = 0; k < pointIdxRadiusSearch.size(); k++)
-						{
-							int idx = pointIdxRadiusSearch[k];
-							if (idx > j)    /* Only add edge between j and vertices behind it */
-							{
-								boost::add_edge(j, idx, graph);
-							}
-						}
+						PointXYZ travPoint = part_cloud->at(k);
+						float distance = Utils::euclideanDistance(searchPoint, travPoint);
+						if (distance < radius || Utils::float_equal(distance, 0))
+							boost::add_edge(j, k, graph);
 					}
 				}
 
@@ -231,6 +252,9 @@ void GenCandidatesThread::generateCandidates()
 
 				std::vector<int> components(boost::num_vertices(graph));
 				num_of_components = boost::connected_components(graph, &components[0]);    /* Calculate the connected components */
+				if (label_name == 1)
+					cout << "num_of_components = " << num_of_components << endl;
+
 				QVector<QList<int>> components_indices(num_of_components);    /* The indices of points which belong to each connected component(point cluster) */
 				/* Create the container cloud for each connected component of the part graph */
 				QVector<pcl::PointCloud<PointXYZ>::Ptr> point_clusters(num_of_components);    /* The point cluster genearted by each connected component */
@@ -260,6 +284,17 @@ void GenCandidatesThread::generateCandidates()
 					if (point_clusters[j]->size() >= 10)
 					{
 						obbest->reset(label_name, point_clusters[j]);
+						//cout << "Point_cluster_" << j << " has " << point_clusters[j]->size() << " points." << endl;
+
+						/* Save the poitn cluster */
+						//std::string cluster_out_path = "../data/point_clusters/point_cluster" + std::to_string(cluster_count) + ".off";
+						//std::ofstream cluster_out(cluster_out_path.c_str());
+						//cluster_out << "OFF" << endl;
+						//cluster_out << point_clusters[j]->size() << " 0 0" << endl;
+						//for (pcl::PointCloud<pcl::PointXYZ>::iterator it = point_clusters[j]->begin(); it != point_clusters[j]->end(); ++it)
+						//	cluster_out << it->x << " " << it->y << " " << it->z << endl;
+						//cluster_out.close();
+
 						QVector<OBB *> cand_obbs = obbest->computeOBBCandidates();    /* Compute all 24 candidate OBB of the point cluster */
 						OBB * point_cluster_obb = new OBB(cand_obbs.first());   /* Compute the OBB of the point cluster to display */
 						point_cluster_obb->setColor(QVector3D(COLORS[cluster_count][0], COLORS[cluster_count][1], COLORS[cluster_count][2]));
@@ -311,23 +346,28 @@ void GenCandidatesThread::generateCandidates()
 
 							/* Set the indices of points assigned to this part to the PAPart object */
 							QList<int> vertices_indices = components_indices[j];
-							candidate.setVerticesIndices(vertices_indices);
+							//candidate.setVerticesIndices(vertices_indices);
 
 							/* Set the vertices list and vertices normals list of the part */
 							std::vector<Eigen::Vector3f> vertices, normals;
-							vertices.resize(vertices_indices.size());
-							normals.resize(vertices_indices.size());
+							//vertices.resize(vertices_indices.size());
+							//normals.resize(vertices_indices.size());
 							int index = 0;
 							for (QList<int>::iterator point_idx_it = vertices_indices.begin(); point_idx_it != vertices_indices.end(); ++point_idx_it)
 							{
 								PAPoint point = m_pointcloud->operator[](*point_idx_it);
-								vertices[index] = point.getPosition();
+								/*vertices[index] = point.getPosition();
 								normals[index++] = point.getNormal();
+								if (overall_cand_count == 0 && (*point_idx_it) == 1914)
+									cout << "debug: " << vertices[index].transpose() << endl;*/
+								candidate.addVertex(*point_idx_it, point.getPosition(), point.getNormal());
 							}
-							candidate.setVertices(vertices);
-							candidate.setVerticesNormals(normals);
+							//candidate.setVertices(vertices);
+							//candidate.setVerticesNormals(normals);
 
+							//cout << "Run ICP procedure to adjust the OBB" << endl;
 							candidate.ICP_adjust_OBB();
+							//cout << "done." << endl;
 
 							candidates.push_back(candidate);
 							/* Save the candidate to local file */

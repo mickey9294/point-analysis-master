@@ -82,7 +82,7 @@ public:
 	static std::string getModelName(std::string filepath);
 	static std::string getSegFilename(const char *model_file_name);
 	static int comb(int n, int i);
-	static QVector<QPair<int, int>> getCombinations(QVector<int> nums);
+	static QVector<QPair<int, int>> & getCombinations(QVector<int> nums);
 	static std::string vectorToString(Eigen::VectorXf vec);
 	static std::string matrixToString(Eigen::MatrixXf mat);
 	static void saveMatrixToFile(Eigen::MatrixXf mat, Eigen::VectorXf relation, Eigen::VectorXf mean, Eigen::VectorXf vec);
@@ -98,10 +98,10 @@ public:
 	static Eigen::Matrix3f skew_symmetric_cross(Eigen::Vector3f v);
 	static void CHECK_NUMERICAL_ERROR(const std::string& _desc, const double& _error);
 	static void CHECK_NUMERICAL_ERROR(const std::string & _desc, const double & _value1, const double & _value_2);
-	//static int downSample(std::vector<Eigen::Vector3f> input, std::vector<Eigen::Vector3f> & output, int num_of_samples);
-	/*static int upSample(std::vector<Eigen::Vector3f> input, std::vector<Eigen::Vector3f> input_normals, 
-		std::vector<Eigen::Vector3f> & output, std::vector<Eigen::Vector3f> & output_normals, int num_of_samples);*/
 	static Eigen::MatrixXd regularized_inverse(const Eigen::MatrixXd& _mat);
+	static void savePredictionResult(const QMap<int, int> & parts_picked, const std::string & file_path);
+	static QMap<int, int> loadPredictionResult(const std::string & file_path);
+	static float euclideanDistance(pcl::PointXYZ, pcl::PointXYZ);
 
 private:
 	static void sort(QList<double> &lens, QList<int> &indices, int low, int high);

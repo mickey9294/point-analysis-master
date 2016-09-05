@@ -10,6 +10,7 @@
 #include "energyfunctions.h"
 #include "pairwisetermthread.h"
 #include "unarytermthread.h"
+#include <QtAlgorithms>
 
 /*
  * The sub thread used to do  part lebels and orientations prediction. 
@@ -20,7 +21,8 @@ class PredictionThread : public QThread
 
 public:
 	PredictionThread(QObject *parent = 0);
-	PredictionThread(EnergyFunctions *energy_functions, Part_Candidates part_candidates, QVector<int> label_names, bool use_symmetry, QObject *parent = 0);
+	PredictionThread(EnergyFunctions *energy_functions, Part_Candidates part_candidates, 
+		QVector<int> label_names, std::string modelClassName, bool use_symmetry, QObject *parent = 0);
 	~PredictionThread();
 
 	void execute();
@@ -39,6 +41,7 @@ protected:
 	void run();
 
 private:
+	std::string m_modelClassName;
 	Part_Candidates m_part_candidates;
 	QVector<int> m_label_names;    /* The label set. Note that the label with the largest number is null label */
 	int m_ncandidates;
@@ -57,6 +60,12 @@ private:
 	void predictLabelsAndOrientations();
 	void clean();
 	void singleThreadOptimize();
+
+	void generateCombinations(const QMap<int, QList<int>> & winners,
+		const QList<int> & labels_with_multi_winners_set, QList<QMap<int, int>> & combinations);
+	void recurGenerateCombinations(const QVector<QList<int>> & multi_winners, const QList<int> & current, int level, QList<QList<int>> & output);
+	void selectMostOptimized(const QList<QMap<int, int>> & combinations, QMap<int, int> & most_optimized);
+	double computeEnergy(const QMap<int, int> & combination);
 };
 
 #endif // PREDICTIONTHREAD_H

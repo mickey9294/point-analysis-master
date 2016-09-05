@@ -115,6 +115,7 @@ void FeatureEstimator::reset(Model *model)
 				pcl::Normal normal((*sample_it).nx(), (*sample_it).ny(), (*sample_it).nz());
 				m_normals->push_back(normal);
 				m_pointcloud->at(sample_idx).setPosition((*sample_it).x(), (*sample_it).y(), (*sample_it).z());
+				m_pointcloud->at(sample_idx).setNormal((*sample_it).nx(), (*sample_it).ny(), (*sample_it).nz());
 				m_pointcloud->at(sample_idx++).setLabel(label);
 			}
 		}
@@ -134,7 +135,8 @@ void FeatureEstimator::reset(Model *model)
 			pcl::Normal normal(normal_it->x(), normal_it->y(), normal_it->z());
 			m_normals->push_back(normal);
 			m_pointcloud->at(vertex_idx).setPosition(vertex_it->x(), vertex_it->y(), vertex_it->z());
-			m_pointcloud->at(vertex_idx).setLabel(10);
+			m_pointcloud->at(vertex_idx).setNormal(normal_it->x(), normal_it->y(), normal_it->z());
+			m_pointcloud->at(vertex_idx++).setLabel(10);
 		}
 	}
 

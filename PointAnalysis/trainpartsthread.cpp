@@ -2,16 +2,20 @@
 
 using namespace std;
 
-TrainPartsThread::TrainPartsThread(QObject *parent)
-	: QThread(parent), currentId(0), m_num_labels(8)
+TrainPartsThread::TrainPartsThread(QVector<int> label_names, QObject *parent)
+	: QThread(parent), currentId(0), m_num_labels(8), m_label_names(label_names)
 {
-	qRegisterMetaType<QVector<PAPart>>("QVector<PAPart>");
+	//qRegisterMetaType<Parts_Vector>("QVector<PAPart>");
 	cout << "TrainPartsThread is created." << endl;
 
 	loadThread.setPhase(PHASE::TRAINING);
+	pcaThread.setPhase(PHASE::TRAINING);
 	
 	connect(&loadThread, SIGNAL(loadPointsCompleted(Model *)), this, SLOT(receiveModel(Model *)));
-	connect(&pcaThread, SIGNAL(estimatePartsDone(QVector<PAPart>)), this, SLOT(receiveParts(QVector<PAPart>)));
+	connect(&pcaThread, SIGNAL(estimatePartsDone(Parts_Vector)), this, SLOT(receiveParts(Parts_Vector)));
+
+	m_feature_list.resize(label_names.size());
+	m_transformation_list.resize(label_names.size());
 
 	ifstream list_in("../data/coseg_chairs_8_list.txt");
 	if (list_in.is_open())
@@ -36,6 +40,7 @@ TrainPartsThread::TrainPartsThread(QObject *parent)
 	}
 
 	cout << "Load point cloud from" << file_list[currentId] << endl;
+	emit addDebugText(QString::fromStdString(file_list[currentId]));
 	loadThread.setLoadFileName(file_list[currentId]);
 	loadThread.start();
 }
@@ -61,7 +66,7 @@ void TrainPartsThread::receiveModel(Model *model)
 	pcaThread.start();
 }
 
-void TrainPartsThread::receiveParts(QVector<PAPart> parts)
+void TrainPartsThread::receiveParts(Parts_Vector parts)
 {
 	cout << "Receive parts vectors of point cloud " << file_list[currentId] << endl;
 
@@ -69,7 +74,7 @@ void TrainPartsThread::receiveParts(QVector<PAPart> parts)
 	QMap<int, int> labels_indices;    /* the label-index map showing the index of the part with the particular label */
 	for (int i = 0; i < parts.size(); i++)
 	{
-		labels[i] = parts[i].getLabel();
+		labels[i] = parts[i]->getLabel();
 		labels_indices.insert(labels[i], i);
 	}
 
@@ -83,7 +88,7 @@ void TrainPartsThread::receiveParts(QVector<PAPart> parts)
 		PAPart * cuboid = NULL;
 		int cuboid_index = labels_indices.value(label_index, -1);
 		if (cuboid_index > -1)
-			cuboid = &parts[cuboid_index];
+			cuboid = parts[cuboid_index];
 
 		if (cuboid)
 		{
@@ -115,7 +120,7 @@ void TrainPartsThread::receiveParts(QVector<PAPart> parts)
 			if (label1 != label2)
 			{
 				int part_index2 = label_it_2.value();
-				PAPartRelation relation(parts[part_index1], parts[part_index2]);
+				PAPartRelation relation(*(parts[part_index1]), *(parts[part_index2]));
 				QPair<int, int> part_pair(label1, label2);
 				if (!partRelations.contains(part_pair))
 					partRelations.insert(part_pair, QList<PAPartRelation>());
@@ -126,12 +131,22 @@ void TrainPartsThread::receiveParts(QVector<PAPart> parts)
 
 	currentId++;
 
+	/* Release the memory of the parts pointers */
+	for (QVector<PAPart *>::iterator it = parts.begin(); it != parts.end(); ++it)
+	{
+		if (*it != NULL)
+			delete(*it);
+		*it = NULL;
+	}
+	parts.clear();
+
 	if (currentId < file_list.size())   /* If there are point clouds remain unestimating */
 	{
 		/* Load the next point cloud */
 		if (loadThread.isRunning())
 			loadThread.terminate();
 		cout << "Load point cloud from " <<  file_list[currentId] << endl;
+		emit addDebugText(QString::fromStdString(file_list[currentId]));
 		loadThread.setLoadFileName(file_list[currentId]);
 		loadThread.start();
 	}
@@ -188,9 +203,9 @@ void TrainPartsThread::analyseProbPartModel()
 			std::vector<double> feat_vector = (*relation_it).getFeatureVector();
 			QVector<double> feat_qvector = QVector<double>::fromStdVector(feat_vector);
 			
-			for (std::vector<double>::iterator f_it = feat_vector.begin(); f_it != feat_vector.end(); ++f_it)
+			/*for (std::vector<double>::iterator f_it = feat_vector.begin(); f_it != feat_vector.end(); ++f_it)
 				cout << *f_it << " ";
-			cout << endl;
+			cout << endl;*/
 
 			arma::vec feat(feat_vector);
 			arma::rowvec featt((*relation_it).getFeatureVector());

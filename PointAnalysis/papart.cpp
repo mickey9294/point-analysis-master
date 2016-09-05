@@ -166,21 +166,75 @@ void PAPart::saveToFile(string name)
 	string path = "../data/candidates/" + name + ".txt";
 	ofstream out(path.c_str());
 
+	/* Write the label and the cluster number */
 	out << m_label << " " << m_cluster_no << endl;
+
+	/* Write the rotation matrix */
 	for (int i = 0; i < m_rotate.rows(); i++)
 		out << m_rotate(i, 0) << " " << m_rotate(i, 1) << " " << m_rotate(i, 2) << endl;
 
+	/* Write the translation vector */
 	out << m_translate(0) << " " << m_translate(1) << " " << m_translate(2) << endl;
 
+	/* Write the scale in 3 dimension */
 	out << m_scale(0) << " " << m_scale(1) << " " << m_scale(2) << endl;
 
+	/* Write the height */
 	out << m_height(0) << " " << m_height(1) << " " << m_height(2) << " " << m_height(3) << endl;
 
+	/* Write the axes */
 	for (int i = 0; i < m_axes.rows(); i++)
 		out << m_axes(i, 0) << " " << m_axes(i, 1) << " " << m_axes(i, 2) << endl;
 
+	/* Write the vertices belong to this part */
+	assert(m_vertices.size() == m_vertices_indices.size());
+	assert(m_vertices.size() == m_vertices_normals.size());
+	out << m_vertices.size() << endl;
+	int vert_idx = 0;
 	for (vector<int>::iterator it = m_vertices_indices.begin(); it != m_vertices_indices.end(); ++it)
-		out << *it << endl;
+	{
+		/* Write the index of the vertex(point) */
+		out << *it << " ";
+
+		/* Write the coordinates of the vertex(point) */
+		Eigen::Vector3f point = m_vertices[vert_idx];
+		out << point.x() << " " << point.y() << " " << point.z() << " ";
+		
+		/* Write the coordinates of the normal */
+		Eigen::Vector3f norm = m_vertices_normals[vert_idx];
+		out << norm.x() << " " << norm.y() << " " << norm.z() << endl;
+		vert_idx++;
+	}
+
+	/* Write the sample points */
+	out << m_samples.size() << endl;  /* Write the number of the samples */
+	for (std::vector<SamplePoint>::iterator sample_it = m_samples.begin(); sample_it != m_samples.end(); ++sample_it)
+		out << sample_it->toString() << endl;
+
+	/* Write the sample-to-cuboid-surface-correspondence */
+	out << m_sample_to_cuboid_surface_correspondence.size() << endl;  /* Write the number of all correspondences */
+	for (int i = 0; i < m_sample_to_cuboid_surface_correspondence.size(); i++)
+		out << m_sample_to_cuboid_surface_correspondence[i] << endl;
+
+	/* Write the cuboid-surface-to-sample-correspondences */
+	out << m_cuboid_surface_to_sample_correspondence.size() << endl;
+	for (int i = 0; i < m_cuboid_surface_to_sample_correspondence.size(); i++)
+		out << m_cuboid_surface_to_sample_correspondence[i] << endl;
+
+	/* Write the OBB */
+	if (m_obb == NULL)
+	{
+		/* Write the OBB absence flag 0 */
+		out << "0" << endl;
+	}
+	else
+	{
+		/* Write the OBB existence flat 1 */
+		out << "1" << endl;
+
+		/* Write the information of the OBB */
+		m_obb->writeToFile(out);
+	}
 
 	out.close();
 }
@@ -191,10 +245,10 @@ PAPart::PAPart(string path)
 
 	if (in.is_open())
 	{
-		char buffer[1024];
+		char buffer[256];
 
 		/* Read label and cluster no */
-		in.getline(buffer, 512);
+		in.getline(buffer, 128);
 		QString label_str(buffer);
 		m_label = label_str.section(' ', 0, 0).toInt();
 		m_cluster_no = label_str.section(' ', 1, 1).toInt();
@@ -202,7 +256,7 @@ PAPart::PAPart(string path)
 		/* Read the rotation matrix */
 		for (int i = 0; i < 3; i++)
 		{
-			in.getline(buffer, 512);
+			in.getline(buffer, 128);
 			QString rot_str(buffer);
 			m_rotate(i, 0) = rot_str.section(' ', 0, 0).toFloat();
 			m_rotate(i, 1) = rot_str.section(' ', 1, 1).toFloat();
@@ -210,21 +264,21 @@ PAPart::PAPart(string path)
 		}
 
 		/* Read the translate vector */
-		in.getline(buffer, 512);
+		in.getline(buffer, 128);
 		QString trans_str(buffer);
 		m_translate(0) = trans_str.section(' ', 0, 0).toFloat();
 		m_translate(1) = trans_str.section(' ', 1, 1).toFloat();
 		m_translate(2) = trans_str.section(' ', 2, 2).toFloat();
 
 		/* Read the scale vector */
-		in.getline(buffer, 512);
+		in.getline(buffer, 128);
 		QString scale_str(buffer);
 		m_scale(0) = scale_str.section(' ', 0, 0).toFloat();
 		m_scale(1) = scale_str.section(' ', 1, 1).toFloat();
 		m_scale(2) = scale_str.section(' ', 2, 2).toFloat();
 
 		/* Read the height vector */
-		in.getline(buffer, 512);
+		in.getline(buffer, 128);
 		QStringList h_str = QString(buffer).split(' ');
 		for (int i = 0; i < h_str.size(); i++)
 			m_height(i) = h_str.at(i).toFloat();
@@ -232,7 +286,7 @@ PAPart::PAPart(string path)
 		/* Read the 3 axes */
 		for (int i = 0; i < 3; i++)
 		{
-			in.getline(buffer, 512);
+			in.getline(buffer, 128);
 			QString axis_str(buffer);
 			m_axes(i, 0) = axis_str.section(' ', 0, 0).toFloat();
 			m_axes(i, 1) = axis_str.section(' ', 1, 1).toFloat();
@@ -240,18 +294,68 @@ PAPart::PAPart(string path)
 		}
 
 		/* Read the vertices indices */
-		vector<int> indices_list;
-		while (!in.eof())
+		in.getline(buffer, 128);
+		int num_vertices = std::atoi(buffer);
+		m_vertices_indices.resize(num_vertices);
+		m_vertices.resize(num_vertices);
+		m_vertices_normals.resize(num_vertices);
+		for (int i = 0; i < num_vertices; i++)
 		{
-			in.getline(buffer, 64);
-			if (strlen(buffer) > 0)
+			in.getline(buffer, 128);
+			QStringList line_list = QString(buffer).split(' ');
+
+			m_vertices_indices[i] = line_list[0].toInt();
+
+			Eigen::Vector3f vertex;
+			Eigen::Vector3f normal;
+			for (int j = 0; j < 3; j++)
 			{
-				int idx = atoi(buffer);
-				indices_list.push_back(idx);
+				vertex[j] = line_list[1 + j].toFloat();
+				normal[j] = line_list[4 + j].toFloat();
 			}
+
+			m_vertices[i] = vertex;
+			m_vertices_normals[i] = normal;
 		}
-		m_vertices_indices.resize(indices_list.size());
-		memcpy(m_vertices_indices.data(), indices_list.data(), indices_list.size() * sizeof(int));
+
+		/* Read the sample points */
+		in.getline(buffer, 16);
+		int num_samples = std::atoi(buffer);
+		m_samples.resize(num_samples);
+		for (int i = 0; i < num_samples; i++)
+		{
+			in.getline(buffer, 256);
+			std::string sample_str(buffer);
+			m_samples[i] = SamplePoint(sample_str);
+		}
+
+		/* Read the sample-to-cuboid-surface-correspondences */
+		in.getline(buffer, 16);
+		int num_sample_to_surface_corres = std::atoi(buffer);
+		m_sample_to_cuboid_surface_correspondence.resize(num_sample_to_surface_corres);
+		for (int i = 0; i < num_sample_to_surface_corres; i++)
+		{
+			in.getline(buffer, 16);
+			m_sample_to_cuboid_surface_correspondence[i] = std::atoi(buffer);
+		}
+
+		/* Read the cuboid-surface-to-sample-correspondences */
+		in.getline(buffer, 16);
+		int num_surface_to_sample_corres = std::atoi(buffer);
+		m_cuboid_surface_to_sample_correspondence.resize(num_surface_to_sample_corres);
+		for (int i = 0; i < num_surface_to_sample_corres; i++)
+		{
+			in.getline(buffer, 16);
+			m_cuboid_surface_to_sample_correspondence[i] = std::atoi(buffer);
+		}
+
+		/* Read the OBB */
+		in.getline(buffer, 4);
+		int flag = std::atoi(buffer);
+		if (flag == 0)
+			m_obb = NULL;
+		else
+			m_obb = new OBB(in);
 
 		in.close();
 	}
@@ -375,19 +479,32 @@ void PAPart::samplePoints()
 {
 	num_of_samples = NUM_OF_SAMPLES;
 
+	m_samples.clear();
+
 	if (m_vertices.size() > NUM_OF_SAMPLES)  /* If the points in the part is greater than 1000, than do downsampling */
 	{
+		//std::cout << "downsample." << std::endl;
 		downsample();
 	}
-	else   /* If the points in the part is less than 1000, than do upsampling */
+	else   /* If the points in the part is less than 1000, then regard the current vertices as sample points */
 	{
-		upsample();
+		//cout << "upsample." << endl;
+		//upsample();
+		num_of_samples = m_vertices.size();
+		m_samples.resize(num_of_samples);
+
+		for (int vert_index = 0; vert_index < num_of_samples; ++vert_index)
+		{
+			Eigen::Vector3f vert = m_vertices[vert_index];
+			Eigen::Vector3f norm = m_vertices_normals[vert_index];
+			SamplePoint sample(vert, norm);
+			m_samples[vert_index] = sample;
+		}
 	}
 
 	if (m_obb != NULL)
 	{
-		if (m_obb->sampleCount() != num_of_samples)
-			create_grid_points_on_obb_surface();
+		create_grid_points_on_obb_surface();
 	}
 }
 
@@ -513,6 +630,7 @@ void PAPart::create_grid_points_on_obb_surface()
 	m_obb->setNumOfSamples(num_of_samples);
 
 	m_obb->createGridSamples();
+	
 	update_sample_correspondences();
 }
 
@@ -565,7 +683,7 @@ void PAPart::updateFromOBB()
 {
 	assert(m_obb);
 
-	m_label = m_obb->getLabel();
+	//m_label = m_obb->getLabel();
 	Eigen::Vector3f centroid = m_obb->getCentroid();
 	m_translate = Vector3f(centroid.x(), centroid.y(), centroid.z());
 	QVector3D scale = m_obb->getScale();
@@ -594,6 +712,14 @@ void PAPart::updateFromOBB()
 	m_axes.col(0) = x_axis;
 	m_axes.col(1) = y_axis;
 	m_axes.col(2) = z_axis;
+}
+
+void PAPart::updateOBB()
+{
+	assert(m_obb);
+	m_obb->updateWithNewPoints(m_vertices);
+
+	updateFromOBB();
 }
 
 void PAPart::update_axes_center_size_corner_points()
@@ -712,7 +838,11 @@ void PAPart::ICP_adjust_OBB()
 	assert(m_vertices.size() > 0);
 
 	if (m_samples.size() < param_min_num_cuboid_sample_points)
+	{
+		//cout << "The part has " << m_samples.size() << "samplep points, resample points on the part." << endl;
 		samplePoints();
+		//cout << "done." << endl;
+	}
 
 	int surface_sample_size = m_obb->sampleCount();
 	int sample_size = m_samples.size();
@@ -724,6 +854,7 @@ void PAPart::ICP_adjust_OBB()
 	MatrixXd surface_sample_points(3, surface_sample_size);
 
 	/* Create data matrix for surface sample points on OBB */
+	//cout << "Create data matrix for surface samples on OBB" << endl;
 	int idx = 0;
 	for (QVector<SamplePoint>::iterator surface_sample_it = m_obb->samples_begin();
 		surface_sample_it != m_obb->samples_end(); ++surface_sample_it)
@@ -731,24 +862,31 @@ void PAPart::ICP_adjust_OBB()
 		Vector3d point = surface_sample_it->getVertex().cast<double>();
 		surface_sample_points.col(idx++) = point;
 	}
+	//cout << "done." << endl;
 
 	/* Create data matrix for the points sampled on the parts */
+	//cout << "Create data matrix for surface samples on parts" << endl;
 	idx = 0;
 	for (std::vector<SamplePoint>::iterator sample_it = m_samples.begin(); sample_it != m_samples.end(); sample_it++)
 	{
 		Vector3d point = sample_it->getVertex().cast<double>();
 		sample_points.col(idx++) = point;
 	}
+	//cout << "done." << endl;
 
 	Matrix3d rotation_mat;
 	Vector3d translation_vec;
 
 	/* Ececute ICP procedure */
+	//cout << "Run ICP procedure" << endl;
 	double error = ICP::run_iterative_closest_points(surface_sample_points, sample_points, rotation_mat, translation_vec);
 
+	//cout << "Transform OBB with result of ICP." << endl;
 	m_obb->transform(rotation_mat, translation_vec, m_vertices);
 	updateFromOBB();
+	//cout << "Create grid points on OBB surface." << endl;
 	create_grid_points_on_obb_surface();
+	//cout << "done." << endl;
 }
 
 int PAPart::num_cuboid_surface_points()
@@ -778,6 +916,7 @@ void PAPart::upsample()
 	const double neighbor_radius = 0;  // initial size of neighborhood.
 	const std::size_t number_of_output_points = num_of_samples;
 	//Run algorithm 
+	cout << "Do edge aware upsample." << endl;
 	CGAL::edge_aware_upsample_point_set<Concurrency_tag>(
 		points.begin(),
 		points.end(),
@@ -788,6 +927,7 @@ void PAPart::upsample()
 		edge_sensitivity,
 		neighbor_radius,
 		number_of_output_points);
+	cout << "done." << endl;
 
 	m_samples.clear();
 	m_samples.resize(points.size());

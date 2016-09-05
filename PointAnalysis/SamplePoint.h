@@ -3,6 +3,9 @@
 
 #include <Eigen/Core>
 #include <array>
+#include <string>
+#include <qstring.h>
+#include <qstringlist.h>
 
 typedef double Real;
 
@@ -17,6 +20,7 @@ public:
 	SamplePoint(Eigen::Vector3f vertex);
 	SamplePoint(float x, float y, float z, float nx, float ny, float nz);
 	SamplePoint(float x, float y, float z);
+	SamplePoint(std::string string);
 
 	float x() const;
 	float y() const;
@@ -35,13 +39,15 @@ public:
 	int getFaceIndex() const;
 
 	float & operator[](int index);
+	std::string toString();
 
 private:
 	Eigen::Vector3f m_vertex;
 	Eigen::Vector3f m_normal;
 	double m_visibility;
-	std::array<Real, 8> m_corner_weights;
 	int m_face_index;
+	std::array<Real, 8> m_corner_weights;
+	
 };
 
 #endif

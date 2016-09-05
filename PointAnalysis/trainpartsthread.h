@@ -27,13 +27,13 @@ class TrainPartsThread : public QThread
 	Q_OBJECT
 
 public:
-	TrainPartsThread(QObject *parent = 0);
+	TrainPartsThread(QVector<int>  m_label_names, QObject *parent = 0);
 	~TrainPartsThread();
 	PCAThread pcaThread;
 
 	public slots:
 	void receiveModel(Model *model);
-	void receiveParts(QVector<PAPart> parts);
+	void receiveParts(Parts_Vector parts);
 
 signals:
 	void addDebugText(QString text);
@@ -51,6 +51,7 @@ private:
 	int currentId;
 	std::string class_name;
 	int m_num_labels;
+	QVector<int> m_label_names;
 
 	std::vector<std::list<CuboidFeatures *>> m_feature_list;
 	std::vector<std::list<CuboidTransformation *>> m_transformation_list;

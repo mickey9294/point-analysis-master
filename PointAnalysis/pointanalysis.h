@@ -80,6 +80,7 @@ private:
 	StructureAnalyser m_analyser;
 	std::string m_modelClassName;
 	CheckModelsThread *checkModelsThread;
+	QVector<int> m_label_names;
 };
 
 #endif // POINTANALYSIS_H

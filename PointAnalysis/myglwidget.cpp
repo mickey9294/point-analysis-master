@@ -266,6 +266,7 @@ void MyGLWidget::setOBBs(QVector<OBB *> obbs)
 		m_OBBs[i++] = *it;
 
 	update();
+	std::cout << "Set OBBs done." << std::endl;
 }
 
 void MyGLWidget::onDebugTextAdded(QString text)

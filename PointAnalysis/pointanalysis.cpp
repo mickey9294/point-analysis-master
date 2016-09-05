@@ -65,7 +65,7 @@ void PointAnalysis::load()
 
 	/* User choose a model file by FileDialog */
 	QString filepath = QFileDialog::getOpenFileName(this, tr("Load"), 
-		"../../Data/ground_truth_datasets/coseg_chairs/off", 
+		"../../Data/LabeledDB/Chair", 
 		tr("Object File Format (*.off);;XYZ Point Cloud (*.xyz)"));
 
 	if (filepath.length() > 0){    /* If the user choose a valid model file path */
@@ -323,11 +323,15 @@ void PointAnalysis::trainPartRelations()
 		trainPartsThread = NULL;
 	}
 
-	trainPartsThread = new TrainPartsThread(this);
+	QVector<int> label_names(8);
+	for (int i = 0; i < 8; i++)
+		label_names[i] = i;
+
+	trainPartsThread = new TrainPartsThread(label_names, this);
 	connect(trainPartsThread, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
 	connect(trainPartsThread, SIGNAL(showModel(Model *)), ui.displayGLWidget, SLOT(setModel(Model *)));
 	connect(&trainPartsThread->pcaThread, SIGNAL(estimateOBBsCompleted(QVector<OBB*>)), ui.displayGLWidget, SLOT(setOBBs(QVector<OBB *>)));
-	connect(trainPartsThread, SIGNAL(finish()), this, SLOT(onTrainPartsDone()));
+	connect(trainPartsThread, SIGNAL(finished()), this, SLOT(onTrainPartsDone()));
 	/* No need "trainPartsThread->start();", the thread will start itself after construction */
 }
 

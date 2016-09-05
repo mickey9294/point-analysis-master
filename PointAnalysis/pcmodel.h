@@ -27,14 +27,14 @@ typedef std::vector<MiniPoint> PointVector;
 typedef Seb::Smallest_enclosing_ball<float> Miniball;
 
 // kernel
-typedef CGAL::Exact_predicates_inexact_constructions_kernel Kernel;
-// Simple geometric types
-typedef Kernel::FT FT;
-typedef Kernel::Point_3 Point3;
-typedef Kernel::Vector_3 Vector;
-// Point with normal vector stored in a std::pair.
-typedef std::pair<Point3, Vector> PointVectorPair;
-typedef std::vector<PointVectorPair> PointList;
+//typedef CGAL::Exact_predicates_inexact_constructions_kernel Kernel;
+//// Simple geometric types
+//typedef Kernel::FT FT;
+//typedef Kernel::Point_3 Point3;
+//typedef Kernel::Vector_3 Vector;
+//// Point with normal vector stored in a std::pair.
+//typedef std::pair<Point3, Vector> PointVectorPair;
+//typedef std::vector<PointVectorPair> PointList;
 
 class PCModel : public QObject, public Model
 {
@@ -69,6 +69,8 @@ public:
 
 	QVector<Eigen::Vector3f> getVertices() const;
 	QVector<Eigen::Vector3f> getNormals() const;
+	Eigen::Vector3f getVertex(int index);
+	Eigen::Vector3f getNormal(int index);
 
 	Eigen::Vector3f & operator[](int index);
 	Eigen::Vector3f at(int index);
@@ -97,6 +99,7 @@ private:
 	//void add(const QVector3D &v, const QVector3D &n, const QVector3D &c);
 	void normalize();
 	void load_from_file(const char *file_path, int normals_estimation_normals);
+	//void saveNormals();
 };
 
 #endif // PCMODEL_H

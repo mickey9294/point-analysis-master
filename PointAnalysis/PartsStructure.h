@@ -47,6 +47,8 @@ public:
 	int getLabelName(const std::string label_paraphrase);
 
 	std::vector<PAPart *> get_all_parts() const;
+	QVector<OBB *> get_all_obb_copies();
+	PAPart * get_part(int index);
 	void add_part(int label, PAPart * part);
 
 	void set_model(Model *model);

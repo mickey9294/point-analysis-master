@@ -343,7 +343,7 @@ int Utils::comb(int n, int i)
 	return numerator / denominator;
 }
 
-QVector<QPair<int, int>> Utils::getCombinations(QVector<int> nums)
+QVector<QPair<int, int>> & Utils::getCombinations(QVector<int> nums)
 {
 	int size = nums.size();
 	int count = 0;
@@ -544,4 +544,51 @@ void Utils::CHECK_NUMERICAL_ERROR(const std::string & _desc, const double & _val
 Eigen::MatrixXd Utils::regularized_inverse(const Eigen::MatrixXd& _mat)
 {
 	return (_mat + 1.0E-3 * Eigen::MatrixXd::Identity(_mat.rows(), _mat.cols())).inverse();
+}
+
+void Utils::savePredictionResult(const QMap<int, int> & parts_picked, const std::string & file_path)
+{
+	std::ofstream out(file_path.c_str());
+	if (out.is_open())
+	{
+		for (QMap<int, int>::const_iterator it = parts_picked.begin(); it != parts_picked.end(); ++it)
+			out << it.key() << " " << it.value() << endl;
+
+		out.close();
+	}
+}
+
+QMap<int, int> Utils::loadPredictionResult(const std::string & file_path)
+{
+	QMap<int, int> parts_picked;
+
+	std::ifstream in(file_path.c_str());
+	
+	if (in.is_open())
+	{
+		char buffer[8];
+
+		while (!in.eof())
+		{
+			in.getline(buffer, 8);
+			if (strlen(buffer) > 0)
+			{
+				QString pair(buffer);
+				int label = pair.section(' ', 0, 0).toInt();
+				int cand_index = pair.section(' ', 1, 1).toInt();
+				parts_picked.insert(label, cand_index);
+			}
+		}
+	}
+
+	return parts_picked;
+}
+
+float Utils::euclideanDistance(pcl::PointXYZ point1, pcl::PointXYZ point2)
+{
+	float dist = 0;
+	dist = std::sqrt((point1.x - point2.x) * (point1.x - point2.x) +
+		(point1.y - point2.y) * (point1.y - point2.y) +
+		(point1.z - point2.z) * (point1.z - point2.z));
+	return dist;
 }

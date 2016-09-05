@@ -4,6 +4,8 @@
 #include <QThread>
 #include <iostream>
 #include <MRFEnergy.h>
+#include <pcl/point_cloud.h>
+#include <pcl/kdtree/kdtree_flann.h>
 #include "PartsStructure.h"
 
 class PointSegmentationThread : public QThread

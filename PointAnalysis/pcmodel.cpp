@@ -122,172 +122,226 @@ PCModel::~PCModel()
 
 void PCModel::load_from_file(const char *file_path, int normals_estimation_method)
 {
-	ifstream pc_in(file_path);
+	string path_string(file_path);
+	string model_name = Utils::getModelName(path_string);
+	string modified_path = "../data/models_modified/" + model_name + ".ply";
 
-	/* Read the vertices from .off file */
-	if (pc_in.is_open())
+	ifstream pc_modified_in(modified_path.c_str());
+	if (!pc_modified_in.is_open())  /* If the model has not ever been loaded and estimated normals */
 	{
-		char buffer[128];
-		
-		/* Data structure for computing the minimal bounding sphere */
-		const int dimen = 3;
-		PointVector S;
-		vector<double> coords(dimen);
+		ifstream pc_in(file_path);
 
-		pc_in.getline(buffer, 128);
-		if (strcmp(buffer, "OFF") == 0)
+		/* Read the vertices from .off file */
+		if (pc_in.is_open())
 		{
+			char buffer[128];
+
+			/* Data structure for computing the minimal bounding sphere */
+			const int dimen = 3;
+			PointVector S;
+			vector<double> coords(dimen);
+
 			pc_in.getline(buffer, 128);
-			QString num_str(buffer);
-			int nvertices = num_str.section(' ', 0, 0).toInt();
-
-			m_vertices_list.resize(nvertices);
-			m_normals_list.resize(nvertices);
-			m_labels.resize(nvertices);
-			m_labels.fill(10);
-
-			for (int i = 0; i < nvertices; i++)
+			if (strcmp(buffer, "OFF") == 0)
 			{
 				pc_in.getline(buffer, 128);
-				QStringList vertex_str = QString(buffer).split(' ');
+				QString num_str(buffer);
+				int nvertices = num_str.section(' ', 0, 0).toInt();
 
-				float x = vertex_str[0].toFloat();
-				float y = vertex_str[1].toFloat();
-				float z = vertex_str[2].toFloat();
+				m_vertices_list.resize(nvertices);
+				m_normals_list.resize(nvertices);
+				m_labels.resize(nvertices);
+				m_labels.fill(10);
 
-				coords[0] = x;
-				coords[1] = y;
-				coords[2] = z;
+				for (int i = 0; i < nvertices; i++)
+				{
+					pc_in.getline(buffer, 128);
+					QStringList vertex_str = QString(buffer).split(' ');
 
-				S.push_back(MiniPoint(3, coords.begin()));
+					float x = vertex_str[0].toFloat();
+					float y = vertex_str[1].toFloat();
+					float z = vertex_str[2].toFloat();
+
+					coords[0] = x;
+					coords[1] = y;
+					coords[2] = z;
+
+					S.push_back(MiniPoint(3, coords.begin()));
+				}
 			}
-		}
 
-		
-		if (S.size() > 0)    /* If the vertices are loaded successfully */
-		{
-			/* Compute the Miniball of the mesh */
-			Miniball mb(dimen, S);
-			double rad = mb.radius();
-			Miniball::Coordinate_iterator center_it = mb.center_begin();
 
-			if (normals_estimation_method == 0)    /* If use CGAL to compute the normals */
+			if (S.size() > 0)    /* If the vertices are loaded successfully */
 			{
-				/* Normalize the point cloud and prepare for normals computation */
-				PointList points_list;    /* The vertices container for normals estimation with CGAL */
-				for (PointVector::iterator point_it = S.begin(); point_it != S.end(); ++point_it)
-				{
-					/* Normalize the point(vertex) */
-					float x = (point_it->operator[](0) - center_it[0]) / rad;
-					float y = (point_it->operator[](1) - center_it[1]) / rad;
-					float z = (point_it->operator[](2) - center_it[2]) / rad;
+				/* Compute the Miniball of the mesh */
+				Miniball mb(dimen, S);
+				double rad = mb.radius();
+				Miniball::Coordinate_iterator center_it = mb.center_begin();
 
-					/* Create PointVectorPair for normals estimation */
-					Vector nullVector;
-					Point3 point(x, y, z);
-					PointVectorPair point_vector(point, nullVector);
-					/* Add the point to points list wichi will be sent to normal estimation process */
-					points_list.push_back(point_vector);
+				if (normals_estimation_method == 0)    /* If use CGAL to compute the normals */
+				{
+					/* Normalize the point cloud and prepare for normals computation */
+					PointList points_list;    /* The vertices container for normals estimation with CGAL */
+					for (PointVector::iterator point_it = S.begin(); point_it != S.end(); ++point_it)
+					{
+						/* Normalize the point(vertex) */
+						float x = (point_it->operator[](0) - center_it[0]) / rad;
+						float y = (point_it->operator[](1) - center_it[1]) / rad;
+						float z = (point_it->operator[](2) - center_it[2]) / rad;
+
+						/* Create PointVectorPair for normals estimation */
+						Vector nullVector;
+						Point3 point(x, y, z);
+						PointVectorPair point_vector(point, nullVector);
+						/* Add the point to points list wichi will be sent to normal estimation process */
+						points_list.push_back(point_vector);
+					}
+
+					/* Set the centroid to the origin point and set the radius to 1.0 */
+					m_centroid.setZero();
+					m_radius = 1.0;
+
+					/* Estimates normals direction.
+					   Note: pca_estimate_normals() requires an iterator over points
+					   as well as property maps to access each point's position and normal. */
+					qDebug() << "Estimating normals direction...";
+					const int nb_neighbors = 18; // K-nearest neighbors = 3 rings
+					CGAL::jet_estimate_normals<Concurrency_tag>(points_list.begin(), points_list.end(),
+						CGAL::First_of_pair_property_map<PointVectorPair>(),
+						CGAL::Second_of_pair_property_map<PointVectorPair>(),
+						18);
+					qDebug() << "Normals estimation done.";
+
+					/* Orients normals.
+					   Note: mst_orient_normals() requires an iterator over points
+					   as well as property maps to access each point's position and normal. */
+					qDebug() << "Orienting normals...";
+					PointList::iterator unoriented_points_begin =
+						CGAL::mst_orient_normals(points_list.begin(), points_list.end(),
+						CGAL::First_of_pair_property_map<PointVectorPair>(),
+						CGAL::Second_of_pair_property_map<PointVectorPair>(),
+						16);
+					qDebug() << "Normals orientation done.";
+
+					/* Add vertices(point) and normals from points_list after computing normals to m_vertices_list and m_normals_list */
+					int vertex_idx = 0;
+					for (PointList::iterator point_it = points_list.begin(); point_it != points_list.end(); ++point_it)
+					{
+						Point3 point = point_it->first;
+						Vector norm = point_it->second;
+
+						Vector3f vertex(point.x(), point.y(), point.z());
+						Vector3f normal(norm.x(), norm.y(), norm.z());
+
+						m_vertices_list[vertex_idx] = vertex;
+						m_normals_list[vertex_idx++] = normal;
+					}
 				}
-
-				/* Set the centroid to the origin point and set the radius to 1.0 */
-				m_centroid.setZero();
-				m_radius = 1.0;
-
-				/* Estimates normals direction.
-				   Note: pca_estimate_normals() requires an iterator over points
-				   as well as property maps to access each point's position and normal. */
-				qDebug() << "Estimating normals direction...";
-				const int nb_neighbors = 18; // K-nearest neighbors = 3 rings
-				CGAL::jet_estimate_normals<Concurrency_tag>(points_list.begin(), points_list.end(),
-					CGAL::First_of_pair_property_map<PointVectorPair>(),
-					CGAL::Second_of_pair_property_map<PointVectorPair>(),
-					18);
-				qDebug() << "Normals estimation done.";
-
-				/* Orients normals.
-				   Note: mst_orient_normals() requires an iterator over points
-				   as well as property maps to access each point's position and normal. */
-				qDebug() << "Orienting normals...";
-				PointList::iterator unoriented_points_begin =
-					CGAL::mst_orient_normals(points_list.begin(), points_list.end(),
-					CGAL::First_of_pair_property_map<PointVectorPair>(),
-					CGAL::Second_of_pair_property_map<PointVectorPair>(),
-					16);
-				qDebug() << "Normals orientation done.";
-
-				/* Add vertices(point) and normals from points_list after computing normals to m_vertices_list and m_normals_list */
-				int vertex_idx = 0;
-				for (PointList::iterator point_it = points_list.begin(); point_it != points_list.end(); ++point_it)
+				else    /* If use PCL to compute the normals */
 				{
-					Point3 point = point_it->first;
-					Vector norm = point_it->second;
+					pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);  /* The points container for normals computation with PCL */
 
-					Vector3f vertex(point.x(), point.y(), point.z());
-					Vector3f normal(norm.x(), norm.y(), norm.z());
+					/* Normalize the point cloud and prepare for normals computation */
+					for (PointVector::iterator point_it = S.begin(); point_it != S.end(); ++point_it)
+					{
+						/* Normalize the point(vertex) */
+						float x = (point_it->operator[](0) - center_it[0]) / rad;
+						float y = (point_it->operator[](1) - center_it[1]) / rad;
+						float z = (point_it->operator[](2) - center_it[2]) / rad;
 
-					m_vertices_list[vertex_idx] = vertex;
-					m_normals_list[vertex_idx++] = normal;
+						cloud->push_back(pcl::PointXYZ(x, y, z));
+					}
+
+					/* Set the centroid to the origin point and set the radius to 1.0 */
+					m_centroid.setZero();
+					m_radius = 1.0;
+
+					qDebug() << "Computing points normals...";
+					/* Create the normal estimation class, and pass the input dataset to it */
+					pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
+					ne.setInputCloud(cloud);
+
+					/* Create an empty kdtree representation, and pass it to the normal estimation object.
+					   Its content will be filled inside the object, based on the given input dataset (as no other search surface is given). */
+					pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>());
+					ne.setSearchMethod(tree);
+
+					pcl::PointCloud<pcl::Normal>::Ptr cloud_normals(new pcl::PointCloud<pcl::Normal>);    /* The output normals container */
+
+					/* Use all neighbors in a sphere of 0.1 radius */
+					ne.setRadiusSearch(0.1);
+					/* Compute the normals (as well as curvatures, but not used here) */
+					ne.compute(*cloud_normals);
+					qDebug() << "Normals computation done.";
+
+					/*  Add vertices(point) and normals from cloud and cloud_normals to m_vertices_list and m_normals_list */
+					int vertex_idx = 0;
+					for (pcl::PointCloud<pcl::PointXYZ>::iterator point_it = cloud->begin(); point_it != cloud->end(); ++point_it)
+					{
+						Vector3f vertex(point_it->x, point_it->y, point_it->z);
+						m_vertices_list[vertex_idx++] = vertex;
+					}
+					int normal_idx = 0;
+					for (pcl::PointCloud<pcl::Normal>::iterator norm_it = cloud_normals->begin(); norm_it != cloud_normals->end(); ++norm_it)
+					{
+						Vector3f normal(norm_it->normal_x, norm_it->normal_y, norm_it->normal_z);
+						m_normals_list[normal_idx++] = normal;
+					}
 				}
 			}
-			else    /* If use PCL to compute the normals */
-			{
-				pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);  /* The points container for normals computation with PCL */
 
-				/* Normalize the point cloud and prepare for normals computation */
-				for (PointVector::iterator point_it = S.begin(); point_it != S.end(); ++point_it)
-				{
-					/* Normalize the point(vertex) */
-					float x = (point_it->operator[](0) - center_it[0]) / rad;
-					float y = (point_it->operator[](1) - center_it[1]) / rad;
-					float z = (point_it->operator[](2) - center_it[2]) / rad;
+			output(modified_path.c_str());
 
-					cloud->push_back(pcl::PointXYZ(x, y, z));
-				}
-
-				/* Set the centroid to the origin point and set the radius to 1.0 */
-				m_centroid.setZero();
-				m_radius = 1.0;
-
-				qDebug() << "Computing points normals...";
-				/* Create the normal estimation class, and pass the input dataset to it */
-				pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
-				ne.setInputCloud(cloud);
-
-				/* Create an empty kdtree representation, and pass it to the normal estimation object.
-				   Its content will be filled inside the object, based on the given input dataset (as no other search surface is given). */
-				pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>());
-				ne.setSearchMethod(tree);
-
-				pcl::PointCloud<pcl::Normal>::Ptr cloud_normals(new pcl::PointCloud<pcl::Normal>);    /* The output normals container */
-
-				/* Use all neighbors in a sphere of 0.1 radius */
-				ne.setRadiusSearch(0.1);
-				/* Compute the normals (as well as curvatures, but not used here) */
-				ne.compute(*cloud_normals);
-				qDebug() << "Normals computation done.";
-
-				/*  Add vertices(point) and normals from cloud and cloud_normals to m_vertices_list and m_normals_list */
-				int vertex_idx = 0;
-				for (pcl::PointCloud<pcl::PointXYZ>::iterator point_it = cloud->begin(); point_it != cloud->end(); ++point_it)
-				{
-					Vector3f vertex(point_it->x, point_it->y, point_it->z);
-					m_vertices_list[vertex_idx++] = vertex;
-				}
-				int normal_idx = 0;
-				for (pcl::PointCloud<pcl::Normal>::iterator norm_it = cloud_normals->begin(); norm_it != cloud_normals->end(); ++norm_it)
-				{
-					Vector3f normal(norm_it->normal_x, norm_it->normal_y, norm_it->normal_z);
-					m_normals_list[normal_idx++] = normal;
-				}
-			}
+			pc_in.close();
 		}
-
-		pc_in.close();
 	}
-	
-	/* Estimate the normals of the vertices */
+	else  /* If the model has been loaded and estimated normals */
+	{
+		char buffer[128];
 
+		pc_modified_in.getline(buffer, 16);
+		assert(strcmp(buffer, "ply") == 0 || strcmp(buffer, "PLY") == 0);
+
+		pc_modified_in.getline(buffer, 32);
+
+		pc_modified_in.getline(buffer, 64);
+		QString line(buffer);
+		int num_vertices = line.section(' ', 2, 2).toInt();
+
+		for (int i = 0; i < 7; i++)
+			pc_modified_in.getline(buffer, 64);
+
+		m_vertices_list.resize(num_vertices);
+		m_normals_list.resize(num_vertices);
+		m_centroid.setZero();
+		m_radius = 1.0;
+		m_labels.resize(num_vertices);
+		m_labels.fill(10);
+
+		for (int i = 0; i < num_vertices; i++)
+		{
+			pc_modified_in.getline(buffer, 128);
+			QStringList line_list = QString(buffer).split(' ');
+
+			Vector3f vertex;
+			Vector3f normal;
+
+			int idx = 0;
+			for (QStringList::iterator it = line_list.begin(); it != line_list.end() && idx < 6; ++it)
+			{
+				if (idx < 3)
+					vertex[idx++] = it->toFloat();
+				else
+				{
+					normal[idx - 3] = it->toFloat();
+					idx++;
+				}
+			}
+
+			m_vertices_list[i] = vertex;
+			m_normals_list[i] = normal;
+		}
+	}
 }
 
 Eigen::Vector3f PCModel::getCentroid() const
@@ -552,4 +606,20 @@ Vector3f & PCModel::operator[](int index)
 Vector3f PCModel::at(int index)
 {
 	return m_vertices_list.at(index);
+}
+
+Vector3f PCModel::getVertex(int index)
+{
+	if (index < m_vertices_list.size())
+		return m_vertices_list[index];
+	else
+		return Vector3f::Zero();
+}
+
+Vector3f PCModel::getNormal(int index)
+{
+	if (index < m_normals_list.size())
+		return m_normals_list[index];
+	else
+		return Vector3f::Zero();
 }

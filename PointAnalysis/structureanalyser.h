@@ -89,11 +89,6 @@ private:
 	int m_null_label;
 
 	QVector<int> m_label_names;
-	//std::vector<std::string> m_label_paraphrases;
-	//std::vector<std::list<LabelIndex>> m_label_symmetries;
-	//std::vector<CuboidSymmetryGroupInfo> m_symmetry_group_info;
-	//std::vector<CuboidReflectionSymmetryGroup *> m_reflection_symmetry_groups;
-	//std::vector<CuboidRotationSymmetryGroup *> m_rotation_symmetry_groups;
 	CuboidJointNormalRelationPredictor *m_joint_normal_predictor;
 
 	std::list<std::string> m_object_list;

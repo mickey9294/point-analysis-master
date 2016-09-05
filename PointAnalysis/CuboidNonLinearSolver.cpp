@@ -1129,7 +1129,7 @@ void CuboidNonLinearSolver::update_cuboids(const std::vector< Number >& _values)
 			for (unsigned int corner_index = 0; corner_index < OBB::k_num_corners; ++corner_index)
 				new_point += cuboid_surface_point.getCornerWeights()[corner_index] * new_bbox_corners[corner_index];
 
-			cuboid_surface_point.setVertex(new_point);
+			cuboid_obb->getSampleReference(point_index).setVertex(new_point);
 		}
 	}
 }

@@ -85,6 +85,94 @@ OBB::OBB(const OBB * obb)
 	m_num_of_samples = obb->getNumOfSamples();
 }
 
+OBB::OBB(std::ifstream & in)
+{
+	char buffer[256];
+	/* Laod the axes */
+	in.getline(buffer, 128);
+	QString line(buffer);
+	x_axis[0] = line.section(' ', 0, 0).toFloat();
+	x_axis[1] = line.section(' ', 1, 1).toFloat();
+	x_axis[2] = line.section(' ', 2, 2).toFloat();
+	in.getline(buffer, 128);
+	line = QString(buffer);
+	y_axis[0] = line.section(' ', 0, 0).toFloat();
+	y_axis[1] = line.section(' ', 1, 1).toFloat();
+	y_axis[2] = line.section(' ', 2, 2).toFloat();
+	in.getline(buffer, 128);
+	line = QString(buffer);
+	z_axis[0] = line.section(' ', 0, 0).toFloat();
+	z_axis[1] = line.section(' ', 1, 1).toFloat();
+	z_axis[2] = line.section(' ', 2, 2).toFloat();
+
+	/* Load the lengths in 3 dimensions */
+	in.getline(buffer, 128);
+	line = QString(buffer);
+	x_length = line.section(' ', 0, 0).toFloat();
+	y_length = line.section(' ', 1, 1).toFloat();
+	z_length = line.section(' ', 2, 2).toFloat();
+
+	/* Load the centroid */
+	in.getline(buffer, 128);
+	line = QString(buffer);
+	m_centroid[0] = line.section(' ', 0, 0).toFloat();
+	m_centroid[1] = line.section(' ', 1, 1).toFloat();
+	m_centroid[2] = line.section(' ', 2, 2).toFloat();
+
+	/* Load the color */
+	in.getline(buffer, 128);
+	line = QString(buffer);
+	m_color[0] = line.section(' ', 0, 0).toFloat();
+	m_color[1] = line.section(' ', 1, 1).toFloat();
+	m_color[2] = line.section(' ', 2, 2).toFloat();
+
+	/* Load the label */
+	in.getline(buffer, 128);
+	m_label = std::atoi(buffer);
+
+	/* Load 8 corner vertices */
+	m_vertices.resize(k_num_corners);
+	for (int i = 0; i < k_num_corners; i++)
+	{
+		in.getline(buffer, 128);
+		line = QString(buffer);
+		QStringList line_list = line.split(' ');
+		Eigen::Vector3f corner(line_list[0].toFloat(), line_list[1].toFloat(), line_list[2].toFloat());
+		m_vertices[i] = corner;
+	}
+
+	/* Load the faces and faces normals */
+	int num_triangle_faces = 2 * k_num_faces;
+	m_faces.resize(num_triangle_faces);
+	m_faces_normals.resize(num_triangle_faces);
+	for (int i = 0; i < num_triangle_faces; i++)
+	{
+		in.getline(buffer, 128);
+		QStringList line_list = QString(buffer).split(' ');
+		Eigen::Vector3i face;
+		Eigen::Vector3f face_normal;
+		for (int j = 0; j < 3; j++)
+		{
+			face[j] = line_list[j].toInt();
+			face_normal[j] = line_list[3 + j].toFloat();
+		}
+		m_faces[i] = face;
+		m_faces_normals[i] = face_normal;
+	}
+
+	/* Load the sample points */
+	in.getline(buffer, 16);
+	int num_samples = std::atoi(buffer);
+	m_samples.resize(num_samples);
+	for (int i = 0; i < num_samples; i++)
+	{
+		in.getline(buffer, 256);
+		std::string sample_str(buffer);
+		SamplePoint sample(sample_str);
+		m_samples[i] = sample;
+	}
+}
+
 OBB::~OBB()
 {
 
@@ -299,8 +387,8 @@ int OBB::createRandomSamples()
 			Vector3f same_point = Vector3f::Zero();
 			for (int i = 0; i < k_num_corners; i++)
 				same_point += corner_weights[i] * m_vertices[i];
-			Real error = (sample_point - point).norm();
-			CHECK_NUMERICAL_ERROR(__FUNCTION__, error);
+			Real error = (same_point - point).norm();
+			Utils::CHECK_NUMERICAL_ERROR(__FUNCTION__, error);
 #endif
 			SamplePoint sample(point, normal, face_index, corner_weights);
 			m_samples.push_back(sample);
@@ -320,7 +408,7 @@ int OBB::createGridSamples()
 		all_faces_area += getFaceArea(face_index);
 
 	/* NOTE:
-	   The number of ponts may not be exactly the same with the given num_of_samples. */
+	   The number of points may not be exactly the same with the given num_of_samples. */
 	for (int face_index = 0; face_index < k_num_faces; ++face_index)
 	{
 		const int *corner_indices = k_face_corner_indices[face_index];
@@ -379,7 +467,7 @@ int OBB::createGridSamples()
 				Eigen::Vector3f same_point = Eigen::Vector3f::Zero();
 				for (unsigned int i = 0; i < k_num_corners; ++i)
 					same_point += corner_weights[i] * m_vertices[i];
-				Real error = (same_point - point).length();
+				Real error = (same_point - point).norm();
 				Utils::CHECK_NUMERICAL_ERROR(__FUNCTION__, error);
 #endif
 
@@ -401,7 +489,7 @@ int OBB::createGridSamples()
 
 		int second_diff = diff - num_points_more_on_each_face * k_num_faces;
 
-		if (num_points_more_on_each_face > 0)
+		if (num_points_more_on_each_face > 0 || second_diff > 0)
 		{
 			for (int face_index = 0; face_index < k_num_faces; face_index++)
 			{
@@ -465,6 +553,8 @@ int OBB::createGridSamples()
 		}
 	}
 
+	int sur_samp_size = m_samples.size();
+	int should_num = m_num_of_samples;
 	return m_samples.size();
 }
 
@@ -687,7 +777,7 @@ void OBB::draw(int scale)
 
 void OBB::drawSamples(int scale)
 {
-	glColor4f(COLORS[m_label][0], COLORS[m_label][1], COLORS[m_label][2], 1.0);
+	glColor4f(COLORS[10][0], COLORS[10][1], COLORS[10][2], 1.0);
 	glBegin(GL_POINTS);
 
 	for (QVector<SamplePoint>::iterator sample_it = m_samples.begin(); sample_it != m_samples.end(); ++sample_it)
@@ -931,7 +1021,7 @@ void OBB::transform(Matrix4f transform_mat, PointCloud<PointXYZ>::Ptr cloud)
 	}*/
 }
 
-void OBB::transform(Eigen::Matrix3d rotate_mat, Eigen::Vector3d trans_vec, std::vector<Eigen::Vector3f> cloud)
+void OBB::transform(Eigen::Matrix3d rotate_mat, Eigen::Vector3d trans_vec, const std::vector<Eigen::Vector3f> &cloud)
 {
 	Matrix3f rotate = rotate_mat.cast<float>();
 	Vector3f translation = trans_vec.cast<float>();
@@ -951,11 +1041,12 @@ void OBB::transform(Eigen::Matrix3d rotate_mat, Eigen::Vector3d trans_vec, std::
 	point_cloud->points.resize(point_cloud->width * point_cloud->height);
 
 	int point_idx = 0;
-	for (std::vector<Eigen::Vector3f>::iterator point_it = cloud.begin(); point_it != cloud.end(); ++point_it)
+	for (std::vector<Eigen::Vector3f>::const_iterator point_it = cloud.begin(); point_it != cloud.end(); ++point_it)
 	{
 		point_cloud->points[point_idx].x = point_it->x();
 		point_cloud->points[point_idx].y = point_it->y();
 		point_cloud->points[point_idx].z = point_it->z();
+		point_idx++;
 	}
 
 	this->transform(transform, point_cloud);
@@ -1067,7 +1158,7 @@ double OBB::getFaceArea(int face_index)
 
 	Vector3f p = corner_point[2] - corner_point[0];
 	Vector3f q = corner_point[3] - corner_point[1];
-	double area = -0.5 * (double)(p.cross(q).norm());
+	double area = 0.5 * (double)(p.cross(q).norm());
 
 	return area;
 }
@@ -1113,4 +1204,84 @@ void OBB::updateCorners()
 
 	for (int i = 0; i < k_num_corners; i++)
 		m_vertices[i] = translations[i] * m_centroid;
+}
+
+void OBB::writeToFile(std::ofstream & out)
+{
+	/* Write the axes */
+	out << x_axis.x() << " " << x_axis.y() << " " << x_axis.z() << endl;
+	out << y_axis.x() << " " << y_axis.y() << " " << y_axis.z() << endl;
+	out << z_axis.x() << " " << z_axis.y() << " " << z_axis.z() << endl;
+
+	/* Write the lengths in 3 dimension */
+	out << x_length << " " << y_length << " " << z_length << endl;
+
+	/* Write the centroid */
+	out << m_centroid.x() << " " << m_centroid.y() << " " << m_centroid.z() << endl;
+
+	/* Write the color */
+	out << m_color.x() << " " << m_color.y() << " " << m_color.z() << endl;
+
+	/* Write the label */
+	out << m_label << endl;
+
+	/* Write the corners of the OBB */
+	for (QVector<Eigen::Vector3f>::iterator corner_it = m_vertices.begin(); corner_it != m_vertices.end(); ++corner_it)
+		out << corner_it->x() << " " << corner_it->y() << " " << corner_it->z() << endl;
+
+	/* Write the faces and faces normals */
+	int num_triangle_faces = 2 * k_num_faces;
+	for (int i = 0; i < num_triangle_faces; i++)
+	{
+		Eigen::Vector3i face = m_faces[i];
+		Eigen::Vector3f face_norm = m_faces_normals[i];
+
+		out << face.x() << " " << face.y() << " " << face.z() << " "
+			<< face_norm.x() << " " << face_norm.y() << " " << face_norm.z() << endl;
+	}
+
+	/* Write the sample points */
+	out << m_samples.size() << endl;  /* Write the number of samples */
+	for (QVector<SamplePoint>::iterator sample_it = m_samples.begin(); sample_it != m_samples.end(); ++sample_it)
+		out << sample_it->toString() << endl;
+}
+
+void OBB::updateWithNewPoints(const std::vector<Eigen::Vector3f> & points)
+{
+	m_vertices.clear();
+	m_faces.clear();
+	m_faces_normals.clear();
+	m_samples.clear();
+
+	/* Recompute the x_length, y_length and z_length */
+	float min[3] = { 100.0, 100.0, 100.0 };
+	float max[3] = { -100.0, -100.0, -100.0 };
+	Matrix3f local_axes_mat = getAxes();
+	Matrix3f coord_trans = local_axes_mat.inverse();
+	for (std::vector<Eigen::Vector3f>::const_iterator point_it = points.begin(); point_it != points.end(); ++point_it)
+	{
+		Vector3f point = coord_trans * (*point_it);
+
+		if (point.x() < min[0])
+			min[0] = point.x();
+		if (point.x() > max[0])
+			max[0] = point.x();
+		if (point.y() < min[1])
+			min[1] = point.y();
+		if (point.y() > max[1])
+			max[1] = point.y();
+		if (point.z() < min[2])
+			min[2] = point.z();
+		if (point.z() > max[2])
+			max[2] = point.z();
+	}
+
+	x_length = max[0] - min[0];
+	y_length = max[1] - min[1];
+	z_length = max[2] - min[2];
+
+	Vector3f local_centroid((max[0] + min[0]) / 2.0, (max[1] + min[1]) / 2.0, (max[2] + min[2]) / 2.0);
+	m_centroid = local_axes_mat * local_centroid;
+
+	triangulate();
 }

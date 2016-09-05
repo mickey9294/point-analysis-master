@@ -3,6 +3,7 @@
 PCAThread::PCAThread(QObject *parent) : QThread(parent)
 {
 	qRegisterMetaType<Samples_Vec>("SamplePoints");
+	qRegisterMetaType<Parts_Vector>("Parts_Vector");
 	m_phase = PHASE::TESTING;
 }
 
@@ -10,6 +11,7 @@ PCAThread::PCAThread(Model *model, PHASE phase, QObject *parent)
 	: QThread(parent)
 {
 	qRegisterMetaType<Samples_Vec>("SamplePoints");
+	qRegisterMetaType<Parts_Vector>("Parts_Vector");
 	m_model = model;
 	m_phase = phase;
 }
@@ -36,6 +38,11 @@ void PCAThread::loadParts(Model * model)
 	int size = model->vertexCount();
 	int classSize = model->numOfClasses();
 	QVector<int> label_names = model->getLabelNames();
+	if (label_names.empty())
+	{
+		label_names.resize(1);
+		label_names[0] = 10;
+	}
 
 	for (int i = 0; i < classSize; i++)
 	{
@@ -43,8 +50,8 @@ void PCAThread::loadParts(Model * model)
 		int label_name = label_names[i];
 		m_part_clouds.insert(label_name, part);
 
-		PAPart label_part;
-		label_part.setLabel(label_name);
+		PAPart *label_part = new PAPart();
+		label_part->setLabel(label_name);
 		m_parts.insert(label_name, label_part);
 	}
 	
@@ -64,7 +71,7 @@ void PCAThread::loadParts(Model * model)
 				PointXYZ point(sample_it->x(), sample_it->y(), sample_it->z());
 				m_part_clouds[label]->push_back(point);
 
-				m_parts[label].addVertex(idx, sample_it->getVertex(), sample_it->getNormal());
+				m_parts[label]->addVertex(idx, sample_it->getVertex(), sample_it->getNormal());
 
 				idx++;
 			}
@@ -79,11 +86,12 @@ void PCAThread::loadParts(Model * model)
 		int point_idx = 0;
 		for (QVector<Eigen::Vector3f>::iterator point_it = pc->vertices_begin(); point_it != pc->vertices_end(); ++point_it)
 		{
-			int label = labels[point_idx++];
+			int label = labels[point_idx];
 			PointXYZ point(point_it->x(), point_it->y(), point_it->z());
 			m_part_clouds[label]->push_back(point);
 
-			m_parts[label].addVertex(point_idx, *point_it, pc->getVertexNormal(point_idx));
+			m_parts[label]->addVertex(point_idx, *point_it, pc->getVertexNormal(point_idx));
+			point_idx++;
 		}
 	}
 }
@@ -94,7 +102,7 @@ void PCAThread::run()
 	if (m_model->vertexCount() > 0)
 	{
 		loadParts(m_model);
-		QVector<PAPart> parts;
+		Parts_Vector parts;
 		QVector<int> labels(m_part_clouds.size());
 
 		m_OBBs.resize(m_part_clouds.size());
@@ -111,18 +119,24 @@ void PCAThread::run()
 			OBBEstimator obbe(label, it.value());
 			obbe.setPhase(m_phase);
 			OBB *obb = obbe.computeOBB();
+			//obb->setLabel(label);
 
-			m_parts[label].setOBB(obb);
+			m_parts[label]->setOBB(obb);
 			
 			if (m_phase == PHASE::TESTING)
-				m_parts[label].ICP_adjust_OBB();
+				m_parts[label]->ICP_adjust_OBB();
 
 			parts.push_back(m_parts[label]);
-			m_OBBs[i++] = obb;	
-		}
+			m_OBBs[i++] = new OBB(obb);	
+		} 
 		
 		emit addDebugText("Computing OBB done.");
 		emit estimateOBBsCompleted(m_OBBs);
 		emit estimatePartsDone(parts);
 	}
+}
+
+void PCAThread::setPhase(PHASE phase)
+{
+	m_phase = phase;
 }

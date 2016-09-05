@@ -201,19 +201,34 @@ void CuboidFeatures::compute_features(const OBB *obb, Eigen::MatrixXd *_attribut
 	}
 
 	/* Center height */
+	m_features[next_feature_index] = CuboidAttributes::k_up_direction.dot(obb->getCentroid());
+	for (int i = 0; i < 3; i++)
+	{
+		//attributes_to_features_map.row(next_feature_index)(
+		//	MeshCuboidAttributes::k_center_index + i) = MeshCuboidAttributes::k_up_direction[i];
+		for (unsigned int corner_index = 0; corner_index < OBB::k_num_corners; ++corner_index)
+		{
+			attributes_to_features_map.row(next_feature_index)(
+				CuboidAttributes::k_corner_index + 3 * corner_index + i) =
+				(1.0 / OBB::k_num_corners) * CuboidAttributes::k_up_direction[i];
+		}
+	}
+	++next_feature_index;
+
+	/* Corner height */
 	for (int corner_index = 0; corner_index < 8; corner_index++)
 	{
 		Eigen::Vector3f corner = obb->getVertex(corner_index);
 		m_features[next_feature_index] = CuboidAttributes::k_up_direction.dot(corner);
 
-		for (int i = 0; i, 3; i++)
+		for (int i = 0; i < 3; i++)
 		{
 			attributes_to_features_map.row(next_feature_index)(CuboidAttributes::k_corner_index + 3 * corner_index + i) =
 				CuboidAttributes::k_up_direction[i];
 		}
 		next_feature_index++;
 	}
-
+	
 	assert(next_feature_index == CuboidFeatures::k_num_features);
 
 #ifdef DEBUG_TEST
@@ -398,7 +413,7 @@ void CuboidTransformation::compute_transformation(const OBB *obb)
 		{
 			m_second_rotation.row(axis_index)(i) = axes.col(axis_index)[i];
 		}
-		m_first_translation(axis_index) = obb->getCentroid()[axis_index];
+		m_first_translation(axis_index) = -obb->getCentroid()[axis_index];
 	}
 }
 
