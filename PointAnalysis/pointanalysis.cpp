@@ -21,8 +21,8 @@ PointAnalysis::PointAnalysis(QWidget *parent)
 	connect(ui.actionTrain_Point_Classifier, SIGNAL(triggered()), this, SLOT(trainPointClassifier()));
 	connect(ui.actionTest_PointCloud, SIGNAL(triggered()), this, SLOT(testPointCloud()));
 	connect(ui.displayGLWidget, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
-	connect(&testPcThread, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
-	connect(&testPcThread, SIGNAL(reportStatus(QString)), this, SLOT(setStatMessage(QString)));
+	//connect(testPcThread.data(), SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
+	//connect(testPcThread.data(), SIGNAL(reportStatus(QString)), this, SLOT(setStatMessage(QString)));
 	connect(ui.actionCompute_sdf, SIGNAL(triggered()), this, SLOT(computeSdf()));
 	connect(ui.actionNormalize_Meshes, SIGNAL(triggered()), this, SLOT(normalizeMeshes()));
 	connect(ui.actionCompute_OBB, SIGNAL(triggered()), this, SLOT(computeOBB()));
@@ -30,6 +30,7 @@ PointAnalysis::PointAnalysis(QWidget *parent)
 	connect(ui.actionStructure_Inference, SIGNAL(triggered()), this, SLOT(inferStructure()));
 	connect(&m_analyser, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
 	connect(&m_analyser, SIGNAL(sendOBBs(QVector<OBB *>)), ui.displayGLWidget, SLOT(setOBBs(QVector<OBB *>)));
+	connect(&m_analyser, SIGNAL(sendPartsStructure(PartsStructure *)), ui.displayGLWidget, SLOT(setPartsStructure(PartsStructure *)));
 	connect(ui.actionDebug_Parts_Relations, SIGNAL(triggered()), this, SLOT(debugPartRelations()));
 	connect(ui.actionCheck_Models, SIGNAL(triggered()), this, SLOT(checkModels()));
 
@@ -225,13 +226,41 @@ void PointAnalysis::onDebugTextAdded(QString text)
 
 void PointAnalysis::testPointCloud()
 {
-	if (testPcThread.isRunning())
-		testPcThread.terminate();
+	if (!testPcThread.isNull() && testPcThread->isRunning())
+		testPcThread->quit();
 
-	connect(&testPcThread, SIGNAL(setPCLabels(QVector<int>)), this, SLOT(onTestCompleted(QVector<int>)));
-	connect(&testPcThread, SIGNAL(signalTest()), (PCModel *)ui.displayGLWidget->getModel(), SLOT(receiveSignalTest()));
-	testPcThread.setPcName(QString::fromStdString(filename));
-	testPcThread.start();
+	std::string model_path = ui.displayGLWidget->getModel()->getInputFilepath();
+	std::string model_name = Utils::getModelName(model_path);
+
+	/* Check whether the point cloud has been classified */
+	std::string prediction_path = "../data/predictions/" + model_name + ".txt";
+	ifstream prediction_in(prediction_path.c_str());
+
+	if (prediction_in.is_open())    /* If the point cloud has been classified */
+	{
+		prediction_in.close();
+		if (testPcThread.isNull())
+		{
+			testPcThread.reset(new TestPCThread(0, prediction_path, m_modelClassName, this));
+			connect(testPcThread.data(), SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
+			connect(testPcThread.data(), SIGNAL(setPCLabels(QVector<int>)), this, SLOT(onTestCompleted(QVector<int>)));
+		}
+		else
+			testPcThread->setPredictionFilePath(prediction_path);
+	}
+	else    /* If the point cloud has not been classified */
+	{
+		if (testPcThread.isNull())
+		{
+			testPcThread.reset(new TestPCThread(QString::fromStdString(model_name), m_modelClassName, this));
+			connect(testPcThread.data(), SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
+			connect(testPcThread.data(), SIGNAL(setPCLabels(QVector<int>)), this, SLOT(onTestCompleted(QVector<int>)));
+		}
+		else
+			testPcThread->setPcName(QString::fromStdString(model_name));
+	}
+
+	testPcThread->start();
 }
 
 void PointAnalysis::onTestCompleted(QVector<int> labels)

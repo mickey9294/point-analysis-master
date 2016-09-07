@@ -57,6 +57,8 @@ public:
 
 	PAPoint & get_point(int index);
 	int get_point_assignment(int index);
+
+	void draw(float scale);
 };
 
 #endif

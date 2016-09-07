@@ -94,6 +94,16 @@ void PCAThread::loadParts(Model * model)
 			point_idx++;
 		}
 	}
+
+	/* Remove part clouds with too few points(less than 15) */
+	for (QVector<int>::iterator label_it = label_names.begin(); label_it != label_names.end(); ++label_it)
+	{
+		if (m_part_clouds[*label_it]->size() < 15)
+		{
+			m_part_clouds.remove(*label_it);
+			m_parts.remove(*label_it);
+		}
+	}
 }
 
 void PCAThread::run()
@@ -105,13 +115,16 @@ void PCAThread::run()
 		Parts_Vector parts;
 		QVector<int> labels(m_part_clouds.size());
 
-		m_OBBs.resize(m_part_clouds.size());
+		m_OBBs.clear();
 
 		/* Compute the oriented bounding box for each distinct part */
 		QMap<int, PointCloud<PointXYZ>::Ptr>::iterator it;
 		int i = 0;
 		for (it = m_part_clouds.begin(); it != m_part_clouds.end(); it++)
 		{
+			if ((*it)->size() < 15)
+				continue;
+
 			int label = it.key();
 			labels[i] = i;
 			emit addDebugText("Compute OBB of part " + QString::number(label));
@@ -127,7 +140,7 @@ void PCAThread::run()
 				m_parts[label]->ICP_adjust_OBB();
 
 			parts.push_back(m_parts[label]);
-			m_OBBs[i++] = new OBB(obb);	
+			m_OBBs.push_back(new OBB(obb));	
 		} 
 		
 		emit addDebugText("Computing OBB done.");

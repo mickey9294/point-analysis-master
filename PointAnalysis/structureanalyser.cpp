@@ -1,71 +1,56 @@
   #include "structureanalyser.h"
 
 StructureAnalyser::StructureAnalyser(QObject *parent)
-	: QObject(parent), m_fe(NULL), classifier_loaded(false), m_testPCThread(NULL), m_genCandThread(NULL), m_pointcloud(NULL),
-	m_predictionThread(NULL), m_segmentationThread(NULL), m_iteration(0), m_null_label(-1), m_joint_normal_predictor(NULL),
-	m_partPoseOptThread(NULL)
+	: QObject(parent), classifier_loaded(false), m_pointcloud(NULL), m_iteration(0), m_null_label(-1)
 {
 	qRegisterMetaType<PAPointCloud *>("PAPointCloudPointer");
 	qRegisterMetaType<QVector<QMap<int, float>>>("ClassificationDistribution");
 	qRegisterMetaType<PAPart>("PAPart");
 	qRegisterMetaType<Part_Candidates>("PartCandidates");
+	qRegisterMetaType<PartsStructure *>("PartsStructure");
 
 	m_modelClassName = "coseg_chairs_8";
-	m_energy_functions = new EnergyFunctions(m_modelClassName);
+	m_energy_functions.reset(new EnergyFunctions(m_modelClassName));
 }
 
 StructureAnalyser::StructureAnalyser(PCModel *pcModel, QObject * parent)
-	: QObject(parent), m_fe(NULL), classifier_loaded(false), m_testPCThread(NULL), m_genCandThread(NULL), m_pointcloud(NULL),
-	m_predictionThread(NULL), m_segmentationThread(NULL), m_iteration(0), m_null_label(-1), m_joint_normal_predictor(NULL),
-	m_partPoseOptThread(NULL)
+	: QObject(parent), classifier_loaded(false), m_iteration(0), m_null_label(-1)
 {
 	qRegisterMetaType<PAPointCloud *>("PAPointCloudPointer");
 	qRegisterMetaType<QVector<QMap<int, float>>>("ClassificationDistribution");
 	qRegisterMetaType<PAPart>("PAPart");
 	qRegisterMetaType<Part_Candidates>("PartCandidates");
+	qRegisterMetaType<PartsStructure *>("PartsStructure");
 	m_pcModel = pcModel;
 	m_modelClassName = "coseg_chairs_8";
-	m_energy_functions = new EnergyFunctions(m_modelClassName);
+	m_energy_functions.reset(new EnergyFunctions(m_modelClassName));
 	m_parts_structure.set_model(pcModel);
 }
 
 StructureAnalyser::~StructureAnalyser()
 {
-	if (m_fe != NULL)
-	{
-		delete(m_fe);
-		m_fe = NULL;
-	}
-
-	if (m_testPCThread != NULL)
+	if (!m_testPCThread.isNull())
 	{
 		if (m_testPCThread->isRunning())
-			m_testPCThread->terminate();
-		delete(m_testPCThread);
-		m_testPCThread = NULL;
+			m_testPCThread->quit();
 	}
 
-	if (m_genCandThread != NULL)
+	if (!m_genCandThread.isNull())
 	{
 		if (m_genCandThread->isRunning())
-			m_genCandThread->terminate();
-		delete(m_genCandThread);
-		m_genCandThread = NULL;
+			m_genCandThread->quit();
 	}
 
-	if (m_predictionThread != NULL)
+	if (!m_predictionThread.isNull())
 	{
 		if (m_predictionThread->isRunning())
-			m_predictionThread->terminate();
-		delete(m_predictionThread);
-		m_predictionThread = NULL;
+			m_predictionThread->quit();
 	}
 
 	if (m_pointcloud != NULL)
 		delete(m_pointcloud);
 
-	delete(m_energy_functions);
-	delete(m_joint_normal_predictor);
+	//delete(m_joint_normal_predictor);
 
 	for (std::vector<std::list<CuboidFeatures *>>::iterator it = m_feature_list.begin(); it != m_feature_list.end(); ++it)
 	{
@@ -96,12 +81,6 @@ StructureAnalyser::~StructureAnalyser()
 
 void StructureAnalyser::execute()
 {
-	if (m_fe != NULL)
-	{
-		delete(m_fe);
-		m_fe = NULL;
-	}
-
 	/* Make sure the last run of TestPCThread is over */
 	if (m_testPCThread != NULL && m_testPCThread->isRunning())
 		m_testPCThread->terminate();
@@ -110,9 +89,7 @@ void StructureAnalyser::execute()
 	if (m_genCandThread != NULL)
 	{
 		if (m_genCandThread->isRunning())
-			m_genCandThread->terminate();
-		delete(m_genCandThread);
-		m_genCandThread = NULL;
+			m_genCandThread->quit();
 	}
 
 	if (m_pointcloud != NULL)
@@ -133,10 +110,6 @@ void StructureAnalyser::execute()
 	load_transformations(training_dir + std::string("/") + transformation_filename_prefix);
 
 	m_parts_structure.clear_parts();
-
-	std::vector<std::vector<CuboidJointNormalRelations *>> joint_normal_relations;
-	get_joint_normal_relations(joint_normal_relations);
-	m_joint_normal_predictor = new CuboidJointNormalRelationPredictor(joint_normal_relations);
 
 	if (!ret)
 	{
@@ -159,9 +132,9 @@ void StructureAnalyser::execute()
 	}
 	else    /* If the point cloud has not been estimated, then estimate it */
 	{
-		m_fe = new FeatureEstimator(m_pcModel, PHASE::TESTING, this);
-		connect(m_fe, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
-		connect(m_fe, SIGNAL(estimateCompleted(PAPointCloud *)), this, SLOT(initialize(PAPointCloud *)));
+		m_fe.reset(new FeatureEstimator(m_pcModel, PHASE::TESTING, this));
+		connect(m_fe.data(), SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
+		connect(m_fe.data(), SIGNAL(estimateCompleted(PAPointCloud *)), this, SLOT(initialize(PAPointCloud *)));
 		onDebugTextAdded("Estimating points features...");
 		m_fe->estimateFeatures();
 	}
@@ -177,10 +150,6 @@ void StructureAnalyser::initialize(PAPointCloud *pointcloud)
 	onDebugTextAdded("Points features estimation done.");
 	onDebugTextAdded("Start initialization.");
 	qDebug() << "Points features estimation done. Start initialization.";
-
-	/* Release the memory of FeatureEstimator */
-	if (m_fe != NULL)
-		delete(m_fe);   /* may cause exception */
 
 	classifyPoints(pointcloud);
 }
@@ -245,24 +214,24 @@ void StructureAnalyser::classifyPoints(PAPointCloud *pointcloud)
 	if (prediction_in.is_open())    /* If the point cloud has been classified */
 	{
 		prediction_in.close();
-		if (m_testPCThread == NULL)
+		if (m_testPCThread.isNull())
 		{
-			m_testPCThread = new TestPCThread(0, prediction_path, m_modelClassName, this);
-			connect(m_testPCThread, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
-			connect(m_testPCThread, SIGNAL(classifyProbabilityDistribution(QVector<QMap<int, float>>)), this, SLOT(onClassificationDone(QVector<QMap<int, float>>)));
-			connect(m_testPCThread, SIGNAL(setPCLabels(QVector<int>)), this, SLOT(onPointLabelsGot(QVector<int>)));
+			m_testPCThread.reset(new TestPCThread(0, prediction_path, m_modelClassName, this));
+			connect(m_testPCThread.data(), SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
+			connect(m_testPCThread.data(), SIGNAL(classifyProbabilityDistribution(QVector<QMap<int, float>>)), this, SLOT(onClassificationDone(QVector<QMap<int, float>>)));
+			connect(m_testPCThread.data(), SIGNAL(setPCLabels(QVector<int>)), this, SLOT(onPointLabelsGot(QVector<int>)));
 		}
 		else
 			m_testPCThread->setPredictionFilePath(prediction_path);
 	}
 	else    /* If the point cloud has not been classified */
 	{
-		if (m_testPCThread == NULL)
+		if (m_testPCThread.isNull())
 		{
-			m_testPCThread = new TestPCThread(QString::fromStdString(m_model_name), m_modelClassName, this);
-			connect(m_testPCThread, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
-			connect(m_testPCThread, SIGNAL(classifyProbabilityDistribution(QVector<QMap<int, float>>)), this, SLOT(onClassificationDone(QVector<QMap<int, float>>)));
-			connect(m_testPCThread, SIGNAL(setPCLabels(QVector<int>)), this, SLOT(onPointLabelsGot(QVector<int>)));
+			m_testPCThread.reset(new TestPCThread(QString::fromStdString(m_model_name), m_modelClassName, this));
+			connect(m_testPCThread.data(), SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
+			connect(m_testPCThread.data(), SIGNAL(classifyProbabilityDistribution(QVector<QMap<int, float>>)), this, SLOT(onClassificationDone(QVector<QMap<int, float>>)));
+			connect(m_testPCThread.data(), SIGNAL(setPCLabels(QVector<int>)), this, SLOT(onPointLabelsGot(QVector<int>)));
 		}
 		else
 			m_testPCThread->setPcName(QString::fromStdString(m_model_name));
@@ -301,15 +270,19 @@ void StructureAnalyser::onClassificationDone(QVector<QMap<int, float>> distribut
 
 		m_pointcloud->operator[](point_idx++).setClassConfidences(*dis_it);
 	}
+
+	std::vector<std::vector<CuboidJointNormalRelations *>> joint_normal_relations;
+	get_joint_normal_relations(joint_normal_relations);
+	m_joint_normal_predictor.reset(new CuboidJointNormalRelationPredictor(joint_normal_relations));
 	
 
 	/* Create a thread to generate the part candidates */
-	m_genCandThread = new GenCandidatesThread(m_pointcloud, m_model_name, distribution, this);
+	m_genCandThread.reset(new GenCandidatesThread(m_pointcloud, m_model_name, distribution, this));
 	//m_genCandThread = new GenCandidatesThread(m_model_name, m_pointcloud->size(), 144, this);    /* Directly load candidates from local files */
-	connect(m_genCandThread, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
-	connect(m_genCandThread, SIGNAL(genCandidatesDone(int, Part_Candidates, QVector<int>)), 
+	connect(m_genCandThread.data(), SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
+	connect(m_genCandThread.data(), SIGNAL(genCandidatesDone(int, Part_Candidates, QVector<int>)), 
 		this, SLOT(onGenCandidatesDone(int, Part_Candidates, QVector<int>)));
-	connect(m_genCandThread, SIGNAL(setOBBs(QVector<OBB *>)), this, SLOT(setOBBs(QVector<OBB *>)));
+	connect(m_genCandThread.data(), SIGNAL(setOBBs(QVector<OBB *>)), this, SLOT(setOBBs(QVector<OBB *>)));
 	m_genCandThread->start();
 }
 
@@ -333,9 +306,7 @@ void StructureAnalyser::onGenCandidatesDone(int num_of_candidates, Part_Candidat
 	if (m_genCandThread != NULL)
 	{
 		if (m_genCandThread->isRunning())
-			m_genCandThread->terminate();
-		delete(m_genCandThread);    /* may cause exception */
-		m_genCandThread = NULL;
+			m_genCandThread->quit();
 	}
 
 
@@ -344,9 +315,9 @@ void StructureAnalyser::onGenCandidatesDone(int num_of_candidates, Part_Candidat
 	qDebug() << "Predict part labels and orientations.";
 
 	bool use_symmetry = m_iteration == 0 ? true : false;
-	m_predictionThread = new PredictionThread(m_energy_functions, part_candidates, m_label_names, 
-		m_modelClassName, use_symmetry, this);
-	connect(m_predictionThread, SIGNAL(predictionDone(QMap<int, int>, std::vector<int>)), this, SLOT(onPredictionDone(QMap<int, int>, std::vector<int>)));
+	m_predictionThread.reset(new PredictionThread(m_energy_functions, part_candidates, m_label_names, 
+		m_modelClassName, use_symmetry, this));
+	connect(m_predictionThread.data(), SIGNAL(predictionDone(QMap<int, int>, std::vector<int>)), this, SLOT(onPredictionDone(QMap<int, int>, std::vector<int>)));
 	//connect(m_predictionThread, SIGNAL(predictionDone()), this, SLOT(onPredictionDone()));
 	m_predictionThread->start();
 }
@@ -426,17 +397,15 @@ void StructureAnalyser::onPredictionDone(QMap<int, int> parts_picked, std::vecto
 	if (m_predictionThread != NULL)
 	{
 		if (m_predictionThread->isRunning())
-			m_predictionThread->terminate();
-		delete(m_predictionThread);    /* may cause exception */
-		m_predictionThread = NULL;
+			m_predictionThread->quit();
 	}
 
 	/* Compute symmetry groups */
 	m_parts_structure.compute_symmetry_groups();
 
 	/* Do point segmentation */
-	m_segmentationThread = new PointSegmentationThread(&m_parts_structure, m_label_names, this);
-	connect(m_segmentationThread, SIGNAL(pointSegmentationDone(QVector<int>)), this, SLOT(pointSegmentationDone(QVector<int>)));
+	m_segmentationThread.reset(new PointSegmentationThread(&m_parts_structure, m_label_names, this));
+	connect(m_segmentationThread.data(), SIGNAL(pointSegmentationDone(QVector<int>)), this, SLOT(pointSegmentationDone(QVector<int>)));
 	m_segmentationThread->start();
 }
 
@@ -452,24 +421,24 @@ void StructureAnalyser::pointSegmentationDone(QVector<int> new_point_assignments
 	//out.close();
 
 	/* Show new oriented bounding boxes after point segmentation */
-	emit sendOBBs(m_parts_structure.get_all_obb_copies());
+	//emit sendOBBs(m_parts_structure.get_all_obb_copies());
 
 	/* Release the memory of PointSegmentationThread */
 	if (m_segmentationThread != NULL)
 	{
 		if (m_segmentationThread->isRunning())
-			m_segmentationThread->terminate();
-		delete(m_segmentationThread);
-		m_segmentationThread = NULL;
+			m_segmentationThread->quit();
 	}
 
 	/* Do Part pose optimization */
-	/*if (!disable_part_relation_terms)
+	if (!disable_part_relation_terms)
 	{
-		m_partPoseOptThread = new PartPoseOptThread(&m_parts_structure, m_joint_normal_predictor, this);
-		connect(m_partPoseOptThread, SIGNAL(finished()), this, SLOT(onPartPoseOptimizationDone()));
+		m_partPoseOptThread.reset(new PartPoseOptThread(&m_parts_structure, m_joint_normal_predictor, this));
+		connect(m_partPoseOptThread.data(), SIGNAL(finished()), this, SLOT(onPartPoseOptimizationDone()));
 		m_partPoseOptThread->start();
-	}*/
+	}
+
+	emit sendPartsStructure(&m_parts_structure);
 }
 
 void StructureAnalyser::onPartPoseOptimizationDone()
@@ -480,9 +449,7 @@ void StructureAnalyser::onPartPoseOptimizationDone()
 	if (m_partPoseOptThread != NULL)
 	{
 		if (m_partPoseOptThread->isRunning())
-			m_partPoseOptThread->terminate();
-		delete(m_partPoseOptThread);
-		m_partPoseOptThread = NULL;
+			m_partPoseOptThread->quit();
 	}
 
 	
@@ -499,8 +466,8 @@ void StructureAnalyser::onPartPoseOptimizationDone()
 			parts_candidates[part_idx++] = PAPart(**part_it);
 
 		bool use_symmetry = m_iteration == 0 ? true : false;
-		m_predictionThread = new PredictionThread(m_energy_functions, parts_candidates, m_label_names, m_modelClassName, use_symmetry, this);
-		connect(m_predictionThread, SIGNAL(predictionDone(QMap<int, int>, std::vector<int>)), this, SLOT(onPredictionDone(QMap<int, int>, std::vector<int>)));
+		m_predictionThread.reset(new PredictionThread(m_energy_functions, parts_candidates, m_label_names, m_modelClassName, use_symmetry, this));
+		connect(m_predictionThread.data(), SIGNAL(predictionDone(QMap<int, int>, std::vector<int>)), this, SLOT(onPredictionDone(QMap<int, int>, std::vector<int>)));
 		//connect(m_predictionThread, SIGNAL(predictionDone()), this, SLOT(onPredictionDone()));
 		m_predictionThread->start();
 	}

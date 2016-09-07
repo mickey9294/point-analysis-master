@@ -61,7 +61,7 @@ public:
 	QVector<int> getLabelNames() const;
 	int numOfClasses();
 	void rotate(float angle, float x, float y, float z);
-	void draw(int scale);
+	void draw(float scale);
 	QVector<Eigen::Vector3f>::iterator vertices_begin(){ return m_vertices_list.begin(); }
 	QVector<Eigen::Vector3f>::iterator vertices_end() { return m_vertices_list.end(); }
 	QVector<Eigen::Vector3f>::iterator normals_begin() { return m_normals_list.begin(); }

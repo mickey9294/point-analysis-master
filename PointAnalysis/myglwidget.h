@@ -13,6 +13,7 @@
 #include <Eigen\Core>
 #include "meshmodel.h"
 #include "model.h"
+#include "PartsStructure.h"
 
 #ifndef PI
 #define PI 3.1415926536
@@ -48,6 +49,7 @@ signals:
 	void onDebugTextAdded(QString text);
 	void updateLabels();
 	void setSamples(Samples_Vec samples);
+	void setPartsStructure(PartsStructure *structure);
 
 protected:
 	void initializeGL();
@@ -78,6 +80,7 @@ private:
 	Model * m_model;
 	QVector<OBB *> m_OBBs;
 	Samples_Vec m_samples;
+	PartsStructure * m_parts_structure;
 
 	QPoint m_lastPos;
 	bool clickEvent;

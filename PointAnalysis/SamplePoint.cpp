@@ -38,6 +38,7 @@ SamplePoint::SamplePoint(Eigen::Vector3f vertex, Eigen::Vector3f normal, int fac
 	m_normal = normal;
 	m_face_index = face_index;
 	m_corner_weights = corner_weights;
+	m_visibility = 1.0;
 }
 
 SamplePoint::SamplePoint(Vector3f vertex)

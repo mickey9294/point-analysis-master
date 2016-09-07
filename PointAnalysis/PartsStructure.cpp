@@ -508,3 +508,16 @@ QVector<OBB *> PartsStructure::get_all_obb_copies()
 
 	return obbs;
 }
+
+void PartsStructure::draw(float scale)
+{
+	for (std::vector<std::vector<PAPart *>>::iterator list_it = m_label_parts.begin(); list_it != m_label_parts.end(); ++list_it)
+	{
+		if (list_it->size() > 0)
+		{
+			PAPart * part = list_it->operator[](0);
+			if (part != NULL)
+				part->draw(scale);
+		}
+	}
+}

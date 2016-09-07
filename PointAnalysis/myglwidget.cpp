@@ -1,7 +1,7 @@
 ﻿#include "myglwidget.h"
 
 MyGLWidget::MyGLWidget(QWidget *parent)
-	: QOpenGLWidget(parent)
+	: QOpenGLWidget(parent), m_parts_structure(NULL)
 {
 	m = 3;
 	m_model = new PCModel();
@@ -99,8 +99,8 @@ void MyGLWidget::paintGL()
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glClearColor(1.0, 1.0, 1.0, 1.0f);
 	glEnable(GL_DEPTH_TEST);
-	if (m_model != NULL)
-		draw();
+	//if (m_model != NULL)
+	draw();
 	glFlush();
 	glFinish();
 }
@@ -124,7 +124,11 @@ void MyGLWidget::draw()
 	/*QVector4D eye = QVector4D(0.0, 0.0, m, 1.0);
 	gluLookAt(eye.x(), eye.y(), eye.z(), 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);*/
 
-	Eigen::Vector3f centroid = m_model->getCentroid();
+	Eigen::Vector3f centroid;
+	if (m_model != NULL)
+		centroid = m_model->getCentroid();
+	else
+		centroid.setZero();
 	glTranslatef(centroid.x(), centroid.y(), centroid.z());
 	glRotatef(m_xRot, 1.0, 0.0, 0.0);
 	glRotatef(m_yRot, 0.0, 1.0, 0.0);
@@ -147,14 +151,16 @@ void MyGLWidget::draw()
 	}
 
 	/* Draw the oriented bounding boxes of the parts */
-	int nboxes = m_OBBs.size();
 	for (QVector<OBB *>::iterator obb_it = m_OBBs.begin(); obb_it != m_OBBs.end(); ++obb_it)
 	{
 		OBB *obb = *obb_it;
 		/* Draw the oriented box */
 		obb->draw(m);
-		obb->drawSamples(m);
+		//obb->drawSamples(m);
 	}
+
+	if (m_parts_structure != NULL)
+		m_parts_structure->draw(m);
 
 	glPopMatrix();
 	//glColor4f(1.0, 0.0, 0.0, 0.5);
@@ -351,4 +357,25 @@ void MyGLWidget::setSamples(Samples_Vec samples)
 		m_samples.clear();
 
 	m_samples = samples;
+}
+
+void MyGLWidget::setPartsStructure(PartsStructure *parts_structure)
+{
+	cout << "Set parts structure." << endl;
+	m_parts_structure = parts_structure;
+
+	for (QVector<OBB *>::iterator obb_it = m_OBBs.begin(); obb_it != m_OBBs.end(); ++obb_it)
+	{
+		delete(*obb_it);
+		*obb_it = NULL;
+	}
+	m_OBBs.clear();
+
+	if (m_model != NULL)
+	{
+		delete(m_model);
+		m_model = NULL;
+	}
+
+	//update();
 }

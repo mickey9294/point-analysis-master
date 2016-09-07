@@ -1,7 +1,7 @@
 #include "partposeoptthread.h"
 
 PartPoseOptThread::PartPoseOptThread(PartsStructure * parts_structure, 
-	CuboidPredictor *predictor, QObject *parent)
+	QSharedPointer<CuboidPredictor> predictor, QObject *parent)
 	: QThread(parent), m_parts_structure(parts_structure), m_predictor(predictor)
 {
 

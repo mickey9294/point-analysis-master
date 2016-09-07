@@ -417,6 +417,8 @@ void GenCandidatesThread::loadCandidatesFromFiles()
 	ifstream part_in(cand_path.c_str());
 	Part_Candidates candidates;
 	QVector<int> point_cluster_map(m_npoints);  /* The i-th component represents the point cluster that the i-th point belongs to */
+	QVector<OBB *> obbs_to_show;
+
 	while (part_in.is_open())
 	{
 		part_in.close();
@@ -430,6 +432,8 @@ void GenCandidatesThread::loadCandidatesFromFiles()
 			for (vector<int>::iterator point_index_it = cand.vertices_begin(); point_index_it != cand.vertices_end();
 				++point_index_it)
 				point_cluster_map[*point_index_it] = index / 24;
+
+			obbs_to_show.push_back(new OBB(cand.getOBB()));
 		}
 
 		index++;
@@ -449,6 +453,7 @@ void GenCandidatesThread::loadCandidatesFromFiles()
 		candidates.resize(m_num_of_candidates);
 
 	emit genCandidatesDone(m_num_of_candidates, candidates, point_cluster_map);
+	emit setOBBs(obbs_to_show);
 
 	onDebugTextAdded("Parts candidates loading done.");
 	qDebug() << "Parts candidates loading done.";

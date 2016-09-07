@@ -349,7 +349,7 @@ Eigen::Vector3f PCModel::getCentroid() const
 	return m_centroid;
 }
 
-void PCModel::draw(int scale)
+void PCModel::draw(float scale)
 {
 	assert(m_vertices_list.size() == m_normals_list.size());
 

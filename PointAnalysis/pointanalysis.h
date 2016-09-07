@@ -71,7 +71,7 @@ private:
 	std::string filename;
 	PointFeatureExtractor pfe;
 	TrainThread *trainThread;
-	TestPCThread testPcThread;
+	QSharedPointer<TestPCThread> testPcThread;
 	SdfThread *sdfThread;
 	NormalizeThread *normalizeThread;
 	PCAThread *pcaThread;

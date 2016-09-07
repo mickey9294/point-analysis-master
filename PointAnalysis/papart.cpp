@@ -985,3 +985,19 @@ void PAPart::downsample()
 
 	num_of_samples = m_samples.size();
 }
+
+void PAPart::draw(int scale)
+{
+	glColor4f(COLORS[m_label][0], COLORS[m_label][1], COLORS[m_label][2], 1.0);
+	glBegin(GL_POINTS);
+
+	for (std::vector<SamplePoint>::iterator sample_it = m_samples.begin(); sample_it != m_samples.end(); ++sample_it)
+		glVertex3f(scale * sample_it->x(), scale * sample_it->y(), scale * sample_it->z());
+	glEnd();
+
+	if (m_obb != NULL)
+	{
+		m_obb->draw(scale);
+		m_obb->drawSamples(scale);
+	}
+}

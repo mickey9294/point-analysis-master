@@ -205,6 +205,16 @@ void CuboidPredictor::get_single_quadratic_form(
 
 #ifdef DEBUG_TEST
 		Real error = std::abs(((A0 * x) - Y_point).norm());
+		if (error > 1e-6)
+		{
+			cout << "X_point: " << X_point.transpose() << endl;
+			cout << "Y_coeff: " << Y_coeff.transpose() << endl;
+			cout << "Y_point: " << Y_point.transpose() << endl;
+			cout << "X: " << x.transpose() << endl;
+			cout << "A0:" << endl;
+			cout << A0 << endl;
+			cout << "A0 * x = " << (A0 * x).transpose() << endl;
+		}
 		Utils::CHECK_NUMERICAL_ERROR(__FUNCTION__, error);
 #endif
 

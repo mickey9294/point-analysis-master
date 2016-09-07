@@ -32,7 +32,7 @@ public:
 	virtual ~Model();
 	Model(ModelType type);
 	ModelType getType();
-	virtual void draw(int scale) = 0;
+	virtual void draw(float scale) = 0;
 	virtual void rotate(float angle, float x, float y, float z) = 0;
 	virtual std::string getInputFilepath() const = 0;
 	virtual QVector<Eigen::Vector3f> getVertices() const = 0;

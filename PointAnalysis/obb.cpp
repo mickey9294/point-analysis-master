@@ -479,82 +479,82 @@ int OBB::createGridSamples()
 
 	/* If the number of sample points on the OBB is less than the number it shuold have, sample some point more */
 	/* Sample points on each face */
-	static SimpleRandomCong_t rng_cong;
-	simplerandom_cong_seed(&rng_cong, CUBOID_SURFACE_SAMPLING_RANDOM_SEED);
-	if (m_samples.size() < m_num_of_samples)
-	{
-		int diff = m_num_of_samples - m_samples.size();
-		
-		int num_points_more_on_each_face = diff / k_num_faces;
+	//static SimpleRandomCong_t rng_cong;
+	//simplerandom_cong_seed(&rng_cong, CUBOID_SURFACE_SAMPLING_RANDOM_SEED);
+	//if (m_samples.size() < m_num_of_samples)
+	//{
+	//	int diff = m_num_of_samples - m_samples.size();
+	//	
+	//	int num_points_more_on_each_face = diff / k_num_faces;
 
-		int second_diff = diff - num_points_more_on_each_face * k_num_faces;
+	//	int second_diff = diff - num_points_more_on_each_face * k_num_faces;
 
-		if (num_points_more_on_each_face > 0 || second_diff > 0)
-		{
-			for (int face_index = 0; face_index < k_num_faces; face_index++)
-			{
-				const int *corner_indices = k_face_corner_indices[face_index];
-				std::array<Vector3f, k_num_face_corners> corner_point;
-				for (int i = 0; i < k_num_face_corners; i++)
-					corner_point[i] = m_vertices[corner_indices[i]];
+	//	if (num_points_more_on_each_face > 0 || second_diff > 0)
+	//	{
+	//		for (int face_index = 0; face_index < k_num_faces; face_index++)
+	//		{
+	//			const int *corner_indices = k_face_corner_indices[face_index];
+	//			std::array<Vector3f, k_num_face_corners> corner_point;
+	//			for (int i = 0; i < k_num_face_corners; i++)
+	//				corner_point[i] = m_vertices[corner_indices[i]];
 
-				Vector3f normal = getAxes().col(face_index / 2);
-				if ((face_index % 2) != 0)
-					normal = -normal;
+	//			Vector3f normal = getAxes().col(face_index / 2);
+	//			if ((face_index % 2) != 0)
+	//				normal = -normal;
 
-				int num_face_points = num_points_more_on_each_face;
-				if (face_index < second_diff)
-					num_face_points++;
+	//			int num_face_points = num_points_more_on_each_face;
+	//			if (face_index < second_diff)
+	//				num_face_points++;
 
-				for (int point_index = 0; point_index < num_face_points && m_samples.size() < m_num_of_samples; point_index++)
-				{
-					Real w1 = static_cast<Real>(simplerandom_cong_next(&rng_cong))
-						/ std::numeric_limits<uint32_t>::max();
-					Real w2 = static_cast<Real>(simplerandom_cong_next(&rng_cong))
-						/ std::numeric_limits<uint32_t>::max();
+	//			for (int point_index = 0; point_index < num_face_points && m_samples.size() < m_num_of_samples; point_index++)
+	//			{
+	//				Real w1 = static_cast<Real>(simplerandom_cong_next(&rng_cong))
+	//					/ std::numeric_limits<uint32_t>::max();
+	//				Real w2 = static_cast<Real>(simplerandom_cong_next(&rng_cong))
+	//					/ std::numeric_limits<uint32_t>::max();
 
-					Vector3f p1 = w1 * (corner_point[1] - corner_point[0]) + corner_point[0];
-					Vector3f p2 = w1 * (corner_point[2] - corner_point[3]) + corner_point[3];
-					Vector3f point = w2 * (p2 - p1) + p1;
+	//				Vector3f p1 = w1 * (corner_point[1] - corner_point[0]) + corner_point[0];
+	//				Vector3f p2 = w1 * (corner_point[2] - corner_point[3]) + corner_point[3];
+	//				Vector3f point = w2 * (p2 - p1) + p1;
 
-					Real sum_corner_weights = 0;
-					std::array<Real, k_num_corners> corner_weights;
-					corner_weights.fill(0.0);
+	//				Real sum_corner_weights = 0;
+	//				std::array<Real, k_num_corners> corner_weights;
+	//				corner_weights.fill(0.0);
 
-					for (int i = 0; i < k_num_face_corners; i++)
-					{
-						corner_weights[corner_indices[i]] = (point - corner_point[i]).norm();
-						sum_corner_weights += corner_weights[corner_indices[i]];  /* !!Here is different from the original code */
-					}
+	//				for (int i = 0; i < k_num_face_corners; i++)
+	//				{
+	//					corner_weights[corner_indices[i]] = (point - corner_point[i]).norm();
+	//					sum_corner_weights += corner_weights[corner_indices[i]];  /* !!Here is different from the original code */
+	//				}
 
-					assert(sum_corner_weights > 0);
-					for (int i = 0; i < k_num_face_corners; i++)
-					{
-						corner_weights[corner_indices[i]] =
-							(sum_corner_weights - corner_weights[corner_indices[i]]) / sum_corner_weights;
-					}
+	//				assert(sum_corner_weights > 0);
+	//				for (int i = 0; i < k_num_face_corners; i++)
+	//				{
+	//					corner_weights[corner_indices[i]] =
+	//						(sum_corner_weights - corner_weights[corner_indices[i]]) / sum_corner_weights;
+	//				}
 
-					SamplePoint sample(point, normal, face_index, corner_weights);
-					m_samples.push_back(sample);
-				}
-			}
-		}
-	}
-	else  /* If the number of sample points is more than it should have, randomly delete some points */
-	{
-		int diff = m_samples.size() - m_num_of_samples;
+	//				SamplePoint sample(point, normal, face_index, corner_weights);
+	//				m_samples.push_back(sample);
+	//			}
+	//		}
+	//	}
+	//}
+	//else  /* If the number of sample points is more than it should have, randomly delete some points */
+	//{
+	//	int diff = m_samples.size() - m_num_of_samples;
 
-		srand(time(NULL));
+	//	srand(time(NULL));
 
-		for (int i = 0; i < diff; i++)
-		{
-			int remove_index = rand() % m_samples.size();
-			m_samples.remove(remove_index);
-		}
-	}
+	//	for (int i = 0; i < diff; i++)
+	//	{
+	//		int remove_index = rand() % m_samples.size();
+	//		m_samples.remove(remove_index);
+	//	}
+	//}
 
-	int sur_samp_size = m_samples.size();
-	int should_num = m_num_of_samples;
+	//int sur_samp_size = m_samples.size();
+	//int should_num = m_num_of_samples;
 	return m_samples.size();
 }
 
@@ -709,7 +709,7 @@ void OBB::computeFaceNormals()
 	m_faces_normals[11] = face_normals[4];
 }
 
-void OBB::draw(int scale)
+void OBB::draw(float scale)
 {
 	/* Draw the oriented box */
 	if (m_vertices.size() < 3)
@@ -775,9 +775,10 @@ void OBB::draw(int scale)
 	glEnd();
 }
 
-void OBB::drawSamples(int scale)
+void OBB::drawSamples(float scale)
 {
-	glColor4f(COLORS[10][0], COLORS[10][1], COLORS[10][2], 1.0);
+	//glColor4f(COLORS[10][0], COLORS[10][1], COLORS[10][2], 1.0);
+	glColor4f(1.0, 1.0, 1.0, 1.0);
 	glBegin(GL_POINTS);
 
 	for (QVector<SamplePoint>::iterator sample_it = m_samples.begin(); sample_it != m_samples.end(); ++sample_it)

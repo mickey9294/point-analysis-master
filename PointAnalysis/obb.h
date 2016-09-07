@@ -82,8 +82,8 @@ public:
 	void setCorners(std::array<Eigen::Vector3f, k_num_corners> new_corners);
 	void setScale(Eigen::Vector3d scale);
 	void setNumOfSamples(int num) { m_num_of_samples = num; }
-	void draw(int scale);
-	void drawSamples(int scale);
+	void draw(float scale);
+	void drawSamples(float scale);
 	void translate(float x, float y, float z);
 	void rotate(float angle, float x, float y, float z);
 	void rotate(float angle, float x, float y, float z, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);

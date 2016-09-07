@@ -337,7 +337,7 @@ void MeshModel::samplePoints()
 	}
 }
 
-void MeshModel::draw(int scale)
+void MeshModel::draw(float scale)
 {
 	using namespace Eigen;
 
@@ -426,7 +426,7 @@ void MeshModel::draw(int scale)
 	glEnd();*/
 }
 
-void MeshModel::drawSamples(int scale)
+void MeshModel::drawSamples(float scale)
 {
 	/* Draw the sample points */
 	glBegin(GL_POINTS);

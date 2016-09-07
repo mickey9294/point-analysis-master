@@ -200,10 +200,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="GeneratedFiles\Debug\moc_pairwisetermthread.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="GeneratedFiles\Debug\moc_partposeoptthread.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
@@ -264,10 +260,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="GeneratedFiles\Debug\moc_unarytermthread.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="GeneratedFiles\Debug\moc_utils.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
@@ -323,10 +315,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="GeneratedFiles\Release\moc_outputthread.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="GeneratedFiles\Release\moc_pairwisetermthread.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </ClCompile>
@@ -390,10 +378,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="GeneratedFiles\Release\moc_unarytermthread.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="GeneratedFiles\Release\moc_utils.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -410,7 +394,6 @@
     <ClCompile Include="normalizethread.cpp" />
     <ClCompile Include="obb.cpp" />
     <ClCompile Include="obbestimator.cpp" />
-    <ClCompile Include="pairwisetermthread.cpp" />
     <ClCompile Include="papart.cpp" />
     <ClCompile Include="papartrelation.cpp" />
     <ClCompile Include="partposeoptthread.cpp" />
@@ -429,7 +412,6 @@
     <ClCompile Include="testpcthread.cpp" />
     <ClCompile Include="trainpartsthread.cpp" />
     <ClCompile Include="trainthread.cpp" />
-    <ClCompile Include="unarytermthread.cpp" />
     <ClCompile Include="utils.cpp" />
     <ClCompile Include="loadthread.cpp" />
     <ClCompile Include="main.cpp" />
@@ -545,42 +527,6 @@
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(QTDIR)\bin\moc.exe"  "%(FullPath)" -o ".\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp"  -DUNICODE -DWIN32 -DWIN64 -DQT_DLL -DQT_NO_DEBUG -DNDEBUG -DQT_CORE_LIB -DQT_GUI_LIB -DQT_OPENGL_LIB -DQT_WIDGETS_LIB -D_WINDOWS -D_CRT_SECURE_NO_DEPRECATE -D_SCL_SECURE_NO_DEPRECATE -D_CRT_SECURE_NO_WARNINGS -D_SCL_SECURE_NO_WARNINGS -DCGAL_USE_MPFR -DCGAL_USE_GMP -DBOOST_ALL_DYN_LINK -DCGAL_EIGEN3_ENABLED -DDEBUG_TEST  "-I.\GeneratedFiles" "-I." "-ID:\Libraries\Qt\5.6\msvc2013_64\include" "-I.\GeneratedFiles\$(ConfigurationName)\." "-ID:\Libraries\Qt\5.6\msvc2013_64\include\QtCore" "-ID:\Libraries\Qt\5.6\msvc2013_64\include\QtGui" "-ID:\Libraries\Qt\5.6\msvc2013_64\include\QtOpenGL" "-ID:\Libraries\Qt\5.6\msvc2013_64\include\QtWidgets" "-ID:\Libraries\PCL\include\pcl-1.8" "-ID:\Libraries\Eigen\include\eigen3" "-ID:\Libraries\flann\include" "-ID:\Libraries\VTK\include\vtk-7.0" "-ID:\Libraries\Boost\include\boost-1_61" "-ID:\Libraries\CGAL\include" "-ID:\Libraries\Boost_binary\lib64-msvc-12.0" "-ID:\Libraries\CGAL\CGAL-4.8\auxiliary\gmp\include" "-ID:\Libraries\CGAL\CGAL-4.8\include" "-ID:\Libraries\Shark\include\shark" "-ID:\Libraries\mlpack\mlpack-master\src" "-ID:\Libraries\mlpack\mlpack-master\build\include" "-ID:\Libraries\armadillo\include" "-ID:\Libraries\ANN\ann_1.1.2\include" "-I.\..\PoissonDiskSample\include" "-I.\..\MRFSolver\include" "-ID:\Libraries\Ipopt\Ipopt-master\Ipopt\MSVisualStudio\v8-ifort\include\coin"</Command>
     </CustomBuild>
     <ClInclude Include="energyfunctions.h" />
-    <CustomBuild Include="unarytermthread.h">
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(QTDIR)\bin\moc.exe;%(FullPath)</AdditionalInputs>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Moc%27ing unarytermthread.h...</Message>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">"$(QTDIR)\bin\moc.exe"  "%(FullPath)" -o ".\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp"  -DUNICODE -DWIN32 -DWIN64 -DQT_DLL -DQT_CORE_LIB -DQT_GUI_LIB -DQT_OPENGL_LIB -DQT_WIDGETS_LIB "-I.\GeneratedFiles" "-I." "-IE:\Qt\5.4\msvc2013_64_opengl\include" "-I.\GeneratedFiles\$(ConfigurationName)\." "-IE:\Qt\5.4\msvc2013_64_opengl\include\include\QtCore" "-IE:\Qt\5.4\msvc2013_64_opengl\include\include\QtGui" "-IE:\Qt\5.4\msvc2013_64_opengl\include\include\QtOpenGL" "-IE:\Qt\5.4\msvc2013_64_opengl\include\include\QtWidgets"</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(QTDIR)\bin\moc.exe;%(FullPath)</AdditionalInputs>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Moc%27ing unarytermthread.h...</Message>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">"$(QTDIR)\bin\moc.exe"  "%(FullPath)" -o ".\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp"  -DUNICODE -DWIN32 -DWIN64 -DQT_DLL -DQT_CORE_LIB -DQT_GUI_LIB -DQT_OPENGL_LIB -DQT_WIDGETS_LIB -D_CRT_SECURE_NO_DEPRECATE -D_SCL_SECURE_NO_DEPRECATE -D_CRT_SECURE_NO_WARNINGS -D_SCL_SECURE_NO_WARNINGS -D_DEBUG -DCGAL_USE_MPFR -DCGAL_USE_GMP -DBOOST_ALL_DYN_LINK -DCGAL_EIGEN3_ENABLED -D_WINDOWS -DDEBUG_TEST  "-I.\GeneratedFiles" "-I." "-ID:\Libraries\Qt\5.6\msvc2013_64\include" "-I.\GeneratedFiles\$(ConfigurationName)\." "-ID:\Libraries\Qt\5.6\msvc2013_64\include\QtCore" "-ID:\Libraries\Qt\5.6\msvc2013_64\include\QtGui" "-ID:\Libraries\Qt\5.6\msvc2013_64\include\QtOpenGL" "-ID:\Libraries\Qt\5.6\msvc2013_64\include\QtWidgets" "-ID:\Libraries\PCL\include\pcl-1.8" "-ID:\Libraries\Eigen\include\eigen3" "-ID:\Libraries\Boost\include\boost-1_61" "-ID:\Libraries\flann\include" "-ID:\Libraries\VTK\include\vtk-7.0" "-ID:\Libraries\CGAL\include" "-ID:\Libraries\Boost_binary" "-ID:\Libraries\CGAL\CGAL-4.8\auxiliary\gmp\include" "-ID:\Libraries\CGAL\CGAL-4.8\include" "-ID:\Libraries\Shark\include\shark" "-ID:\Libraries\mlpack\mlpack-master\src" "-ID:\Libraries\armadillo\include" "-ID:\Libraries\armadillo\include\armadillo_bits" "-ID:\Libraries\mlpack\mlpack-master\build\include" "-I.\..\PoissonDiskSample\include\vcglib" "-I.\..\PoissonDiskSample\include" "-ID:\Libraries\ANN\ann_1.1.2\include" "-I.\..\MRFSolver\include" "-ID:\Libraries\Ipopt\Ipopt-master\Ipopt\MSVisualStudio\v8-ifort\include\coin"</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(QTDIR)\bin\moc.exe;%(FullPath)</AdditionalInputs>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Moc%27ing unarytermthread.h...</Message>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">"$(QTDIR)\bin\moc.exe"  "%(FullPath)" -o ".\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp"  -DUNICODE -DWIN32 -DWIN64 -DQT_DLL -DQT_NO_DEBUG -DNDEBUG -DQT_CORE_LIB -DQT_GUI_LIB -DQT_OPENGL_LIB -DQT_WIDGETS_LIB "-I.\GeneratedFiles" "-I." "-I$(QTDIR)\include" "-I.\GeneratedFiles\$(ConfigurationName)\." "-I$(QTDIR)\include\QtCore" "-I$(QTDIR)\include\QtGui" "-I$(QTDIR)\include\QtOpenGL" "-I$(QTDIR)\include\QtWidgets"</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(QTDIR)\bin\moc.exe;%(FullPath)</AdditionalInputs>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Moc%27ing unarytermthread.h...</Message>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(QTDIR)\bin\moc.exe"  "%(FullPath)" -o ".\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp"  -DUNICODE -DWIN32 -DWIN64 -DQT_DLL -DQT_NO_DEBUG -DNDEBUG -DQT_CORE_LIB -DQT_GUI_LIB -DQT_OPENGL_LIB -DQT_WIDGETS_LIB -D_WINDOWS -D_CRT_SECURE_NO_DEPRECATE -D_SCL_SECURE_NO_DEPRECATE -D_CRT_SECURE_NO_WARNINGS -D_SCL_SECURE_NO_WARNINGS -DCGAL_USE_MPFR -DCGAL_USE_GMP -DBOOST_ALL_DYN_LINK -DCGAL_EIGEN3_ENABLED -DDEBUG_TEST  "-I.\GeneratedFiles" "-I." "-ID:\Libraries\Qt\5.6\msvc2013_64\include" "-I.\GeneratedFiles\$(ConfigurationName)\." "-ID:\Libraries\Qt\5.6\msvc2013_64\include\QtCore" "-ID:\Libraries\Qt\5.6\msvc2013_64\include\QtGui" "-ID:\Libraries\Qt\5.6\msvc2013_64\include\QtOpenGL" "-ID:\Libraries\Qt\5.6\msvc2013_64\include\QtWidgets" "-ID:\Libraries\PCL\include\pcl-1.8" "-ID:\Libraries\Eigen\include\eigen3" "-ID:\Libraries\flann\include" "-ID:\Libraries\VTK\include\vtk-7.0" "-ID:\Libraries\Boost\include\boost-1_61" "-ID:\Libraries\CGAL\include" "-ID:\Libraries\Boost_binary\lib64-msvc-12.0" "-ID:\Libraries\CGAL\CGAL-4.8\auxiliary\gmp\include" "-ID:\Libraries\CGAL\CGAL-4.8\include" "-ID:\Libraries\Shark\include\shark" "-ID:\Libraries\mlpack\mlpack-master\src" "-ID:\Libraries\mlpack\mlpack-master\build\include" "-ID:\Libraries\armadillo\include" "-ID:\Libraries\ANN\ann_1.1.2\include" "-I.\..\PoissonDiskSample\include" "-I.\..\MRFSolver\include" "-ID:\Libraries\Ipopt\Ipopt-master\Ipopt\MSVisualStudio\v8-ifort\include\coin"</Command>
-    </CustomBuild>
-    <CustomBuild Include="pairwisetermthread.h">
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(QTDIR)\bin\moc.exe;%(FullPath)</AdditionalInputs>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Moc%27ing pairwisetermthread.h...</Message>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">"$(QTDIR)\bin\moc.exe"  "%(FullPath)" -o ".\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp"  -DUNICODE -DWIN32 -DWIN64 -DQT_DLL -DQT_CORE_LIB -DQT_GUI_LIB -DQT_OPENGL_LIB -DQT_WIDGETS_LIB "-I.\GeneratedFiles" "-I." "-IE:\Qt\5.4\msvc2013_64_opengl\include" "-I.\GeneratedFiles\$(ConfigurationName)\." "-IE:\Qt\5.4\msvc2013_64_opengl\include\include\QtCore" "-IE:\Qt\5.4\msvc2013_64_opengl\include\include\QtGui" "-IE:\Qt\5.4\msvc2013_64_opengl\include\include\QtOpenGL" "-IE:\Qt\5.4\msvc2013_64_opengl\include\include\QtWidgets"</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(QTDIR)\bin\moc.exe;%(FullPath)</AdditionalInputs>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Moc%27ing pairwisetermthread.h...</Message>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">"$(QTDIR)\bin\moc.exe"  "%(FullPath)" -o ".\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp"  -DUNICODE -DWIN32 -DWIN64 -DQT_DLL -DQT_CORE_LIB -DQT_GUI_LIB -DQT_OPENGL_LIB -DQT_WIDGETS_LIB -D_CRT_SECURE_NO_DEPRECATE -D_SCL_SECURE_NO_DEPRECATE -D_CRT_SECURE_NO_WARNINGS -D_SCL_SECURE_NO_WARNINGS -D_DEBUG -DCGAL_USE_MPFR -DCGAL_USE_GMP -DBOOST_ALL_DYN_LINK -DCGAL_EIGEN3_ENABLED -D_WINDOWS -DDEBUG_TEST  "-I.\GeneratedFiles" "-I." "-ID:\Libraries\Qt\5.6\msvc2013_64\include" "-I.\GeneratedFiles\$(ConfigurationName)\." "-ID:\Libraries\Qt\5.6\msvc2013_64\include\QtCore" "-ID:\Libraries\Qt\5.6\msvc2013_64\include\QtGui" "-ID:\Libraries\Qt\5.6\msvc2013_64\include\QtOpenGL" "-ID:\Libraries\Qt\5.6\msvc2013_64\include\QtWidgets" "-ID:\Libraries\PCL\include\pcl-1.8" "-ID:\Libraries\Eigen\include\eigen3" "-ID:\Libraries\Boost\include\boost-1_61" "-ID:\Libraries\flann\include" "-ID:\Libraries\VTK\include\vtk-7.0" "-ID:\Libraries\CGAL\include" "-ID:\Libraries\Boost_binary" "-ID:\Libraries\CGAL\CGAL-4.8\auxiliary\gmp\include" "-ID:\Libraries\CGAL\CGAL-4.8\include" "-ID:\Libraries\Shark\include\shark" "-ID:\Libraries\mlpack\mlpack-master\src" "-ID:\Libraries\armadillo\include" "-ID:\Libraries\armadillo\include\armadillo_bits" "-ID:\Libraries\mlpack\mlpack-master\build\include" "-I.\..\PoissonDiskSample\include\vcglib" "-I.\..\PoissonDiskSample\include" "-ID:\Libraries\ANN\ann_1.1.2\include" "-I.\..\MRFSolver\include" "-ID:\Libraries\Ipopt\Ipopt-master\Ipopt\MSVisualStudio\v8-ifort\include\coin"</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(QTDIR)\bin\moc.exe;%(FullPath)</AdditionalInputs>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Moc%27ing pairwisetermthread.h...</Message>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">"$(QTDIR)\bin\moc.exe"  "%(FullPath)" -o ".\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp"  -DUNICODE -DWIN32 -DWIN64 -DQT_DLL -DQT_NO_DEBUG -DNDEBUG -DQT_CORE_LIB -DQT_GUI_LIB -DQT_OPENGL_LIB -DQT_WIDGETS_LIB "-I.\GeneratedFiles" "-I." "-I$(QTDIR)\include" "-I.\GeneratedFiles\$(ConfigurationName)\." "-I$(QTDIR)\include\QtCore" "-I$(QTDIR)\include\QtGui" "-I$(QTDIR)\include\QtOpenGL" "-I$(QTDIR)\include\QtWidgets"</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(QTDIR)\bin\moc.exe;%(FullPath)</AdditionalInputs>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Moc%27ing pairwisetermthread.h...</Message>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(QTDIR)\bin\moc.exe"  "%(FullPath)" -o ".\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp"  -DUNICODE -DWIN32 -DWIN64 -DQT_DLL -DQT_NO_DEBUG -DNDEBUG -DQT_CORE_LIB -DQT_GUI_LIB -DQT_OPENGL_LIB -DQT_WIDGETS_LIB -D_WINDOWS -D_CRT_SECURE_NO_DEPRECATE -D_SCL_SECURE_NO_DEPRECATE -D_CRT_SECURE_NO_WARNINGS -D_SCL_SECURE_NO_WARNINGS -DCGAL_USE_MPFR -DCGAL_USE_GMP -DBOOST_ALL_DYN_LINK -DCGAL_EIGEN3_ENABLED -DDEBUG_TEST  "-I.\GeneratedFiles" "-I." "-ID:\Libraries\Qt\5.6\msvc2013_64\include" "-I.\GeneratedFiles\$(ConfigurationName)\." "-ID:\Libraries\Qt\5.6\msvc2013_64\include\QtCore" "-ID:\Libraries\Qt\5.6\msvc2013_64\include\QtGui" "-ID:\Libraries\Qt\5.6\msvc2013_64\include\QtOpenGL" "-ID:\Libraries\Qt\5.6\msvc2013_64\include\QtWidgets" "-ID:\Libraries\PCL\include\pcl-1.8" "-ID:\Libraries\Eigen\include\eigen3" "-ID:\Libraries\flann\include" "-ID:\Libraries\VTK\include\vtk-7.0" "-ID:\Libraries\Boost\include\boost-1_61" "-ID:\Libraries\CGAL\include" "-ID:\Libraries\Boost_binary\lib64-msvc-12.0" "-ID:\Libraries\CGAL\CGAL-4.8\auxiliary\gmp\include" "-ID:\Libraries\CGAL\CGAL-4.8\include" "-ID:\Libraries\Shark\include\shark" "-ID:\Libraries\mlpack\mlpack-master\src" "-ID:\Libraries\mlpack\mlpack-master\build\include" "-ID:\Libraries\armadillo\include" "-ID:\Libraries\ANN\ann_1.1.2\include" "-I.\..\PoissonDiskSample\include" "-I.\..\MRFSolver\include" "-ID:\Libraries\Ipopt\Ipopt-master\Ipopt\MSVisualStudio\v8-ifort\include\coin"</Command>
-    </CustomBuild>
     <CustomBuild Include="trainpartsthread.h">
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(QTDIR)\bin\moc.exe;%(FullPath)</AdditionalInputs>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Moc%27ing trainpartsthread.h...</Message>

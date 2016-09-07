@@ -257,24 +257,6 @@
     <ClCompile Include="energyfunctions.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="pairwisetermthread.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="GeneratedFiles\Debug\moc_pairwisetermthread.cpp">
-      <Filter>Generated Files\Debug</Filter>
-    </ClCompile>
-    <ClCompile Include="GeneratedFiles\Release\moc_pairwisetermthread.cpp">
-      <Filter>Generated Files\Release</Filter>
-    </ClCompile>
-    <ClCompile Include="unarytermthread.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="GeneratedFiles\Debug\moc_unarytermthread.cpp">
-      <Filter>Generated Files\Debug</Filter>
-    </ClCompile>
-    <ClCompile Include="GeneratedFiles\Release\moc_unarytermthread.cpp">
-      <Filter>Generated Files\Release</Filter>
-    </ClCompile>
     <ClCompile Include="debugrelationthread.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -440,12 +422,6 @@
       <Filter>Header Files</Filter>
     </CustomBuild>
     <CustomBuild Include="predictionthread.h">
-      <Filter>Header Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="pairwisetermthread.h">
-      <Filter>Header Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="unarytermthread.h">
       <Filter>Header Files</Filter>
     </CustomBuild>
     <CustomBuild Include="debugrelationthread.h">

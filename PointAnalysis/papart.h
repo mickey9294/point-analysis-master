@@ -2,6 +2,7 @@
 #define PAPART_H
 
 #include <Eigen\Core>
+#include <QtOpenGL>
 #include <qvector.h>
 #include <qvector3d.h>
 #include <qvector4d.h>
@@ -103,6 +104,8 @@ public:
 	void ICP_adjust_OBB();
 
 	int num_cuboid_surface_points();
+
+	void draw(int scale);
 
 private:
 	Eigen::Matrix3f m_rotate;    /* Rotation matrix of 3x3 */

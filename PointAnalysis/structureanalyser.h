@@ -7,6 +7,7 @@
 #include <QVector>
 #include <string>
 #include <QDebug>
+#include <qsharedpointer.h>
 #include <shark/Data/Csv.h>
 #include <qfileinfo.h>
 #include <shark/Data/Dataset.h> //importing the file
@@ -67,6 +68,7 @@ public:
 signals:
 	void addDebugText(QString text);
 	void sendOBBs(QVector<OBB *> obbs);
+	void sendPartsStructure(PartsStructure *structure);
 
 private:
 	std::string m_model_name;
@@ -77,19 +79,19 @@ private:
 	//QVector<int> m_point_assignments;
 	PCModel * m_pcModel;
 	PAPointCloud *m_pointcloud;
-	FeatureEstimator * m_fe;
-	TestPCThread *m_testPCThread;
+	QSharedPointer<FeatureEstimator> m_fe;
+	QSharedPointer<TestPCThread> m_testPCThread;
 	bool classifier_loaded;
-	GenCandidatesThread *m_genCandThread;
-	EnergyFunctions *m_energy_functions;
-	PredictionThread *m_predictionThread;
-	PointSegmentationThread *m_segmentationThread;
-	PartPoseOptThread *m_partPoseOptThread;
+	QSharedPointer<GenCandidatesThread> m_genCandThread;
+	QSharedPointer<EnergyFunctions> m_energy_functions;
+	QSharedPointer<PredictionThread> m_predictionThread;
+	QSharedPointer<PointSegmentationThread> m_segmentationThread;
+	QSharedPointer<PartPoseOptThread> m_partPoseOptThread;
 	int m_iteration;
 	int m_null_label;
 
 	QVector<int> m_label_names;
-	CuboidJointNormalRelationPredictor *m_joint_normal_predictor;
+	QSharedPointer<CuboidJointNormalRelationPredictor> m_joint_normal_predictor;
 
 	std::list<std::string> m_object_list;
 	std::vector< std::list<CuboidFeatures *> > m_feature_list;
