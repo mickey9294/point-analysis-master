@@ -1,6 +1,7 @@
 #ifndef PARTSSTRUCTURE_H
 #define PARTSSTRUCTURE_H
 
+#include <QSharedPointer>
 #include "papart.h"
 #include "model.h"
 #include "CuboidSymmetryGroup.h"
@@ -14,7 +15,7 @@ public:
 	~PartsStructure();
 
 	const Model *m_model;
-	PAPointCloud *m_pointcloud;
+	QSharedPointer<PAPointCloud> m_pointcloud;
 	std::vector<int> m_label_names;
 	std::vector<std::string> m_label_paraphrases;
 	std::vector<std::list<LabelIndex>> m_label_symmetries;
@@ -52,8 +53,8 @@ public:
 	void add_part(int label, PAPart * part);
 
 	void set_model(Model *model);
-	void set_pointcloud(PAPointCloud *pointcloud);
 	void set_points_assignments(QVector<int> assignments);
+	void set_pointcloud(QSharedPointer<PAPointCloud> pointcloud);
 
 	PAPoint & get_point(int index);
 	int get_point_assignment(int index);

@@ -3,7 +3,7 @@
 
 #include <string>
 
-#define NUMERIAL_ERROR_THRESHOLD	1.0E-6
+#define NUMERIAL_ERROR_THRESHOLD	3.0E-5
 #define CUBOID_SURFACE_SAMPLING_RANDOM_SEED	20130923
 
 const float INF_POTENTIAL = 1.0e8;
@@ -15,8 +15,8 @@ const float FEATURE_THREAD_FLOAT_INF = 100.0;
 const double PI = 3.141592653589793;
 const double param_null_cuboid_probability = 0.1;
 const double param_sparse_neighbor_distance = 0.05;
-const double opt_single_energy_term_weight = 1.0e4;
-const double opt_symmetry_energy_term_weight = 1.0e6;
+const double param_opt_single_energy_term_weight = 1.0e4;
+const double param_opt_symmetry_energy_term_weight = 1.0e6;
 const double MIN_CUBOID_SIZE = 1.0e-12;
 const double param_occlusion_test_neighbor_distance = 0.01;
 
@@ -29,7 +29,7 @@ const int PART_RELATION_DIMEN = 32;
 const int param_num_point_neighbors = 8;
 const int NUM_OF_SAMPLES = 1000;
 const int NULL_PART_INDEX = -1;
-const int opt_max_iterations = 5;
+const int param_opt_max_iterations = 5;
 const int k_num_attributes = 24;
 const int min_num_symmetric_point_pairs = 50;
 const int param_min_num_cuboid_sample_points = 10;

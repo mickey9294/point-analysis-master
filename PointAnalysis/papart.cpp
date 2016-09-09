@@ -502,6 +502,8 @@ void PAPart::samplePoints()
 		}
 	}
 
+	num_of_samples = m_samples.size();
+
 	if (m_obb != NULL)
 	{
 		create_grid_points_on_obb_surface();
@@ -513,11 +515,11 @@ void PAPart::update_sample_correspondences()
 	m_sample_to_cuboid_surface_correspondence.clear();
 	m_cuboid_surface_to_sample_correspondence.clear();
 
-	m_sample_to_cuboid_surface_correspondence.resize(num_of_samples, -1);
+	m_sample_to_cuboid_surface_correspondence.resize(m_samples.size(), -1);
 	m_cuboid_surface_to_sample_correspondence.resize(m_obb->sampleCount(), -1);
 
 	/* X: sample point of the model; Y: sample points on the oriented bounding box */
-	int num_X_points = num_of_samples;
+	int num_X_points = m_samples.size();
 	int num_Y_points = m_obb->sampleCount();
 
 	if (num_X_points == 0 || num_Y_points == 0)
@@ -596,7 +598,7 @@ int PAPart::get_sample_to_cuboid_surface_correspondences(int point_index)
 	if (m_obb->sampleCount() == 0)
 		return -1;
 
-	assert(point_index < num_of_samples);
+	assert(point_index < m_samples.size());
 	return m_sample_to_cuboid_surface_correspondence[point_index];
 }
 
@@ -616,7 +618,7 @@ void PAPart::create_random_points_on_obb_surface()
 	assert(m_obb != NULL);
 	assert(m_samples.size() > 0);
 
-	m_obb->setNumOfSamples(num_of_samples);
+	m_obb->setNumOfSamples(m_samples.size());
 
 	m_obb->createRandomSamples();
 	update_sample_correspondences();
@@ -626,8 +628,8 @@ void PAPart::create_grid_points_on_obb_surface()
 {
 	assert(m_obb != NULL);
 	assert(m_samples.size() > 0);
-
-	m_obb->setNumOfSamples(num_of_samples);
+	
+	m_obb->setNumOfSamples(m_samples.size());
 
 	m_obb->createGridSamples();
 	
@@ -914,7 +916,7 @@ void PAPart::upsample()
 	const double sharpness_angle = 25;   // control sharpness of the result.
 	const double edge_sensitivity = 0;    // higher values will sample more points near the edges          
 	const double neighbor_radius = 0;  // initial size of neighborhood.
-	const std::size_t number_of_output_points = num_of_samples;
+	const std::size_t number_of_output_points = 1000;
 	//Run algorithm 
 	cout << "Do edge aware upsample." << endl;
 	CGAL::edge_aware_upsample_point_set<Concurrency_tag>(
@@ -933,7 +935,7 @@ void PAPart::upsample()
 	m_samples.resize(points.size());
 
 	int idx = 0;
-	for (std::vector<SC_PointVectorPair>::iterator it = points.begin(); it != points.end() && idx < num_of_samples; ++it)
+	for (std::vector<SC_PointVectorPair>::iterator it = points.begin(); it != points.end() && idx < 1000; ++it)
 	{
 		SC_Point p = it->first;
 		SC_Vector n = it->second;

@@ -116,7 +116,7 @@ EnergyFunctions::~EnergyFunctions()
 {
 }
 
-void EnergyFunctions::setPointCloud(PAPointCloud * pointcloud)
+void EnergyFunctions::setPointCloud(QSharedPointer<PAPointCloud> pointcloud)
 {
 	m_pointcloud = pointcloud;
 }
@@ -176,9 +176,20 @@ QVector<int> EnergyFunctions::getPointAssignments() const
 	return m_point_assignments;
 }
 
-void EnergyFunctions::setDistributions(QVector<QMap<int, float>> distributions)
+void EnergyFunctions::setDistributions(const QVector<QMap<int, float>> &distributions)
 {
-	m_distributions = QVector<QMap<int, float>>(distributions);
+	m_distributions.resize(distributions.size());
+
+	int dis_idx = 0;
+	for (QVector<QMap<int, float>>::const_iterator it = distributions.begin(); it != distributions.end(); ++it)
+	{
+		QMap<int, float> distribution;
+		for (QMap<int, float>::const_iterator jt = it->begin(); jt != it->end(); ++jt)
+			distribution.insert(jt.key(), jt.value());
+
+		m_distributions[dis_idx++] = distribution;
+	}
+
 	m_null_label = m_distributions[0].keys().last();
 }
 
@@ -251,6 +262,31 @@ double EnergyFunctions::Epnt(PAPart *part, int label)
 }
 
 double EnergyFunctions::Epnt(PAPart *part, int label, bool use_symmetry)
+{
+	double energy = 0;
+
+	if (part->getLabel() == label)
+		return 0;
+
+	if (use_symmetry)
+	{
+		for (QList<QVector<int>>::iterator sym_group_it = m_symmetry_groups.begin(); sym_group_it != m_symmetry_groups.end(); ++sym_group_it)
+		{
+			if (sym_group_it->size() < 2)
+				continue;
+
+			QSet<int> sym_set;
+			for (QVector<int>::iterator sym_it = sym_group_it->begin(); sym_it != sym_group_it->end(); ++sym_it)
+				sym_set.insert(*sym_it);
+			if (sym_set.contains(part->getLabel()) && sym_set.contains(label))
+				return 0;
+		}
+	}
+
+	return INF_POTENTIAL;
+}
+
+double EnergyFunctions::Epnt(const PAPart *part, int label, bool use_symmetry)
 {
 	double energy = 0;
 

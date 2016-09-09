@@ -1,7 +1,7 @@
   #include "structureanalyser.h"
 
 StructureAnalyser::StructureAnalyser(QObject *parent)
-	: QObject(parent), classifier_loaded(false), m_pointcloud(NULL), m_iteration(0), m_null_label(-1)
+	: QThread(parent), m_iteration(0), m_null_label(-1)
 {
 	qRegisterMetaType<PAPointCloud *>("PAPointCloudPointer");
 	qRegisterMetaType<QVector<QMap<int, float>>>("ClassificationDistribution");
@@ -11,10 +11,19 @@ StructureAnalyser::StructureAnalyser(QObject *parent)
 
 	m_modelClassName = "coseg_chairs_8";
 	m_energy_functions.reset(new EnergyFunctions(m_modelClassName));
+
+	m_point_classifier.reset(new PointClassifier(this));
+	m_candidates_generator.reset(new CandidatesGenerator(this));
+	m_parts_predictor.reset(new PartsPredictor(this));
+	m_point_segmentation.reset(new PointSegmentation(this));
+	m_parts_solver.reset(new PartsSolver());
+
+	connect(m_candidates_generator.data(), SIGNAL(setOBBs(QVector<OBB *>)), this, SLOT(setOBBs(QVector<OBB *>)));
+	
 }
 
 StructureAnalyser::StructureAnalyser(PCModel *pcModel, QObject * parent)
-	: QObject(parent), classifier_loaded(false), m_iteration(0), m_null_label(-1)
+	: QThread(parent), m_iteration(0), m_null_label(-1)
 {
 	qRegisterMetaType<PAPointCloud *>("PAPointCloudPointer");
 	qRegisterMetaType<QVector<QMap<int, float>>>("ClassificationDistribution");
@@ -25,30 +34,18 @@ StructureAnalyser::StructureAnalyser(PCModel *pcModel, QObject * parent)
 	m_modelClassName = "coseg_chairs_8";
 	m_energy_functions.reset(new EnergyFunctions(m_modelClassName));
 	m_parts_structure.set_model(pcModel);
+
+	m_point_classifier.reset(new PointClassifier(this));
+	m_candidates_generator.reset(new CandidatesGenerator(this));
+	m_parts_predictor.reset(new PartsPredictor(this));
+	m_point_segmentation.reset(new PointSegmentation(this));
+	m_parts_solver.reset(new PartsSolver());
+
+	connect(m_candidates_generator.data(), SIGNAL(setOBBs(QVector<OBB *>)), this, SLOT(setOBBs(QVector<OBB *>)));
 }
 
 StructureAnalyser::~StructureAnalyser()
 {
-	if (!m_testPCThread.isNull())
-	{
-		if (m_testPCThread->isRunning())
-			m_testPCThread->quit();
-	}
-
-	if (!m_genCandThread.isNull())
-	{
-		if (m_genCandThread->isRunning())
-			m_genCandThread->quit();
-	}
-
-	if (!m_predictionThread.isNull())
-	{
-		if (m_predictionThread->isRunning())
-			m_predictionThread->quit();
-	}
-
-	if (m_pointcloud != NULL)
-		delete(m_pointcloud);
 
 	//delete(m_joint_normal_predictor);
 
@@ -81,63 +78,15 @@ StructureAnalyser::~StructureAnalyser()
 
 void StructureAnalyser::execute()
 {
-	/* Make sure the last run of TestPCThread is over */
-	if (m_testPCThread != NULL && m_testPCThread->isRunning())
-		m_testPCThread->terminate();
+	m_model_name = Utils::getModelName(m_pcModel->getInputFilepath());
 
-	/* Make sure the last run of GenCandidatesThread is over */
-	if (m_genCandThread != NULL)
-	{
-		if (m_genCandThread->isRunning())
-			m_genCandThread->quit();
-	}
+	/* Estimate poitn cloud features */
+	m_fe.reset(new FeatureEstimator(m_pcModel, PHASE::TESTING, this));
+	connect(m_fe.data(), SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
+	connect(m_fe.data(), SIGNAL(estimateCompleted(PAPointCloud *)), this, SLOT(initialize(PAPointCloud *)));
+	onDebugTextAdded("Estimating points features...");
+	m_fe->estimateFeatures();
 
-	if (m_pointcloud != NULL)
-	{
-		delete(m_pointcloud);
-		m_pointcloud = NULL;
-	}
-
-	/* Load basic information */
-	bool ret = true;
-	ret = ret & m_parts_structure.load_labels((label_info_path + label_info_filename).c_str());
-	ret = ret & m_parts_structure.load_label_symmetries((label_info_path + label_symmetry_info_filename).c_str());
-	/* Load symmetry groups */
-	ret = ret & m_parts_structure.load_symmetry_groups((label_info_path + symmetry_group_info_filename).c_str());
-	/* Load CuboidFeatures and CuboidTransformations */
-	load_object_list("../data/coseg_chairs_8_list.txt");
-	load_features(training_dir + std::string("/") + feature_filename_prefix);
-	load_transformations(training_dir + std::string("/") + transformation_filename_prefix);
-
-	m_parts_structure.clear_parts();
-
-	if (!ret)
-	{
-		do {
-			std::cout << "Error: Cannot open label information files.";
-			std::cout << '\n' << "Press the Enter key to continue.";
-		} while (std::cin.get() != '\n');
-	}
-	
-
-	/* Check if the point cloud featrues have been estimated before */
-	QString model_file_name = Utils::getModelName(QString::fromStdString(m_pcModel->getInputFilepath()));
-	m_model_name = model_file_name.toStdString();
-	std::string pcFile = "../data/features_test/" + m_model_name + ".csv";
-	std::ifstream feat_file_in(pcFile.c_str());
-	if (feat_file_in.is_open())    /* If there is already a features file of the point cloud */
-	{
-		initialize(NULL);
-		feat_file_in.close();
-	}
-	else    /* If the point cloud has not been estimated, then estimate it */
-	{
-		m_fe.reset(new FeatureEstimator(m_pcModel, PHASE::TESTING, this));
-		connect(m_fe.data(), SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
-		connect(m_fe.data(), SIGNAL(estimateCompleted(PAPointCloud *)), this, SLOT(initialize(PAPointCloud *)));
-		onDebugTextAdded("Estimating points features...");
-		m_fe->estimateFeatures();
-	}
 }
 
 void StructureAnalyser::onDebugTextAdded(QString text)
@@ -151,104 +100,37 @@ void StructureAnalyser::initialize(PAPointCloud *pointcloud)
 	onDebugTextAdded("Start initialization.");
 	qDebug() << "Points features estimation done. Start initialization.";
 
-	classifyPoints(pointcloud);
+	m_pointcloud.reset(pointcloud);
+	m_parts_structure.set_pointcloud(m_pointcloud);
+
+	this->start();
 }
 
 using namespace shark;
 using namespace std;
-void StructureAnalyser::classifyPoints(PAPointCloud *pointcloud)
+
+void StructureAnalyser::run()
 {
-	QString model_file_name = Utils::getModelName(QString::fromStdString(m_pcModel->getInputFilepath()));
-	std::string pcFile = "../data/features_test/" + model_file_name.toStdString() + ".csv";
-	if (m_pointcloud != NULL)
-		delete(m_pointcloud);
-	m_pointcloud = NULL;
-
-	if (pointcloud != NULL)    /* If there exists no features file of the point cloud */
-	{
-		m_pointcloud = pointcloud;
-		onDebugTextAdded("Classify each point to a certain part label.");
-		qDebug() << "Classify each point to a certain part label.";
-		onDebugTextAdded("Load points features.");
-		qDebug() << "Load points features.";
-
-		/* Output the PAPointCloud to local file */
-		pointcloud->writeToFile(pcFile.c_str());
-	}
-	else    /* If there already exists a features file of the point cloud */
-	{
-		ifstream features_in(pcFile.c_str());
-		int nvertices = m_pcModel->vertexCount();
-		m_pointcloud = new PAPointCloud(nvertices);
-
-		char buffer[511];
-		for (int i = 0; i < nvertices; i++)
-		{
-			features_in.getline(buffer, 511);
-			QStringList line_data = QString(buffer).split(',');
-			double feats[POINT_FEATURES_DIMEN];
-			for (int j = 0; j < POINT_FEATURES_DIMEN; j++)
-				feats[j] = line_data[j].toDouble();
-			PAPoint papoint(feats);
-			Eigen::Vector3f point = m_pcModel->operator[](i);
-			Eigen::Vector3f normal = m_pcModel->getNormal(i);
-			GLfloat x = point[0];
-			GLfloat y = point[1];
-			GLfloat z = point[2];
-			papoint.setPosition(x, y, z);
-			papoint.setNormal(normal[0], normal[1], normal[2]);
-			m_pointcloud->at(i) = papoint;
-		}
-		m_pointcloud->setRadius(m_pcModel->getRadius());
-	}
-
-	/* Set the point cloud to EnergyFunctions object */
-	m_energy_functions->setPointCloud(m_pointcloud);
-	m_parts_structure.set_pointcloud(m_pointcloud);
-
-	/* Create a thread to do the points classification */
-	/* Check whether the point cloud has been classified */
-	std::string prediction_path = "../data/predictions/" + m_model_name + ".txt";
-	ifstream prediction_in(prediction_path.c_str());
-
-	if (prediction_in.is_open())    /* If the point cloud has been classified */
-	{
-		prediction_in.close();
-		if (m_testPCThread.isNull())
-		{
-			m_testPCThread.reset(new TestPCThread(0, prediction_path, m_modelClassName, this));
-			connect(m_testPCThread.data(), SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
-			connect(m_testPCThread.data(), SIGNAL(classifyProbabilityDistribution(QVector<QMap<int, float>>)), this, SLOT(onClassificationDone(QVector<QMap<int, float>>)));
-			connect(m_testPCThread.data(), SIGNAL(setPCLabels(QVector<int>)), this, SLOT(onPointLabelsGot(QVector<int>)));
-		}
-		else
-			m_testPCThread->setPredictionFilePath(prediction_path);
-	}
-	else    /* If the point cloud has not been classified */
-	{
-		if (m_testPCThread.isNull())
-		{
-			m_testPCThread.reset(new TestPCThread(QString::fromStdString(m_model_name), m_modelClassName, this));
-			connect(m_testPCThread.data(), SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
-			connect(m_testPCThread.data(), SIGNAL(classifyProbabilityDistribution(QVector<QMap<int, float>>)), this, SLOT(onClassificationDone(QVector<QMap<int, float>>)));
-			connect(m_testPCThread.data(), SIGNAL(setPCLabels(QVector<int>)), this, SLOT(onPointLabelsGot(QVector<int>)));
-		}
-		else
-			m_testPCThread->setPcName(QString::fromStdString(m_model_name));
-	}
-
-	m_testPCThread->start();
+	predict();
 }
 
-using namespace pcl;
-
-void StructureAnalyser::onClassificationDone(QVector<QMap<int, float>> distribution)
+void StructureAnalyser::classifyPoints(QVector<int> & pc_labels, QVector<QMap<int, float>> &distribution)
 {
-	m_label_names = QVector<int>::fromList(distribution[0].keys());
-	m_null_label = m_label_names.last();
-	m_parts_structure.m_null_label = m_null_label;
+
+	m_point_classifier->setLabelNames(m_parts_structure.m_label_names);
+	m_point_classifier->setModelClassName(m_modelClassName);
+	m_point_classifier->testPointCloud(m_model_name, pc_labels, distribution);
+
+	//emit setPointcloudLabels(pc_labels);
+	m_pcModel->setLabels(pc_labels);
+
+	//m_label_names = QVector<int>::fromStdVector(m_parts_structure.m_label_names);
+	//m_null_label = m_label_names.last();
+	//m_parts_structure.m_null_label = m_null_label;
+
 	/* Set the classification probability distribution to EnergyFunctions object */
 	m_energy_functions->setDistributions(distribution);
+
 	/* Set the classification probability distrubution to the point cloud */
 	int point_idx = 0;
 	for (QVector<QMap<int, float>>::iterator dis_it = distribution.begin(); dis_it != distribution.end(); ++dis_it)
@@ -270,222 +152,12 @@ void StructureAnalyser::onClassificationDone(QVector<QMap<int, float>> distribut
 
 		m_pointcloud->operator[](point_idx++).setClassConfidences(*dis_it);
 	}
-
-	std::vector<std::vector<CuboidJointNormalRelations *>> joint_normal_relations;
-	get_joint_normal_relations(joint_normal_relations);
-	m_joint_normal_predictor.reset(new CuboidJointNormalRelationPredictor(joint_normal_relations));
-	
-
-	/* Create a thread to generate the part candidates */
-	m_genCandThread.reset(new GenCandidatesThread(m_pointcloud, m_model_name, distribution, this));
-	//m_genCandThread = new GenCandidatesThread(m_model_name, m_pointcloud->size(), 144, this);    /* Directly load candidates from local files */
-	connect(m_genCandThread.data(), SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
-	connect(m_genCandThread.data(), SIGNAL(genCandidatesDone(int, Part_Candidates, QVector<int>)), 
-		this, SLOT(onGenCandidatesDone(int, Part_Candidates, QVector<int>)));
-	connect(m_genCandThread.data(), SIGNAL(setOBBs(QVector<OBB *>)), this, SLOT(setOBBs(QVector<OBB *>)));
-	m_genCandThread->start();
 }
 
-void StructureAnalyser::onPointLabelsGot(QVector<int> labels)
-{
-	m_pcModel->setLabels(labels);
-}
-
-void StructureAnalyser::onGenCandidatesDone(int num_of_candidates, Part_Candidates part_candidates, QVector<int> point_cluster_map)
-{
-	onDebugTextAdded("Genarating parts candidates has finished.");
-	qDebug() << "Generating parts candidates has finished.";
-
-	m_parts_candidates = part_candidates;
-	//m_point_assignments = point_cluster_map;
-
-	onDebugTextAdded("There are " + QString::number(part_candidates.size()) + " part candidates in total.");
-	qDebug("Threre are %d part candidates in total.", part_candidates.size());
-
-	/* Release the memory of GenCandidatesThread */
-	if (m_genCandThread != NULL)
-	{
-		if (m_genCandThread->isRunning())
-			m_genCandThread->quit();
-	}
-
-
-	/* Do part labels and orientations prediction */
-	onDebugTextAdded("Predict part labels and orientations.");
-	qDebug() << "Predict part labels and orientations.";
-
-	bool use_symmetry = m_iteration == 0 ? true : false;
-	m_predictionThread.reset(new PredictionThread(m_energy_functions, part_candidates, m_label_names, 
-		m_modelClassName, use_symmetry, this));
-	connect(m_predictionThread.data(), SIGNAL(predictionDone(QMap<int, int>, std::vector<int>)), this, SLOT(onPredictionDone(QMap<int, int>, std::vector<int>)));
-	//connect(m_predictionThread, SIGNAL(predictionDone()), this, SLOT(onPredictionDone()));
-	m_predictionThread->start();
-}
-
-void StructureAnalyser::onPredictionDone(QMap<int, int> parts_picked, std::vector<int> candidate_labels)
-{
-	qDebug() << "Part labels and orientations prediction done.";
-
-	int null_label = m_energy_functions->getNullLabelName();
-	int numLabels = m_label_names.size();
-	QMap<int, OBB *> obbs;
-	QVector<OBB *> obbs_to_show;
-	obbs_to_show.reserve(parts_picked.size());
-	QVector<int> cluster_labels(m_parts_candidates.size() / 24);  /* label of each cluster */
-	cluster_labels.fill(-1);
-
-	for (QMap<int, int>::iterator it = parts_picked.begin(); it != parts_picked.end(); ++it)
-	{
-		cout << "Part label " << it.key() << " correspondes to Candidate-" << it.value() << endl;
-
-		int label = it.key();
-
-		int candidate_idx = it.value();
-		PAPart *part = new PAPart(m_parts_candidates[candidate_idx]);
-		part->setLabel(label);
-		
-		OBB * obb = part->getOBB();
-		if (obb == NULL)
-			obb = part->generateOBB();
-
-		if (part->num_of_samples < param_min_num_cuboid_sample_points)
-			part->samplePoints();
-
-		obb->setColor(QVector3D(COLORS[label][0], COLORS[label][1], COLORS[label][2]));
-		obbs.insert(label, obb);
-		obbs_to_show.push_back(new OBB(obb));
-
-		m_parts_structure.add_part(label, part);
-
-		/* Fill the label of cluster */
-		//int cluster_no = candidate_idx / 24;
-		//if (label != null_label)
-		//	cluster_labels[cluster_no] = label;
-	}
-
-	/* release the memories occupied by parts candidates */
-	m_parts_candidates.clear();
-
-	/* update the points to points assignments with the optimization result */
-	for (std::vector<int>::iterator ass_it = m_parts_structure.m_points_assignments.begin();
-		ass_it != m_parts_structure.m_points_assignments.end(); ++ass_it)
-		(*ass_it) = m_parts_structure.m_null_label;
-	std::vector<PAPart *> all_parts = m_parts_structure.get_all_parts();
-	for (std::vector<PAPart *>::iterator part_it = all_parts.begin(); part_it != all_parts.end(); ++part_it)
-	{
-		int label = (*part_it)->getLabel();
-		std::vector<int> vertices_indices = (*part_it)->getVerticesIndices();
-		for (std::vector<int>::iterator index_it = vertices_indices.begin(); index_it != vertices_indices.end(); ++index_it)
-		{
-			m_parts_structure.m_points_assignments[*index_it] = label;
-			m_pointcloud->operator[](*index_it).setLabel(label);
-		}
-	}
-
-
-	/* Update the labels of point cloud that is being displayed */
-	m_pcModel->setLabels(QVector<int>::fromStdVector(m_parts_structure.m_points_assignments));
-
-	/* Update the OBBs and points assignments to EnergyFunctions */
-	m_energy_functions->setOBBs(obbs);
-	m_energy_functions->setPointAssignments(QVector<int>::fromStdVector(m_parts_structure.m_points_assignments));
-
-	/* Display the OBBs of result parts */
-	emit sendOBBs(obbs_to_show);
-
-	/* Release the memory of PredictionThread */
-	if (m_predictionThread != NULL)
-	{
-		if (m_predictionThread->isRunning())
-			m_predictionThread->quit();
-	}
-
-	/* Compute symmetry groups */
-	m_parts_structure.compute_symmetry_groups();
-
-	/* Do point segmentation */
-	m_segmentationThread.reset(new PointSegmentationThread(&m_parts_structure, m_label_names, this));
-	connect(m_segmentationThread.data(), SIGNAL(pointSegmentationDone(QVector<int>)), this, SLOT(pointSegmentationDone(QVector<int>)));
-	m_segmentationThread->start();
-}
-
-void StructureAnalyser::pointSegmentationDone(QVector<int> new_point_assignments)
-{
-	cout << "Update the point assignments to point cloud." << endl;
-	m_pcModel->setLabels(new_point_assignments);
-
-	//std::ofstream out("../data/nps.csv");
-	//for (QVector<int>::iterator it = new_point_assignments.begin(); it != new_point_assignments.end(); ++it)
-	//	out << *it << std::endl;
-	cout << "Updating done." << endl;
-	//out.close();
-
-	/* Show new oriented bounding boxes after point segmentation */
-	//emit sendOBBs(m_parts_structure.get_all_obb_copies());
-
-	/* Release the memory of PointSegmentationThread */
-	if (m_segmentationThread != NULL)
-	{
-		if (m_segmentationThread->isRunning())
-			m_segmentationThread->quit();
-	}
-
-	/* Do Part pose optimization */
-	if (!disable_part_relation_terms)
-	{
-		m_partPoseOptThread.reset(new PartPoseOptThread(&m_parts_structure, m_joint_normal_predictor, this));
-		connect(m_partPoseOptThread.data(), SIGNAL(finished()), this, SLOT(onPartPoseOptimizationDone()));
-		m_partPoseOptThread->start();
-	}
-
-	emit sendPartsStructure(&m_parts_structure);
-}
-
-void StructureAnalyser::onPartPoseOptimizationDone()
-{
-	cout << "Part pose optimization done." << endl;
-
-	/* Release the memory of PartPoseOptThread */
-	if (m_partPoseOptThread != NULL)
-	{
-		if (m_partPoseOptThread->isRunning())
-			m_partPoseOptThread->quit();
-	}
-
-	
-	/* Go back to Part labels and orientations prediction to run next iteration */
-	m_iteration++;
-	if (m_iteration < param_max_inference_iteration)
-	{
-		/* Form a new parts candidates */
-		QVector<PAPart> parts_candidates(m_parts_structure.num_of_parts());
-		std::vector<PAPart *> all_parts = m_parts_structure.get_all_parts();
-		
-		int part_idx = 0;
-		for (std::vector<PAPart *>::iterator part_it = all_parts.begin(); part_it != all_parts.end(); ++part_it)
-			parts_candidates[part_idx++] = PAPart(**part_it);
-
-		bool use_symmetry = m_iteration == 0 ? true : false;
-		m_predictionThread.reset(new PredictionThread(m_energy_functions, parts_candidates, m_label_names, m_modelClassName, use_symmetry, this));
-		connect(m_predictionThread.data(), SIGNAL(predictionDone(QMap<int, int>, std::vector<int>)), this, SLOT(onPredictionDone(QMap<int, int>, std::vector<int>)));
-		//connect(m_predictionThread, SIGNAL(predictionDone()), this, SLOT(onPredictionDone()));
-		m_predictionThread->start();
-	}
-}
-
-//void StructureAnalyser::onPredictionDone()
-//{
-//	qDebug() << "onPredictionDone().";
-//}
-
+using namespace pcl;
 
 void StructureAnalyser::setPointCloud(PCModel *pcModel)
 {
-	if (m_testPCThread != NULL && m_testPCThread->isRunning())
-		m_testPCThread->terminate();
-	if (m_genCandThread != NULL && m_genCandThread->isRunning())
-		m_genCandThread->terminate();
-	
 	m_pcModel = pcModel;
 	m_parts_structure.set_model(pcModel);
 }
@@ -711,4 +383,158 @@ bool StructureAnalyser::load_transformations(const std::string &_filename_prefix
 	}
 
 	return true;
+}
+
+void StructureAnalyser::predict()
+{
+	/* Load basic information */
+	bool ret = true;
+	ret = ret & m_parts_structure.load_labels((label_info_path + label_info_filename).c_str());
+	ret = ret & m_parts_structure.load_label_symmetries((label_info_path + label_symmetry_info_filename).c_str());
+	/* Load symmetry groups */
+	ret = ret & m_parts_structure.load_symmetry_groups((label_info_path + symmetry_group_info_filename).c_str());
+	/* Load CuboidFeatures and CuboidTransformations */
+	load_object_list("../data/coseg_chairs_8_list.txt");
+	load_features(training_dir + std::string("/") + feature_filename_prefix);
+	load_transformations(training_dir + std::string("/") + transformation_filename_prefix);
+
+	m_parts_structure.clear_parts();
+
+	if (!ret)
+	{
+		do {
+			std::cout << "Error: Cannot open label information files.";
+			std::cout << '\n' << "Press the Enter key to continue.";
+		} while (std::cin.get() != '\n');
+	}
+
+	std::vector<std::vector<CuboidJointNormalRelations *>> joint_normal_relations;
+	get_joint_normal_relations(joint_normal_relations);
+	CuboidJointNormalRelationPredictor joint_normal_predictor(joint_normal_relations);
+
+	QVector<int> pc_labels;
+	QVector<QMap<int, float>> distribution;
+	classifyPoints(pc_labels, distribution);
+
+	m_label_names = QVector<int>::fromList(distribution[0].keys());
+	m_null_label = m_label_names.last();
+	m_parts_structure.m_null_label = m_null_label;
+
+	Part_Candidates part_candidates;
+	QVector<int> point_cluster_map;
+	generateCandidates(distribution, part_candidates, point_cluster_map);
+
+
+	while (m_iteration < 30)
+	{
+		QMap<int, int> parts_picked;
+		std::vector<int> candidate_labels;
+		predictPartLabelsAndOrientations(part_candidates, m_label_names, parts_picked, candidate_labels);
+
+		/* Compute symmetry groups */
+		m_parts_structure.compute_symmetry_groups();
+
+		segmentPoints();
+
+		m_parts_solver->optimizeAttributes(m_parts_structure, joint_normal_predictor, param_opt_single_energy_term_weight,
+			param_opt_symmetry_energy_term_weight, param_opt_max_iterations, false);
+
+		const bool use_symmetry = !(disable_symmetry_terms);
+		if (use_symmetry)
+		{
+			m_parts_structure.compute_symmetry_groups();
+
+			m_parts_solver->optimizeAttributes(m_parts_structure, joint_normal_predictor, param_opt_single_energy_term_weight,
+				param_opt_symmetry_energy_term_weight, param_opt_max_iterations, use_symmetry);
+		}
+	}
+}
+
+void StructureAnalyser::generateCandidates(const QVector<QMap<int, float>> & distribution, Part_Candidates & part_candidates, QVector<int> & point_cluster_map)
+{
+	m_candidates_generator->generateCandidates(m_model_name, m_pointcloud, distribution, part_candidates, point_cluster_map);
+}
+
+void StructureAnalyser::predictPartLabelsAndOrientations(const Part_Candidates & part_candidates, const QVector<int> & label_names,
+	QMap<int, int> &parts_picked, std::vector<int> &candidate_labels)
+{
+	m_parts_predictor->setModelClassName(m_modelClassName);
+	if (m_iteration == 0)
+		m_parts_predictor->setUseSymmetry(true);
+	else
+		m_parts_predictor->setUseSymmetry(false);
+
+	m_parts_predictor->predictLabelsAndOrientations(part_candidates, label_names, parts_picked, candidate_labels, m_energy_functions);
+
+	int numLabels = m_label_names.size();
+	QMap<int, OBB *> obbs;
+	QVector<OBB *> obbs_to_show;
+	obbs_to_show.reserve(parts_picked.size());
+	QVector<int> cluster_labels(part_candidates.size() / 24);  /* label of each cluster */
+	cluster_labels.fill(-1);
+
+	for (QMap<int, int>::iterator it = parts_picked.begin(); it != parts_picked.end(); ++it)
+	{
+		cout << "Part label " << it.key() << " correspondes to Candidate-" << it.value() << endl;
+
+		int label = it.key();
+
+		int candidate_idx = it.value();
+		PAPart *part = new PAPart(part_candidates[candidate_idx]);
+		part->setLabel(label);
+
+		OBB * obb = part->getOBB();
+		if (obb == NULL)
+			obb = part->generateOBB();
+
+		if (part->numOfSamples() < param_min_num_cuboid_sample_points)
+			part->samplePoints();
+
+		obb->setColor(QVector3D(COLORS[label][0], COLORS[label][1], COLORS[label][2]));
+		obbs.insert(label, obb);
+		obbs_to_show.push_back(new OBB(obb));
+
+		m_parts_structure.add_part(label, part);
+	}
+
+	/* update the points to points assignments with the optimization result */
+	for (std::vector<int>::iterator ass_it = m_parts_structure.m_points_assignments.begin();
+		ass_it != m_parts_structure.m_points_assignments.end(); ++ass_it)
+		(*ass_it) = m_parts_structure.m_null_label;
+	std::vector<PAPart *> all_parts = m_parts_structure.get_all_parts();
+	for (std::vector<PAPart *>::iterator part_it = all_parts.begin(); part_it != all_parts.end(); ++part_it)
+	{
+		int label = (*part_it)->getLabel();
+		std::vector<int> vertices_indices = (*part_it)->getVerticesIndices();
+		for (std::vector<int>::iterator index_it = vertices_indices.begin(); index_it != vertices_indices.end(); ++index_it)
+		{
+			m_parts_structure.m_points_assignments[*index_it] = label;
+			m_pointcloud->operator[](*index_it).setLabel(label);
+		}
+	}
+
+	/* Update the labels of point cloud that is being displayed */
+	m_pcModel->setLabels(QVector<int>::fromStdVector(m_parts_structure.m_points_assignments));
+
+	/* Update the OBBs and points assignments to EnergyFunctions */
+	m_energy_functions->setOBBs(obbs);
+	m_energy_functions->setPointAssignments(QVector<int>::fromStdVector(m_parts_structure.m_points_assignments));
+
+	/* Display the OBBs of result parts */
+	emit sendOBBs(obbs_to_show);
+}
+
+void StructureAnalyser::segmentPoints()
+{
+	QVector<int> point_assignments_segmented;
+
+	m_point_segmentation->segmentPoints(m_parts_structure, m_label_names, point_assignments_segmented);
+
+	m_pcModel->setLabels(point_assignments_segmented);
+
+	//std::ofstream out("../data/nps.csv");
+	//for (QVector<int>::iterator it = new_point_assignments.begin(); it != new_point_assignments.end(); ++it)
+	//	out << *it << std::endl;
+	cout << "Updating done." << endl;
+	//out.close();
 }

@@ -7,6 +7,7 @@
 #include <QList>
 #include <iostream>
 #include <string>
+#include <QSharedPointer>
 #include <cmath>
 #include <vector>
 #include <fstream>
@@ -24,8 +25,8 @@ public:
 	EnergyFunctions(std::string modelClassName);
 	~EnergyFunctions();
 
-	void setPointCloud(PAPointCloud *pointcloud);
-	void setDistributions(QVector<QMap<int, float>> distributions);
+	void setPointCloud(QSharedPointer<PAPointCloud> pointcloud);
+	void setDistributions(const QVector<QMap<int, float>> &distributions);
 	void setOBBs(QMap<int, OBB*> obbs);
 	void setPointAssignments(QVector<int> point_assignbments);
 	int getNullLabelName() { return m_null_label; }
@@ -43,6 +44,7 @@ public:
 	 */
 	double Epnt(PAPart *part, int label);
 	double Epnt(PAPart *part, int label, bool use_symmetry);
+	double Epnt(const PAPart *part, int label, bool use_symmetry);
 
 	/* Epnt_single 
 	   The function computing the point classification energy for a single point 
@@ -86,7 +88,7 @@ private:
 	QMap<QPair<int, int>, Eigen::MatrixXf> m_covariance_matrices;
 	QMap<QPair<int, int>, Eigen::VectorXf> m_mean_vectors;
 	QVector<QMap<int, float>> m_distributions;
-	PAPointCloud *m_pointcloud;
+	QSharedPointer<PAPointCloud> m_pointcloud;
 	pcl::KdTreeFLANN<pcl::PointXYZ> m_cloud_kdtree;  /* The kd-tree for searching nearest neighbor in the whole point cloud */
 	int m_null_label;
 	QList<QVector<int>> m_symmetry_groups;  /* Symmetry groups, all parts contained in a group are symmetry to each other.

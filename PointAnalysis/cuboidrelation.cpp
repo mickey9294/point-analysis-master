@@ -503,7 +503,7 @@ void CuboidTransformation::get_linear_map_transformation(
 			for (unsigned int corner_index = 0; corner_index < 8; ++corner_index)
 			{
 				_translation(3 * k + i, CuboidAttributes::k_corner_index + 3 * corner_index + i) =
-					-1.0 / 8;
+					-1.0 / 8.0;
 			}
 		}
 	}

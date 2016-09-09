@@ -283,6 +283,7 @@ void PartsSolver::get_optimization_formulation(
 	_pair_total_energy += _pair_constant_term;
 
 #ifdef DEBUG_TEST
+	double err = std::abs(_pair_total_energy - same_pair_total_energy);
 	Utils::CHECK_NUMERICAL_ERROR(__FUNCTION__, _pair_total_energy, same_pair_total_energy);
 #endif
 }

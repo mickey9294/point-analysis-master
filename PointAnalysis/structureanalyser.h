@@ -2,6 +2,7 @@
 #define STRUCTUREANALYSER_H
 
 #include <QObject>
+#include <QThread>
 #include <QList>
 #include <QMap>
 #include <QVector>
@@ -27,19 +28,20 @@
 #include "PAPoint.h"
 #include "featureestimator.h"
 #include "obbestimator.h"
-#include "testpcthread.h"
-#include "gencandidatesthread.h"
 #include "energyfunctions.h"
-#include "predictionthread.h"
-#include "pointsegmentationthread.h"
 #include "definitions.h"
 #include "partssolver.h"
 #include "PartsStructure.h"
-#include "partposeoptthread.h"
+
+#include "pointclassifier.h"
+#include "candidatesgenerator.h"
+#include "partspredictor.h"
+#include "pointsegmentation.h"
+#include "partssolver.h"
 
 typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS> Graph;
 
-class StructureAnalyser : public QObject
+class StructureAnalyser : public QThread
 {
 	Q_OBJECT
 
@@ -53,52 +55,55 @@ public:
 	int numOfLabels();
 	int getLabelName(const std::string label_paraphrase);
 
+	void predict();
+
 	public slots:
 	void onDebugTextAdded(QString text);
 	void initialize(PAPointCloud *pointcloud);
-	void onClassificationDone(QVector<QMap<int, float>> distribution);
-	void onPointLabelsGot(QVector<int> labels);
-	void onGenCandidatesDone(int num_of_candidates, Part_Candidates part_candidates, QVector<int> point_cluster_map);
-	void onPredictionDone(QMap<int, int> part_picked, std::vector<int> candidate_labels);
 	void setOBBs(QVector<OBB *> obbs);
-	void pointSegmentationDone(QVector<int> new_point_assignments);
-	void onPartPoseOptimizationDone();
-	//void onPredictionDone();
 
 signals:
 	void addDebugText(QString text);
 	void sendOBBs(QVector<OBB *> obbs);
 	void sendPartsStructure(PartsStructure *structure);
+	//void setPointcloudLabels(QVector<int> labels);
+
+protected:
+	void run();
 
 private:
 	std::string m_model_name;
 	std::string m_modelClassName;
-	//Parts_Vector m_parts;
+
 	PartsStructure m_parts_structure;
-	Part_Candidates m_parts_candidates;
-	//QVector<int> m_point_assignments;
+
 	PCModel * m_pcModel;
-	PAPointCloud *m_pointcloud;
+	QSharedPointer<PAPointCloud> m_pointcloud;
 	QSharedPointer<FeatureEstimator> m_fe;
-	QSharedPointer<TestPCThread> m_testPCThread;
-	bool classifier_loaded;
-	QSharedPointer<GenCandidatesThread> m_genCandThread;
+
 	QSharedPointer<EnergyFunctions> m_energy_functions;
-	QSharedPointer<PredictionThread> m_predictionThread;
-	QSharedPointer<PointSegmentationThread> m_segmentationThread;
-	QSharedPointer<PartPoseOptThread> m_partPoseOptThread;
+
 	int m_iteration;
 	int m_null_label;
 
+	QSharedPointer<PointClassifier> m_point_classifier;
+	QSharedPointer<CandidatesGenerator> m_candidates_generator;
+	QSharedPointer<PartsPredictor> m_parts_predictor;
+	QSharedPointer<PointSegmentation> m_point_segmentation;
+	QSharedPointer<PartsSolver> m_parts_solver;
+
 	QVector<int> m_label_names;
-	QSharedPointer<CuboidJointNormalRelationPredictor> m_joint_normal_predictor;
 
 	std::list<std::string> m_object_list;
 	std::vector< std::list<CuboidFeatures *> > m_feature_list;
 	std::vector< std::list<CuboidTransformation *> > m_transformation_list;
 
-	void classifyPoints(PAPointCloud *pointcloud);
+	void classifyPoints(QVector<int> & pc_labels, QVector<QMap<int, float>> &distribution);
 	void updateParts();  /* Update the points assignments to parts */
+	void generateCandidates(const QVector<QMap<int, float>> & distribution, Part_Candidates & part_candidates, QVector<int> & point_cluster_map);
+	void predictPartLabelsAndOrientations(const Part_Candidates & part_candidates, const QVector<int> & label_names,
+		QMap<int, int> &parts_picked, std::vector<int> &candidate_labels);
+	void segmentPoints();
 	
 	void get_joint_normal_relations(std::vector<std::vector<CuboidJointNormalRelations *>> &relations);
 	bool load_object_list(const std::string &_filename);

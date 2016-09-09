@@ -17,12 +17,14 @@ PCModel::PCModel(const char *file_path, int normals_estimation_method)
 }
 
 PCModel::PCModel(std::string file_path, int normals_estimation_method)
+	: Model(Model::ModelType::PointCloud)
 {
 	load_from_file(file_path.c_str(), normals_estimation_method);
 	m_input_filepath = file_path;
 }
 
 PCModel::PCModel(const PCModel &pc)
+	: Model(Model::ModelType::PointCloud)
 {
 	m_vertices_list = pc.getVertices();
 	m_normals_list = pc.getNormals();

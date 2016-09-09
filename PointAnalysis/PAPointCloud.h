@@ -17,7 +17,7 @@ public:
 	PAPoint & at(int index);
 	PAPoint & operator[](int index);
 	void resize(int newsize);
-	int size();
+	int size() const;
 	void writeToFile(const char *file);
 	void setRadius(float radius);
 	float getRadius() const;

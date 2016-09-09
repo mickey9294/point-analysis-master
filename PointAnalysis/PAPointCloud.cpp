@@ -43,7 +43,7 @@ PAPoint & PAPointCloud::operator[](int index)
 	return pointList[index];
 }
 
-int PAPointCloud::size()
+int PAPointCloud::size() const
 {
 	return pointList.size();
 }

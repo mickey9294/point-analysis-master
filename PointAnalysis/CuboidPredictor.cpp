@@ -77,7 +77,7 @@ void CuboidPredictor::get_single_quadratic_form(
 
 	OBB * obb = _cuboid->getOBB();
 
-	unsigned int num_sample_points = _cuboid->num_of_samples;
+	unsigned int num_sample_points = _cuboid->numOfSamples();
 	unsigned int num_cuboid_surface_points = obb->sampleCount();
 	const unsigned int mat_size = _quadratic_term.cols();
 	const unsigned int num_corners = OBB::k_num_corners;
@@ -378,6 +378,7 @@ Real CuboidJointNormalRelationPredictor::get_pair_potential(
 		if (relation_21)
 		{
 			Real potential_21 = relation_12->compute_error(_cuboid_1->getOBB(), _cuboid_2->getOBB(), _transformation_1, _transformation_2);
+			double err = std::abs(potential_12 - potential_21);
 			Utils::CHECK_NUMERICAL_ERROR(__FUNCTION__, potential_12, potential_21);
 		}
 #endif
@@ -533,7 +534,8 @@ Real CuboidJointNormalRelationPredictor::get_pair_quadratic_form(
 
 #ifdef DEBUG_TEST
 	Real same_potential = relation_12->compute_error(_cuboid_1->getOBB(), _cuboid_2->getOBB(), &transformation_1, &transformation_2);
-	Utils::CHECK_NUMERICAL_ERROR(__FUNCTION__, potential, same_potential);
+	double err = std::abs(potential - same_potential);
+	//Utils::CHECK_NUMERICAL_ERROR(__FUNCTION__, potential, same_potential);
 #endif
 
 	//Eigen::IOFormat csv_format(Eigen::StreamPrecision, 0, ",");
@@ -673,6 +675,7 @@ Real CuboidJointNormalRelationPredictor::get_pair_conditional_quadratic_form(
 
 #ifdef DEBUG_TEST
 	Real same_potential = relation_12->compute_conditional_error(_cuboid_1->getOBB(), _cuboid_2->getOBB(), &transformation_1);
+	double err = std::abs(potential - same_potential);
 	Utils::CHECK_NUMERICAL_ERROR(__FUNCTION__, potential, same_potential);
 #endif
 
@@ -880,6 +883,7 @@ Real CuboidCondNormalRelationPredictor::get_pair_quadratic_form(
 
 #ifdef DEBUG_TEST
 	Real same_potential = relation_12->compute_error(_cuboid_1->getOBB(), _cuboid_2->getOBB(), &transformation_1, &transformation_2);
+	double err = std::abs(potential - same_potential);
 	Utils::CHECK_NUMERICAL_ERROR(__FUNCTION__, potential, same_potential);
 #endif
 

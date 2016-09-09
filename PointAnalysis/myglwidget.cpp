@@ -256,6 +256,7 @@ void MyGLWidget::setZRotation(int angle)
 void MyGLWidget::setOBBs(QVector<OBB *> obbs)
 {
 	emit addDebugText("Set oriented bounding boxes of the parts.");
+	std::cout << "Set oriented bounding boxes of the parts." << std::endl;
 	int size = obbs.size();
 
 	/* Delete all the OBB in current m_OBBs */

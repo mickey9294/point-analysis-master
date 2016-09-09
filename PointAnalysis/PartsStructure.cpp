@@ -453,12 +453,6 @@ void PartsStructure::set_model(Model * model)
 	cout << "The size of m_points_assignments of PartsStructure = " << m_points_assignments.size() << endl;
 }
 
-void PartsStructure::set_pointcloud(PAPointCloud *pointcloud)
-{
-	assert(pointcloud->size() == num_of_points());
-	m_pointcloud = pointcloud;
-}
-
 void PartsStructure::set_points_assignments(QVector<int> assignments)
 {
 	assert(m_pointcloud);
@@ -520,4 +514,10 @@ void PartsStructure::draw(float scale)
 				part->draw(scale);
 		}
 	}
+}
+
+void PartsStructure::set_pointcloud(QSharedPointer<PAPointCloud> pointcloud)
+{
+	assert(pointcloud->size() == num_of_points());
+	m_pointcloud = pointcloud;
 }

@@ -60,8 +60,10 @@ private:
 	PHASE m_phase;
 	QVector<double> m_sdf;
 	Model * m_model;
+	std::string m_model_name;
 
 	//QVector<int> getVerticesLabels(QString segfile);
+	void loadFeaturesFromFile(std::string file_path);
 };
 
 #endif // FEATUREESTIMATOR_H

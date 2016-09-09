@@ -1197,7 +1197,7 @@ void CuboidNonLinearSolver::create_cuboid_sample_point_ann_trees(
 		_cuboid_ann_points[cuboid_index] = NULL;
 
 		PAPart *cuboid = cuboids_[cuboid_index];
-		unsigned int num_cuboid_sample_points = cuboid->num_of_samples;
+		unsigned int num_cuboid_sample_points = cuboid->numOfSamples();
 		if (num_cuboid_sample_points == 0)
 			continue;
 

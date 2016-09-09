@@ -239,6 +239,7 @@ void CuboidSymmetryGroup::get_symmetric_sample_point_pairs(
 				//
 				// Debug.
 				Real test_distance = (symmetric_point_1 - point_2).norm();
+				double err = std::abs(test_distance - std::sqrt(dd[0]));
 				Utils::CHECK_NUMERICAL_ERROR(__FUNCTION__, test_distance, std::sqrt(dd[0]));
 				double distance = (std::sqrt(_squared_neighbor_distance) - std::sqrt(dd[0]));  /* 所要得到的距离为搜索半径减去对称点到部件上点的距离 */
 				assert(distance >= 0);
@@ -525,6 +526,7 @@ void CuboidReflectionSymmetryGroup::get_reflection_plane_corners(
 			break;
 		}
 	}
+	double err = std::abs(axes[0].norm() - 1.0);
 	Utils::CHECK_NUMERICAL_ERROR(__FUNCTION__, axes[0].norm(), 1.0);
 	axes[1] = n_.cross(axes[0]);
 	axes[1].normalized();
@@ -558,6 +560,7 @@ Eigen::Vector3f CuboidReflectionSymmetryGroup::get_symmetric_point(const Eigen::
 	// Assume that 'n_' is normalized.
 	Eigen::Vector3f plane_to_point = n_ * (n_.dot(_point) - t_);
 	Eigen::Vector3f symmetric_point = _point - (plane_to_point * 2);
+	double err = t_ - n_.dot(0.5 * (_point + symmetric_point));
 	Utils::CHECK_NUMERICAL_ERROR(__FUNCTION__, t_ - n_.dot(0.5 * (_point + symmetric_point)));
 	return symmetric_point;
 }
@@ -567,6 +570,7 @@ Eigen::Vector3f CuboidReflectionSymmetryGroup::get_symmetric_normal(const Eigen:
 	// Assume that 'n_' and 'normal_' are normalized.
 	Eigen::Vector3f n_direction_component = n_ * (n_.dot( _normal));
 	Eigen::Vector3f symmetric_normal = _normal - (n_direction_component * 2);
+	double err = n_.dot(0.5 * (_normal + symmetric_normal));
 	Utils::CHECK_NUMERICAL_ERROR(__FUNCTION__, n_.dot(0.5 * (_normal + symmetric_normal)));
 	return symmetric_normal;
 }
@@ -784,7 +788,7 @@ bool CuboidRotationSymmetryGroup::compute_rotation_angle(
 		cuboid_ann_points[cuboid_index] = NULL;
 
 		PAPart *cuboid = _cuboids[cuboid_index];
-		unsigned int num_cuboid_sample_points = cuboid->num_of_samples;
+		unsigned int num_cuboid_sample_points = cuboid->numOfSamples();
 		if (num_cuboid_sample_points == 0)
 			continue;
 

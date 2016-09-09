@@ -1,14 +1,14 @@
 #include "featureestimator.h"
 
 FeatureEstimator::FeatureEstimator(QObject *parent)
-	: QObject(parent)
+	: QObject(parent), m_model(NULL)
 {
 	m_cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
 	m_normals = pcl::PointCloud<pcl::Normal>::Ptr(new pcl::PointCloud < pcl::Normal>);
 }
 
 FeatureEstimator::FeatureEstimator(Model *model, PHASE phase, QObject *parent)
-	: QObject(parent), finish_count(NUM_FEATURE_THREAD), m_phase(phase)
+	: QObject(parent), finish_count(NUM_FEATURE_THREAD), m_phase(phase), m_model(model)
 {
 	qDebug() << "Initializing the feature estimator...";
 	emit addDebugText("Initializing the feature estimator...");
@@ -16,13 +16,17 @@ FeatureEstimator::FeatureEstimator(Model *model, PHASE phase, QObject *parent)
 	m_normals = pcl::PointCloud<pcl::Normal>::Ptr(new pcl::PointCloud < pcl::Normal>);
 	m_pointcloudFile = QString(model->getInputFilepath().c_str());
 
+	std::cout << "1" << std::endl;
+
 	if (model->getType() == Model::ModelType::Mesh)    /* If it is a training mesh model */
 	{
+		std::cout << "1.5" << std::endl;
 		MeshModel *mesh = (MeshModel *)model;
 		if (mesh->sampleCount() <= 0)
 			mesh->samplePoints();
+		std::cout << "2" << std::endl;
 		m_pointcloud = new PAPointCloud(mesh->sampleCount());
-
+		std::cout << "3" << std::endl;
 		int sample_idx = 0;
 		for (Parts_Samples::iterator part_it = mesh->samples_begin(); part_it != mesh->samples_end(); ++part_it)
 		{
@@ -41,12 +45,14 @@ FeatureEstimator::FeatureEstimator(Model *model, PHASE phase, QObject *parent)
 				m_pointcloud->at(sample_idx++).setLabel(label);
 			}
 		}
+		std::cout << "4" << std::endl;
 	}
 	else    /* If it is a testing point cloud model */
 	{
+		std::cout << "5" << std::endl;
 		PCModel *pc = (PCModel *)model;
 		m_pointcloud = new PAPointCloud(pc->vertexCount());
-
+		std::cout << "6" << std::endl;
 		int vertex_idx = 0;
 		QVector<Eigen::Vector3f>::iterator vertex_it, normal_it;
 		for (vertex_it = pc->vertices_begin(), normal_it = pc->normals_begin();
@@ -61,10 +67,12 @@ FeatureEstimator::FeatureEstimator(Model *model, PHASE phase, QObject *parent)
 			m_pointcloud->at(vertex_idx++).setLabel(10);
 		}
 	}
+	std::cout << "7" << std::endl;
 
 	m_pointcloud->setRadius(1.0);
 	m_radius = 1.0;
 	finish_count = NUM_FEATURE_THREAD;
+	std::cout << "8" << std::endl;
 
 	qRegisterMetaType<QVector<QVector<double>>>("FeatureVector");
 	qDebug() << "Initialization done.";
@@ -73,6 +81,8 @@ FeatureEstimator::FeatureEstimator(Model *model, PHASE phase, QObject *parent)
 
 void FeatureEstimator::reset(Model *model)
 {
+	m_model = model;
+
 	int num_of_threads = m_subthreads.size();
 	for (int i = 0; i < num_of_threads; i++)
 	{
@@ -165,23 +175,36 @@ FeatureEstimator::~FeatureEstimator()
 
 void FeatureEstimator::estimateFeatures()
 {
-	finish_count = NUM_FEATURE_THREAD;
-	qDebug() << "Estimating the point features...";
-	emit addDebugText("Estimating the point features...");
-	/* Create subthread to estimate point features in 5 different search radius */
-	qDebug() << "Create 6 FeatureThreads, each of which esitmate the point features in a particular search radius.";
-	emit addDebugText("Create 6 FeatureThreads, each of which esitmate the point features in a particular search radius.");
+	std::string model_input_path = m_model->getInputFilepath();
+	m_model_name = Utils::getModelName(model_input_path);
+	std::string existed_feature_filepath = "../data/features_test/" + m_model_name + ".csv";
 
-	for (int i = 0; i < NUM_FEATURE_THREAD; i++)
+	std::ifstream feat_in(existed_feature_filepath.c_str());
+	if (feat_in.is_open())
 	{
-		double coefficient = 0.1 * (i + 1);
-		FeatureThread * thread = new FeatureThread(i, m_cloud, m_normals, m_radius, coefficient, this);
-		connect(thread, SIGNAL(estimateCompleted(int, QVector<QVector<double>>)), this, SLOT(receiveFeatures(int, QVector<QVector<double>>)));
-		connect(thread, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
-		thread->setInputFilename(m_pointcloudFile);
+		feat_in.close();
+		loadFeaturesFromFile(existed_feature_filepath);
+	}
+	else
+	{
+		finish_count = NUM_FEATURE_THREAD;
+		qDebug() << "Estimating the point features...";
+		emit addDebugText("Estimating the point features...");
+		/* Create subthread to estimate point features in 5 different search radius */
+		qDebug() << "Create 6 FeatureThreads, each of which esitmate the point features in a particular search radius.";
+		emit addDebugText("Create 6 FeatureThreads, each of which esitmate the point features in a particular search radius.");
 
-		m_subthreads.push_back(thread);
-		thread->start();
+		for (int i = 0; i < NUM_FEATURE_THREAD; i++)
+		{
+			double coefficient = 0.1 * (i + 1);
+			FeatureThread * thread = new FeatureThread(i, m_cloud, m_normals, m_radius, coefficient, this);
+			connect(thread, SIGNAL(estimateCompleted(int, QVector<QVector<double>>)), this, SLOT(receiveFeatures(int, QVector<QVector<double>>)));
+			connect(thread, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
+			thread->setInputFilename(m_pointcloudFile);
+
+			m_subthreads.push_back(thread);
+			thread->start();
+		}
 	}
 }
 
@@ -219,6 +242,9 @@ void FeatureEstimator::receiveFeatures(int sid, QVector<QVector<double>> points_
 	/* If all the subthread have finished, send the result out */
 	if (finish_count == 0)
 	{
+		std::string out_path = "../data/features_test/" + m_model_name + ".csv";
+		m_pointcloud->writeToFile(out_path.c_str());
+
 		emit estimateCompleted(m_pointcloud);
 		finish_count = NUM_FEATURE_THREAD;
 	}
@@ -232,4 +258,33 @@ void FeatureEstimator::onDebugTextAdded(QString text)
 void FeatureEstimator::setPhase(PHASE phase)
 {
 	m_phase = phase;
+}
+
+void FeatureEstimator::loadFeaturesFromFile(std::string pcFile)
+{
+	ifstream features_in(pcFile.c_str());
+	int nvertices = m_model->vertexCount();
+	m_pointcloud = new PAPointCloud(nvertices);
+
+	char buffer[511];
+	for (int i = 0; i < nvertices; i++)
+	{
+		features_in.getline(buffer, 511);
+		QStringList line_data = QString(buffer).split(',');
+		double feats[POINT_FEATURES_DIMEN];
+		for (int j = 0; j < POINT_FEATURES_DIMEN; j++)
+			feats[j] = line_data[j].toDouble();
+		PAPoint papoint(feats);
+		Eigen::Vector3f point = ((PCModel *)m_model)->operator[](i);
+		Eigen::Vector3f normal = ((PCModel *)m_model)->getNormal(i);
+		GLfloat x = point[0];
+		GLfloat y = point[1];
+		GLfloat z = point[2];
+		papoint.setPosition(x, y, z);
+		papoint.setNormal(normal[0], normal[1], normal[2]);
+		m_pointcloud->at(i) = papoint;
+	}
+	m_pointcloud->setRadius(m_model->getRadius());
+
+	emit estimateCompleted(m_pointcloud);
 }
