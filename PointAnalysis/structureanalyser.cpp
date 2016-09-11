@@ -7,7 +7,7 @@ StructureAnalyser::StructureAnalyser(QObject *parent)
 	qRegisterMetaType<QVector<QMap<int, float>>>("ClassificationDistribution");
 	qRegisterMetaType<PAPart>("PAPart");
 	qRegisterMetaType<Part_Candidates>("PartCandidates");
-	qRegisterMetaType<PartsStructure *>("PartsStructure");
+	qRegisterMetaType<Parts_Structure_Pointer>("PartsStructure");
 
 	m_modelClassName = "coseg_chairs_8";
 	m_energy_functions.reset(new EnergyFunctions(m_modelClassName));
@@ -29,7 +29,7 @@ StructureAnalyser::StructureAnalyser(PCModel *pcModel, QObject * parent)
 	qRegisterMetaType<QVector<QMap<int, float>>>("ClassificationDistribution");
 	qRegisterMetaType<PAPart>("PAPart");
 	qRegisterMetaType<Part_Candidates>("PartCandidates");
-	qRegisterMetaType<PartsStructure *>("PartsStructure");
+	qRegisterMetaType<Parts_Structure_Pointer>("PartsStructure");
 	m_pcModel = pcModel;
 	m_modelClassName = "coseg_chairs_8";
 	m_energy_functions.reset(new EnergyFunctions(m_modelClassName));
@@ -424,20 +424,25 @@ void StructureAnalyser::predict()
 	QVector<int> point_cluster_map;
 	generateCandidates(distribution, part_candidates, point_cluster_map);
 
-
-	while (m_iteration < 30)
+	m_iteration = 0;
+	while (true)
 	{
 		QMap<int, int> parts_picked;
 		std::vector<int> candidate_labels;
 		predictPartLabelsAndOrientations(part_candidates, m_label_names, parts_picked, candidate_labels);
+
+		part_candidates.clear();
 
 		/* Compute symmetry groups */
 		m_parts_structure.compute_symmetry_groups();
 
 		segmentPoints();
 
+		//emit sendPartsStructure(Parts_Structure_Pointer(&m_parts_structure));
+		//m_parts_structure.output_samples();
+
 		m_parts_solver->optimizeAttributes(m_parts_structure, joint_normal_predictor, param_opt_single_energy_term_weight,
-			param_opt_symmetry_energy_term_weight, param_opt_max_iterations, false);
+			param_opt_symmetry_energy_term_weight, 20, false);
 
 		const bool use_symmetry = !(disable_symmetry_terms);
 		if (use_symmetry)
@@ -445,8 +450,22 @@ void StructureAnalyser::predict()
 			m_parts_structure.compute_symmetry_groups();
 
 			m_parts_solver->optimizeAttributes(m_parts_structure, joint_normal_predictor, param_opt_single_energy_term_weight,
-				param_opt_symmetry_energy_term_weight, param_opt_max_iterations, use_symmetry);
+				param_opt_symmetry_energy_term_weight, 20, use_symmetry);
 		}
+
+		emit sendPartsStructure(Parts_Structure_Pointer(&m_parts_structure));
+
+		m_iteration++;
+		if (m_iteration < 0)
+		{
+			std::vector<PAPart *> all_parts = m_parts_structure.get_all_parts();
+			part_candidates.clear();
+			for (int i = 0; i < all_parts.size(); i++)
+				part_candidates.push_back(PAPart(*(all_parts[i])));
+		}
+		else
+			break;
+
 	}
 }
 
@@ -464,7 +483,8 @@ void StructureAnalyser::predictPartLabelsAndOrientations(const Part_Candidates &
 	else
 		m_parts_predictor->setUseSymmetry(false);
 
-	m_parts_predictor->predictLabelsAndOrientations(part_candidates, label_names, parts_picked, candidate_labels, m_energy_functions);
+	bool first_run = (m_iteration < 1);
+	m_parts_predictor->predictLabelsAndOrientations(part_candidates, label_names, parts_picked, candidate_labels, m_energy_functions, first_run);
 
 	int numLabels = m_label_names.size();
 	QMap<int, OBB *> obbs;
@@ -472,6 +492,8 @@ void StructureAnalyser::predictPartLabelsAndOrientations(const Part_Candidates &
 	obbs_to_show.reserve(parts_picked.size());
 	QVector<int> cluster_labels(part_candidates.size() / 24);  /* label of each cluster */
 	cluster_labels.fill(-1);
+
+	m_parts_structure.clear_parts_only();
 
 	for (QMap<int, int>::iterator it = parts_picked.begin(); it != parts_picked.end(); ++it)
 	{
@@ -528,7 +550,8 @@ void StructureAnalyser::segmentPoints()
 {
 	QVector<int> point_assignments_segmented;
 
-	m_point_segmentation->segmentPoints(m_parts_structure, m_label_names, point_assignments_segmented);
+	bool first_run = (m_iteration < 1);
+	m_point_segmentation->segmentPoints(m_parts_structure, m_label_names, point_assignments_segmented, first_run);
 
 	m_pcModel->setLabels(point_assignments_segmented);
 

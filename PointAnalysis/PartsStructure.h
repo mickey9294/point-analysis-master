@@ -34,6 +34,7 @@ public:
 
 	void clear();
 	void clear_parts();
+	void clear_parts_only();
 	void clear_labels();
 	
 	bool load_label_symmetries(const char *filename, bool verbose = true);
@@ -60,6 +61,10 @@ public:
 	int get_point_assignment(int index);
 
 	void draw(float scale);
+	void output_samples();
 };
+
+typedef QSharedPointer<PartsStructure> Parts_Structure_Pointer;
+Q_DECLARE_METATYPE(Parts_Structure_Pointer)
 
 #endif

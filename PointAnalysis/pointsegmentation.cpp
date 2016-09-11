@@ -12,10 +12,10 @@ PointSegmentation::~PointSegmentation()
 }
 
 int PointSegmentation::segmentPoints(PartsStructure & parts_structure, 
-	const QVector<int> & label_names, QVector<int> &point_assignments_segmented)
+	const QVector<int> & label_names, QVector<int> &point_assignments_segmented, bool first_run)
 {
 	std::ifstream ass_in("../data/point_assignments/assignments.csv");
-	if (ass_in.is_open())
+	if (first_run && ass_in.is_open())
 	{
 		char buffer[16];
 

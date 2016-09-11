@@ -592,3 +592,29 @@ float Utils::euclideanDistance(pcl::PointXYZ point1, pcl::PointXYZ point2)
 		(point1.z - point2.z) * (point1.z - point2.z));
 	return dist;
 }
+
+void Utils::computePlane(const Eigen::Vector3f &n, double d, std::vector<Eigen::Vector3f> & triangles_vertices)
+{
+	Eigen::Vector3f v1(n[1], -n[2], 0);
+	Eigen::Vector3f v2(-n[2], 0, n[0]);
+	v1.normalize();
+	v2.normalize();
+
+	Eigen::Vector3f unit_n = n.normalized();
+
+	Eigen::Vector3f center = Eigen::Vector3f::Zero() + (float)d * unit_n;
+
+	std::vector<Eigen::Vector3f> corners(4);
+	corners[0] = center + v1 + v2;
+	corners[1] = center + v1 - v2;
+	corners[2] = center - v1 - v2;
+	corners[3] = center - v1 + v2;
+
+	triangles_vertices.resize(6);
+	triangles_vertices[0] = corners[0];
+	triangles_vertices[1] = corners[1];
+	triangles_vertices[2] = corners[2];
+	triangles_vertices[3] = corners[0];
+	triangles_vertices[4] = corners[2];
+	triangles_vertices[5] = corners[3];
+}

@@ -25,7 +25,7 @@ public:
 	void setModelClassName(std::string modelClassName);
 
 	void predictLabelsAndOrientations(const Part_Candidates & part_candidates, const QVector<int> & label_names, 
-		QMap<int, int> &parts_picked, std::vector<int> &candidate_labels, QSharedPointer<EnergyFunctions> energy_functions);
+		QMap<int, int> &parts_picked, std::vector<int> &candidate_labels, QSharedPointer<EnergyFunctions> energy_functions, bool first_run);
 
 private:
 	bool m_use_symmetry;

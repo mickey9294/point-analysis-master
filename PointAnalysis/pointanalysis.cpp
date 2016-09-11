@@ -30,7 +30,7 @@ PointAnalysis::PointAnalysis(QWidget *parent)
 	connect(ui.actionStructure_Inference, SIGNAL(triggered()), this, SLOT(inferStructure()));
 	connect(&m_analyser, SIGNAL(addDebugText(QString)), this, SLOT(onDebugTextAdded(QString)));
 	connect(&m_analyser, SIGNAL(sendOBBs(QVector<OBB *>)), ui.displayGLWidget, SLOT(setOBBs(QVector<OBB *>)));
-	connect(&m_analyser, SIGNAL(sendPartsStructure(PartsStructure *)), ui.displayGLWidget, SLOT(setPartsStructure(PartsStructure *)));
+	connect(&m_analyser, SIGNAL(sendPartsStructure(Parts_Structure_Pointer)), ui.displayGLWidget, SLOT(setPartsStructure(Parts_Structure_Pointer)));
 	connect(ui.actionDebug_Parts_Relations, SIGNAL(triggered()), this, SLOT(debugPartRelations()));
 	connect(ui.actionCheck_Models, SIGNAL(triggered()), this, SLOT(checkModels()));
 

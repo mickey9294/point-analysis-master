@@ -1,7 +1,7 @@
 ﻿#include "myglwidget.h"
 
 MyGLWidget::MyGLWidget(QWidget *parent)
-	: QOpenGLWidget(parent), m_parts_structure(NULL)
+	: QOpenGLWidget(parent), m_parts_structure(NULL), show_parts_structure(false)
 {
 	m = 3;
 	m_model = new PCModel();
@@ -41,6 +41,8 @@ void MyGLWidget::setModel(Model *model)
 
 	delete(temp);
 	temp = NULL;
+
+	show_parts_structure = false;
 
 	update();
 }
@@ -136,7 +138,7 @@ void MyGLWidget::draw()
 	glTranslatef(-centroid.x(), -centroid.y(), -centroid.z());
 
 	/* Draw the model m_model */
-	if (m_model != NULL)
+	if (!show_parts_structure)
 	{
 		if (m_model->getType() == Model::ModelType::PointCloud)
 		{
@@ -148,18 +150,17 @@ void MyGLWidget::draw()
 			m_model->draw(m);
 			//((MeshModel *)m_model)->drawSamples(m);
 		}
-	}
 
-	/* Draw the oriented bounding boxes of the parts */
-	for (QVector<OBB *>::iterator obb_it = m_OBBs.begin(); obb_it != m_OBBs.end(); ++obb_it)
-	{
-		OBB *obb = *obb_it;
-		/* Draw the oriented box */
-		obb->draw(m);
-		//obb->drawSamples(m);
+		/* Draw the oriented bounding boxes of the parts */
+		for (QVector<OBB *>::iterator obb_it = m_OBBs.begin(); obb_it != m_OBBs.end(); ++obb_it)
+		{
+			OBB *obb = *obb_it;
+			/* Draw the oriented box */
+			obb->draw(m);
+			//obb->drawSamples(m);
+		}
 	}
-
-	if (m_parts_structure != NULL)
+	else if (!m_parts_structure.isNull())
 		m_parts_structure->draw(m);
 
 	glPopMatrix();
@@ -272,6 +273,9 @@ void MyGLWidget::setOBBs(QVector<OBB *> obbs)
 	for (QVector<OBB *>::iterator it = obbs.begin(); it != obbs.end(); it++)
 		m_OBBs[i++] = *it;
 
+	//m_parts_structure.clear();
+	show_parts_structure = false;
+
 	update();
 	std::cout << "Set OBBs done." << std::endl;
 }
@@ -360,7 +364,7 @@ void MyGLWidget::setSamples(Samples_Vec samples)
 	m_samples = samples;
 }
 
-void MyGLWidget::setPartsStructure(PartsStructure *parts_structure)
+void MyGLWidget::setPartsStructure(Parts_Structure_Pointer parts_structure)
 {
 	cout << "Set parts structure." << endl;
 	m_parts_structure = parts_structure;
@@ -372,11 +376,8 @@ void MyGLWidget::setPartsStructure(PartsStructure *parts_structure)
 	}
 	m_OBBs.clear();
 
-	if (m_model != NULL)
-	{
-		delete(m_model);
-		m_model = NULL;
-	}
+	show_parts_structure = true;
 
 	//update();
+	cout << "Set done." << endl;
 }

@@ -124,7 +124,7 @@ void PartsSolver::optimizeAttributes(PartsStructure & parts_structure,
 			final_cuboid_iteration = iteration;
 			final_parts_structure = parts_structure;
 		}
-		else if (total_energy > 1.5 * final_total_energy)
+		else if (total_energy > 3.0 * final_total_energy)
 		{
 			sstr.str(std::string());
 			sstr << "Last iteration is worse than the previous one..." << std::endl;
@@ -339,6 +339,7 @@ void PartsSolver::optimize_attributes_once(
 		_symmetry_energy_term_weight);
 
 	non_linear_solver.optimize(quadratic_term, linear_term, constant_term, &init_values);
+	cout << endl;
 }
 
 void PartsSolver::update_cuboid_surface_points(PartsStructure & parts_structure)

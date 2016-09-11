@@ -778,7 +778,7 @@ void OBB::draw(float scale)
 void OBB::drawSamples(float scale)
 {
 	//glColor4f(COLORS[10][0], COLORS[10][1], COLORS[10][2], 1.0);
-	glColor4f(1.0, 1.0, 1.0, 1.0);
+	glColor4f(0.3, 0.30, 0.3, 1.0);
 	glBegin(GL_POINTS);
 
 	for (QVector<SamplePoint>::iterator sample_it = m_samples.begin(); sample_it != m_samples.end(); ++sample_it)

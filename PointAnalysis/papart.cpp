@@ -52,7 +52,7 @@ PAPart::PAPart(const PAPart &part)
 	m_samples = part.getSamples();
 	m_vertices_normals = part.getVerticesNormals();
 	num_of_samples = part.num_of_samples;
-	m_cuboid_surface_to_sample_correspondence = part.get_cuboid_surface_to_sample_correspondeces();
+	m_cuboid_surface_to_sample_correspondence = part.get_cuboid_surface_to_sample_correspondences();
 	m_sample_to_cuboid_surface_correspondence = part.get_sample_to_cuboid_surface_correspondences();
 }
 
@@ -419,6 +419,11 @@ std::vector<Vector3f> PAPart::getVertices() const
 	return m_vertices;
 }
 
+std::vector<Vector3f> & PAPart::getAllVertices()
+{
+	return m_vertices;
+}
+
 std::vector<Vector3f> PAPart::getVerticesNormals() const
 {
 	return m_vertices_normals;
@@ -432,7 +437,7 @@ std::vector<SamplePoint> PAPart::getSamples() const
 void PAPart::getSamplePoints(std::vector<Eigen::Vector3f> & sample_points) const
 {
 	sample_points.clear();
-	sample_points.reserve(num_of_samples);
+	sample_points.reserve(m_samples.size());
 
 	for (std::vector<SamplePoint>::const_iterator sample_it = m_samples.begin(); sample_it != m_samples.end(); ++sample_it)
 	{
@@ -602,7 +607,7 @@ int PAPart::get_sample_to_cuboid_surface_correspondences(int point_index)
 	return m_sample_to_cuboid_surface_correspondence[point_index];
 }
 
-const std::vector<int> & PAPart::get_cuboid_surface_to_sample_correspondeces() const
+const std::vector<int> & PAPart::get_cuboid_surface_to_sample_correspondences() const
 {
 	return m_cuboid_surface_to_sample_correspondence;
 }
@@ -734,7 +739,7 @@ void PAPart::update_axes_center_size_corner_points()
 		Eigen::MatrixXd A(num_face_corners, 3);
 		double sum_length = 0;
 
-		for (int face_corner_index = 0; face_corner_index < num_face_corners; ++face_corner_index)
+		for (int face_corner_index = 0; face_corner_index < OBB::k_num_face_corners; ++face_corner_index)
 		{
 			std::bitset<3> bits;
 			bits[(axis_index + 1) % 3] = ((face_corner_index / 2) == 0);
@@ -820,14 +825,15 @@ void PAPart::update_center_size_corner_points()
 	/* Least square */
 	Eigen::VectorXd x = A.colPivHouseholderQr().solve(b);
 	assert(x.rows() == 6);
-	Eigen::Vector3d centroid, scale;
+	Eigen::Vector3d centroid, sscale;
 	for (unsigned int axis_index = 0; axis_index < 3; ++axis_index)
 	{
 		centroid[axis_index] = x(axis_index);
-		scale[axis_index] = x(3 + axis_index);
+		sscale[axis_index] = x(3 + axis_index);
 	}
 	m_obb->setCentroid(centroid);
-	m_obb->setScale(scale);
+	m_obb->setScale(sscale);
+	cout << "update_center_size_corner_points(): scale = " << sscale.transpose() << endl;
 
 	m_obb->updateCorners();
 
@@ -988,7 +994,7 @@ void PAPart::downsample()
 	num_of_samples = m_samples.size();
 }
 
-void PAPart::draw(int scale)
+void PAPart::draw(float scale)
 {
 	glColor4f(COLORS[m_label][0], COLORS[m_label][1], COLORS[m_label][2], 1.0);
 	glBegin(GL_POINTS);
@@ -1002,4 +1008,50 @@ void PAPart::draw(int scale)
 		m_obb->draw(scale);
 		m_obb->drawSamples(scale);
 	}
+
+	/* Draw correspondences from part samples to obb samples */
+	//glLineWidth(0.7);
+	//glColor4f(0.3, 0.3, 0.3, 0.8);
+	//glBegin(GL_LINES);
+	//for (int i = 0; i < m_samples.size(); i++)
+	//{
+	//	int obb_sample_index = get_sample_to_cuboid_surface_correspondences(i);
+	//	glVertex3f(scale * m_samples[i].x(), scale * m_samples[i].y(), scale * m_samples[i].z());
+	//	glVertex3f(scale * m_obb->getSample(obb_sample_index).x(), scale * m_obb->getSample(obb_sample_index).y(), scale * m_obb->getSample(obb_sample_index).z());
+	//}
+	//glEnd();
+
+	///* Draw correspondences from obb sample to part samples */
+	//glBegin(GL_LINES);
+	//for (int i = 0; i < m_obb->sampleCount(); i++)
+	//{
+	//	int part_sample_index = get_cuboid_surface_to_sample_correspondences(i);
+	//	glVertex3f(scale * m_obb->getSample(i).x(), scale * m_obb->getSample(i).y(), scale * m_obb->getSample(i).z());
+	//	glVertex3f(scale * m_samples[part_sample_index].x(), scale * m_samples[part_sample_index].y(), scale * m_samples[part_sample_index].z());
+	//}
+	//glEnd();
+}
+
+void PAPart::outputSamples()
+{
+	assert(m_obb);
+
+	int num_part_samples = m_samples.size();
+	int num_obb_samples = m_obb->sampleCount();
+
+	std::string out_path = "../data/parts_samples/" + std::to_string(m_label) + ".csv";
+	std::ofstream out(out_path.c_str());
+
+	for (int i = 0; i < std::max(num_part_samples, num_obb_samples); i++)
+	{
+		if (i < std::min(num_part_samples, num_obb_samples))
+			out << m_samples[i].x() << "," << m_samples[i].y() << "," << m_samples[i].z() << ",,"
+			<< m_obb->getSample(i).x() << "," << m_obb->getSample(i).y() << "," << m_obb->getSample(i).z() << endl;
+		else if (i >= num_part_samples && i < num_obb_samples)
+			out << ",,,," << m_obb->getSample(i).x() << "," << m_obb->getSample(i).y() << "," << m_obb->getSample(i).z() << endl;
+		else if (i < num_part_samples && i >= num_obb_samples)
+			out << m_samples[i].x() << "," << m_samples[i].y() << "," << m_samples[i].z() << endl;
+	}
+	
+	out.close();
 }

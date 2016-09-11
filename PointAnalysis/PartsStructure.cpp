@@ -87,6 +87,19 @@ void PartsStructure::clear_parts()
 	m_rotation_symmetry_groups.clear();
 }
 
+void PartsStructure::clear_parts_only()
+{
+	for (std::vector<std::vector<PAPart *>>::iterator it = m_label_parts.begin();
+		it != m_label_parts.end(); ++it)
+	{
+		for (std::vector<PAPart *>::iterator jt = it->begin(); jt != it->end(); ++jt)
+			delete(*jt);
+	}
+
+	m_label_parts.clear();
+	m_label_parts.resize(num_of_labels());
+}
+
 void PartsStructure::deep_copy(const PartsStructure & other)
 {
 	this->m_model = other.m_model;
@@ -505,6 +518,7 @@ QVector<OBB *> PartsStructure::get_all_obb_copies()
 
 void PartsStructure::draw(float scale)
 {
+	/* Draw parts and their OBBs */
 	for (std::vector<std::vector<PAPart *>>::iterator list_it = m_label_parts.begin(); list_it != m_label_parts.end(); ++list_it)
 	{
 		if (list_it->size() > 0)
@@ -514,10 +528,60 @@ void PartsStructure::draw(float scale)
 				part->draw(scale);
 		}
 	}
+
+	/* Draw symmetry plane and symmetry axis */
+	glColor4f(COLORS[9][0], COLORS[9][1], COLORS[9][2], 0.4);
+	glBegin(GL_TRIANGLES);
+
+	for (std::vector<CuboidReflectionSymmetryGroup *>::iterator reflection_it = m_reflection_symmetry_groups.begin();
+		reflection_it != m_reflection_symmetry_groups.end(); ++reflection_it)
+	{
+		if (*reflection_it != NULL)
+		{
+			Eigen::Vector3f n;
+			double d;
+			(*reflection_it)->get_reflection_plane(n, d);
+
+			std::vector<Eigen::Vector3f> triangles;
+			Utils::computePlane(n, d, triangles);
+
+			for (int i = 0; i < 6; i++)
+			{
+				glNormal3f(n.x(), n.y(), n.z());
+				glVertex3f(scale * triangles[i].x(), scale * triangles[i].y(), scale * triangles[i].z());
+			}
+		}
+	}
+	glEnd();
+
+	glLineWidth(2.2);
+	glBegin(GL_LINES);
+
+	for (std::vector<CuboidRotationSymmetryGroup *>::iterator rotate_it = m_rotation_symmetry_groups.begin();
+		rotate_it != m_rotation_symmetry_groups.end(); ++rotate_it)
+	{
+		if (*rotate_it != NULL)
+		{
+			std::array<Eigen::Vector3f, 2> corners;
+			(*rotate_it)->get_rotation_axis_corners(Eigen::Vector3f::Zero(), scale, corners);
+			for (int i = 0; i < 2; i++)
+				glVertex3f(corners[i].x(), corners[i].y(), corners[i].z());
+		}
+	}
+	glEnd();
 }
 
 void PartsStructure::set_pointcloud(QSharedPointer<PAPointCloud> pointcloud)
 {
 	assert(pointcloud->size() == num_of_points());
 	m_pointcloud = pointcloud;
+}
+
+void PartsStructure::output_samples()
+{
+	for (std::vector<std::vector<PAPart *>>::iterator it = m_label_parts.begin(); it != m_label_parts.end(); ++it)
+	{
+		if (it->size() > 0)
+			it->front()->outputSamples();
+	}
 }

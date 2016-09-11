@@ -90,11 +90,11 @@ void TrainPartsThread::receiveParts(Parts_Vector parts)
 		if (cuboid_index > -1)
 			cuboid = parts[cuboid_index];
 
-		if (cuboid)
-		{
-			transformation->compute_transformation(cuboid);
-			features->compute_features(cuboid);
-		}
+		assert(cuboid);
+
+		transformation->compute_transformation(cuboid);
+		features->compute_features(cuboid);
+		
 
 		m_transformation_list[label_index].push_back(transformation);
 		m_feature_list[label_index].push_back(features);
@@ -145,7 +145,7 @@ void TrainPartsThread::receiveParts(Parts_Vector parts)
 		/* Load the next point cloud */
 		if (loadThread.isRunning())
 			loadThread.terminate();
-		cout << "Load point cloud from " <<  file_list[currentId] << endl;
+		std::cout << "Load point cloud from " <<  file_list[currentId] << std::endl;
 		emit addDebugText(QString::fromStdString(file_list[currentId]));
 		loadThread.setLoadFileName(file_list[currentId]);
 		loadThread.start();

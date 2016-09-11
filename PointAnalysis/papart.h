@@ -60,6 +60,7 @@ public:
 	bool isInside(Eigen::Vector3f point);
 	std::vector<int> getVerticesIndices() const;
 	std::vector<Eigen::Vector3f> getVertices() const;
+	std::vector<Eigen::Vector3f> & getAllVertices();
 	std::vector<Eigen::Vector3f> getVerticesNormals() const;
 	std::vector<SamplePoint> getSamples() const;
 	void getSamplePoints(std::vector<Eigen::Vector3f> &sample_points) const;
@@ -79,11 +80,13 @@ public:
 	void setVerticesNormals(std::vector<Eigen::Vector3f> vertices_normals);
 	void setTranslation(Eigen::Vector3f centroid);
 	void samplePoints();
+
+	void outputSamples();
 	
 	int get_sample_to_cuboid_surface_correspondences(const int point_index);
 	const std::vector<int> & get_sample_to_cuboid_surface_correspondences() const;
 	int get_cuboid_surface_to_sample_correspondences(const int point_index);
-	const std::vector<int> & get_cuboid_surface_to_sample_correspondeces() const;
+	const std::vector<int> & get_cuboid_surface_to_sample_correspondences() const;
 	void create_random_points_on_obb_surface();
 	void create_grid_points_on_obb_surface();
 	void update_sample_correspondences();
@@ -105,7 +108,7 @@ public:
 
 	int num_cuboid_surface_points();
 
-	void draw(int scale);
+	void draw(float scale);
 
 private:
 	Eigen::Matrix3f m_rotate;    /* Rotation matrix of 3x3 */

@@ -17,7 +17,7 @@ public:
 	PointSegmentation(QObject *parent = 0);
 	~PointSegmentation();
 	
-	int segmentPoints(PartsStructure & parts_structure, const QVector<int> & label_names, QVector<int> &point_assignments_segmented);
+	int segmentPoints(PartsStructure & parts_structure, const QVector<int> & label_names, QVector<int> &point_assignments_segmented, bool first_run);
 };
 
 #endif // POINTSEGMENTATION_H

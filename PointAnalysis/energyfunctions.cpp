@@ -126,12 +126,12 @@ void EnergyFunctions::setOBBs(QMap<int, OBB *> obbs)
 	using namespace pcl;
 
 	/* Delete the previous used obbs */
-	for (QMap<int, OBB *>::iterator obb_it = m_obbs.begin(); obb_it != m_obbs.end(); ++obb_it)
+	/*for (QMap<int, OBB *>::iterator obb_it = m_obbs.begin(); obb_it != m_obbs.end(); ++obb_it)
 	{
 		if (*obb_it != NULL)
 			delete(*obb_it);
 		*obb_it = NULL;
-	}
+	}*/
 	m_obbs.clear();
 
 	/* Set OBBs and generate kd-trees for each part */

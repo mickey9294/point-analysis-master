@@ -65,7 +65,7 @@ public:
 signals:
 	void addDebugText(QString text);
 	void sendOBBs(QVector<OBB *> obbs);
-	void sendPartsStructure(PartsStructure *structure);
+	void sendPartsStructure(Parts_Structure_Pointer structure);
 	//void setPointcloudLabels(QVector<int> labels);
 
 protected:

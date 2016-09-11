@@ -12,14 +12,14 @@ PartsPredictor::~PartsPredictor()
 }
 
 void PartsPredictor::predictLabelsAndOrientations(const Part_Candidates & part_candidates, const QVector<int> & label_names,
-	QMap<int, int> &parts_picked, std::vector<int> &candidate_labels, QSharedPointer<EnergyFunctions> m_energy_functions)
+	QMap<int, int> &parts_picked, std::vector<int> &candidate_labels, QSharedPointer<EnergyFunctions> m_energy_functions, bool first_run)
 {
 	using namespace std;
 
 	/* Judge whether the  part labels and orientations have already been predicted */
 	std::string winners_path = "../data/winners/" + m_modelClassName + ".txt";
 	std::ifstream in(winners_path.c_str());
-	if (in.is_open())
+	if (first_run && in.is_open())
 	{
 		cout << "Load part labels and orientations from file." << endl;
 		in.close();

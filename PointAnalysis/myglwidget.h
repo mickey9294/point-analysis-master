@@ -49,7 +49,7 @@ signals:
 	void onDebugTextAdded(QString text);
 	void updateLabels();
 	void setSamples(Samples_Vec samples);
-	void setPartsStructure(PartsStructure *structure);
+	void setPartsStructure(Parts_Structure_Pointer structure);
 
 protected:
 	void initializeGL();
@@ -69,6 +69,7 @@ private:
 	void drawSphere(GLfloat xx, GLfloat yy, GLfloat zz, GLfloat radius, GLfloat M, GLfloat N);
 	void ProcessPicks(GLint nPicks, GLuint pickBuffer[]);
 	void drawCylinder(float x0, float y0, float z0, float x1, float y1, float z1, double radius);
+	bool show_parts_structure;
 
 	static GLint _colorList[12][3];
 
@@ -80,7 +81,7 @@ private:
 	Model * m_model;
 	QVector<OBB *> m_OBBs;
 	Samples_Vec m_samples;
-	PartsStructure * m_parts_structure;
+	Parts_Structure_Pointer m_parts_structure;
 
 	QPoint m_lastPos;
 	bool clickEvent;
