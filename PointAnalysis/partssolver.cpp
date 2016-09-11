@@ -94,7 +94,8 @@ void PartsSolver::optimizeAttributes(PartsStructure & parts_structure,
 		{
 			/* Cuboid axes are estimated in the optimization. */
 			for (std::vector<PAPart *>::const_iterator it = all_parts.begin(); it != all_parts.end(); ++it)
-				(*it)->update_center_size_corner_points();
+				//(*it)->update_center_size_corner_points();
+				(*it)->updateOBB();
 		}
 		else
 		{

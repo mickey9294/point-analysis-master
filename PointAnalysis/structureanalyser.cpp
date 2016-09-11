@@ -442,7 +442,7 @@ void StructureAnalyser::predict()
 		//m_parts_structure.output_samples();
 
 		m_parts_solver->optimizeAttributes(m_parts_structure, joint_normal_predictor, param_opt_single_energy_term_weight,
-			param_opt_symmetry_energy_term_weight, 20, false);
+			param_opt_symmetry_energy_term_weight, 5, false);
 
 		const bool use_symmetry = !(disable_symmetry_terms);
 		if (use_symmetry)
@@ -450,7 +450,7 @@ void StructureAnalyser::predict()
 			m_parts_structure.compute_symmetry_groups();
 
 			m_parts_solver->optimizeAttributes(m_parts_structure, joint_normal_predictor, param_opt_single_energy_term_weight,
-				param_opt_symmetry_energy_term_weight, 20, use_symmetry);
+				param_opt_symmetry_energy_term_weight, 5, use_symmetry);
 		}
 
 		emit sendPartsStructure(Parts_Structure_Pointer(&m_parts_structure));

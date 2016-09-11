@@ -1115,10 +1115,11 @@ void CuboidNonLinearSolver::update_cuboids(const std::vector< Number >& _values)
 			}
 		}
 
-		cuboid_obb->setCentroid(new_bbox_center);
-		cuboid_obb->setCorners(new_bbox_corners);
+		//cuboid_obb->setCentroid(new_bbox_center);
+		//cuboid_obb->setCorners(new_bbox_corners);
 		cuboid_obb->setAxes(new_bbox_axes);
-		cuboid->updateFromOBB();
+	
+		cuboid->updateOBB();
 
 		// Update cuboid surface points.
 		for (unsigned int point_index = 0; point_index < cuboid_obb->sampleCount(); ++point_index)

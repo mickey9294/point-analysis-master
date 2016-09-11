@@ -790,7 +790,10 @@ void PAPart::update_axes_center_size_corner_points()
 
 	m_obb->setAxes(new_axes);
 
-	update_center_size_corner_points();
+	//update_center_size_corner_points();
+	m_obb->updateWithNewPoints(m_vertices);
+
+	updateFromOBB();
 }
 
 void PAPart::update_center_size_corner_points()
