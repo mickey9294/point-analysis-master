@@ -19,6 +19,7 @@
 #include "PAPointCloud.h"
 #include "model.h"
 #include "meshmodel.h"
+#include "meshpcmodel.h"
 #include "utils.h"
 #include "constants.h"
 

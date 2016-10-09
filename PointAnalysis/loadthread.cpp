@@ -48,9 +48,26 @@ void LoadThread::loadPointCloud()
 		seg_in.close();
 		model = new MeshModel(filename);
 	}
-	else  /* If there not exists a segmentation file, then the model is a testing point cloud */
+	else  /* If there not exists a segmentation file, then the model is a testing point cloud or a mesh pointcloud */
 	{
-		model = new PCModel(filename, 0);
+		/* Decide whether the model is a testing point cloud or a mesh pointcloud */
+		ifstream off_in(filename.c_str());
+		if (off_in.is_open())
+		{
+			char buffer[64];
+			off_in.getline(buffer, 64);
+			off_in.getline(buffer, 64);
+			QString line(buffer);
+
+			int nfaces = line.section(' ', 1, 1).toInt();
+
+			if (nfaces > 0)
+				model = new MeshPcModel(filename);
+			else
+				model = new PCModel(filename, 0);
+
+			off_in.close();
+		}
 	}
 	
 	emit loadPointsCompleted(model);

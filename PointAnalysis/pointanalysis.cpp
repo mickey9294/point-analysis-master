@@ -266,7 +266,7 @@ void PointAnalysis::testPointCloud()
 void PointAnalysis::onTestCompleted(QVector<int> labels)
 {
 	onDebugTextAdded("Test Completed. Set the labels to point cloud model.");
-	((PCModel *)ui.displayGLWidget->getModel())->setLabels(labels);
+	ui.displayGLWidget->getModel()->setLabels(labels);
 }
 
 void PointAnalysis::computeSdf()

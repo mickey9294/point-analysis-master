@@ -19,6 +19,7 @@ public:
 	void resize(int newsize);
 	int size() const;
 	void writeToFile(const char *file);
+	void outputConfidences(const char *file);
 	void setRadius(float radius);
 	float getRadius() const;
 	std::vector<PAPoint> getPoints() const;

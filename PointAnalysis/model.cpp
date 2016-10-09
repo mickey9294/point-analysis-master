@@ -17,3 +17,8 @@ Model::ModelType Model::getType()
 {
 	return m_type;
 }
+
+void Model::setLabels(QVector<int> labels)
+{
+
+}

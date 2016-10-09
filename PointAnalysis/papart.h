@@ -94,7 +94,7 @@ public:
 	void clearVertices();
 	void clearSamples();
 
-	void addVertex(int point_index, Eigen::Vector3f vertex, Eigen::Vector3f vertex_normal);
+	void addVertex(int point_index, Eigen::Vector3f &vertex, Eigen::Vector3f &vertex_normal);
 
 	std::vector<SamplePoint>::iterator samples_begin();
 	std::vector<SamplePoint>::iterator samples_end();

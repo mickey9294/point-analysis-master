@@ -64,7 +64,7 @@ public:
 	void output_samples();
 };
 
-typedef QSharedPointer<PartsStructure> Parts_Structure_Pointer;
+typedef PartsStructure * Parts_Structure_Pointer;
 Q_DECLARE_METATYPE(Parts_Structure_Pointer)
 
 #endif

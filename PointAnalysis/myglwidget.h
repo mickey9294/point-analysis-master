@@ -12,7 +12,7 @@
 #include <GL/glu.h>
 #include <Eigen\Core>
 #include "meshmodel.h"
-#include "model.h"
+#include "meshpcmodel.h"
 #include "PartsStructure.h"
 
 #ifndef PI

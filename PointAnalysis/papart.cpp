@@ -661,7 +661,7 @@ void PAPart::clearSamples()
 		m_cuboid_surface_to_sample_correspondence.resize(m_obb->sampleCount(), -1);
 }
 
-void PAPart::addVertex(int index, Vector3f vertex, Vector3f vertex_normal)
+void PAPart::addVertex(int index, Vector3f &vertex, Vector3f &vertex_normal)
 {
 	m_vertices_indices.push_back(index);
 	m_vertices.push_back(vertex);

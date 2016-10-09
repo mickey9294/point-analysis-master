@@ -64,8 +64,8 @@ void TestPCThread::test()
 		emit addDebugText("Testing " + pcname + "...");
 
 		Data<RealVector> prediction = rfmodel(dataTest);
-		QString predict_file = "../data/predictions/" + pcname + ".csv";
-		exportCSV(prediction, predict_file.toStdString());
+		//QString predict_file = "../data/predictions/" + pcname + ".csv";
+		//exportCSV(prediction, predict_file.toStdString());
 		emit addDebugText("Testing done.");
 
 		/* Extract labels for each test data point */
@@ -99,7 +99,7 @@ void TestPCThread::test()
 		}
 		emit setPCLabels(labels);
 		emit classifyProbabilityDistribution(predictions);
-		std::string out_path = "D:\\Projects\\point-analysis-master\\data\\predictions\\" + pcname.toStdString() + ".txt";
+		std::string out_path = "D:\\Projects\\point-analysis-master\\data\\predictions\\" + pcname.toStdString() + ".arff";
 		saveClassification(out_path, predictions);
 		emit addDebugText("Testing point clouds done.");
 	}
@@ -179,26 +179,85 @@ void TestPCThread::initializeClassifier()
 	
 void TestPCThread::saveClassification(std::string path, QVector<QMap<int, float>> distributions)
 {
-	std::ofstream out(path.c_str());
+	std::ofstream arff_out(path.c_str());
+	QString qpath = QString::fromStdString(path);
+	QString out_qpath = qpath.section('.', 0, 0) + ".txt";
+	std::ofstream txt_out(out_qpath.toStdString().c_str());
+	std::ifstream sym_in("../data/symmetry_groups.txt");
 
-	if (out.is_open())
+	/* Load the symmetry information */
+	QList<QVector<int>> symmetry_groups;
+	//QSet<int> symmetry_parts;
+	if (sym_in.is_open())
+	{
+		char buffer[64];
+
+		while (!sym_in.eof())
+		{
+			sym_in.getline(buffer, 64);
+			if (strlen(buffer) > 0)
+			{
+				QString line(buffer);
+				QStringList line_list = line.split(' ');
+				QVector<int> sym_group(line_list.size());
+
+				int label_idx = 0;
+				for (QStringList::iterator label_it = line_list.begin(); label_it != line_list.end(); ++label_it)
+				{
+					int sym_part = label_it->toInt();
+					sym_group[label_idx++] = sym_part;
+					//symmetry_parts.insert(sym_part);
+				}
+
+				symmetry_groups.push_back(sym_group);
+			}
+		}
+	}
+
+	if (arff_out.is_open() && txt_out.is_open())
 	{
 		for (QVector<QMap<int, float>>::iterator point_it = distributions.begin(); point_it != distributions.end(); ++point_it)
 		{
 			QMap<int, float> distribution = *point_it;
 			QList<int> label_names = distribution.keys();
 			int numLabels = label_names.size();
+			
 			int i = 0;
 			for (QList<int>::iterator prob_it = label_names.begin(); prob_it != label_names.end() && i < numLabels - 1; ++prob_it, i++)
 			{
 				int label = *prob_it;
 				float prob = distribution.value(label);
-				out << label << "_" << prob << " ";
+				txt_out << label << "_" << prob << " ";
 			}
-			out << label_names.last() << "_" << distribution.last() << std::endl;
+			txt_out << label_names.last() << "_" << distribution.last() << std::endl;
+
+			for (QList<QVector<int>>::iterator syms_it = symmetry_groups.begin(); syms_it != symmetry_groups.end(); ++syms_it)
+			{
+				float prob_sum = 0;
+				for (QVector<int>::iterator sym_it = syms_it->begin(); sym_it != syms_it->end(); ++sym_it)
+					prob_sum += distribution[*sym_it];
+
+				for (QVector<int>::iterator sym_it = syms_it->begin(); sym_it != syms_it->end(); ++sym_it)
+					distribution[*sym_it] = prob_sum;
+			}
+
+			i = 0;
+			
+			for (QMap<int, float>::iterator prob_it = distribution.begin(); prob_it != distribution.end(); ++prob_it, i++)
+			{
+				if (i < label_names.size() - 2)
+					arff_out << *prob_it << ",";
+				else
+				{
+					arff_out << *prob_it << endl;
+					break;
+				}
+			}
+			
 		}
 
-		out.close();
+		txt_out.close();
+		arff_out.close();
 	}
 }
 

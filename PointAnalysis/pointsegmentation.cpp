@@ -1,7 +1,7 @@
 #include "pointsegmentation.h"
 
 PointSegmentation::PointSegmentation(QObject *parent)
-	: QObject(parent)
+	: QObject(parent), m_iteration(0)
 {
 
 }
@@ -44,6 +44,9 @@ int PointSegmentation::segmentPoints(PartsStructure & parts_structure,
 
 	std::vector<PAPart *> all_cuboids = parts_structure.get_all_parts();
 	int num_cuboids = all_cuboids.size();
+
+	std::string confi_path = "../data/class_confidences/" + std::to_string(m_iteration++) + ".csv";
+	parts_structure.m_pointcloud->outputConfidences(confi_path.c_str());
 
 	//std::vector<ANNpointArray> cuboid_ann_points(num_cuboids);
 	//std::vector<ANNkd_tree*> cuboid_ann_kd_tree(num_cuboids);
@@ -119,8 +122,8 @@ int PointSegmentation::segmentPoints(PartsStructure & parts_structure,
 			assert(flann_squared_distance >= 0);
 
 			double label_probability = part_point.getClassConfidence(label_index);
-			if (std::fabs(label_probability) < 1.0e-8)
-				label_probability = 1.0e-8;
+			//if (std::fabs(label_probability) < 1.0e-8)
+				//label_probability = 1.0e-8;
 
 			//
 			if (disable_per_point_classifier_terms)
@@ -128,7 +131,11 @@ int PointSegmentation::segmentPoints(PartsStructure & parts_structure,
 			//
 
 			//double energy = squared_distance - lambda * std::log(label_probability);
-			double energy = flann_squared_distance - lambda * std::log(label_probability);
+			double energy = 0;
+			if (std::fabs(label_probability) < 0.1)
+				energy = 1.0e4;
+			else
+				energy = flann_squared_distance - lambda * std::log(label_probability);
 
 			//if (cuboid->is_group_cuboid())
 			//	energy = FLAGS_param_max_potential;
@@ -138,7 +145,7 @@ int PointSegmentation::segmentPoints(PartsStructure & parts_structure,
 
 		// For null cuboid.
 		double energy = squared_neighbor_distance - lambda * std::log(param_null_cuboid_probability);
-		single_potentials(point_index, num_cuboids) = energy;
+		single_potentials(point_index, num_cuboids) = 10 * energy;
 	}
 
 	// Deallocate ANN.
@@ -347,7 +354,11 @@ int PointSegmentation::segmentPoints(PartsStructure & parts_structure,
 		int assignment_index = output_labels[i];
 		int new_assignment;
 		if (assignment_index >= 0 && assignment_index < num_cuboids)
-			new_assignment = parts_structure.get_part(assignment_index)->getLabel();
+		{
+			int part_label = all_cuboids[assignment_index]->getLabel();
+			assert(part_label != parts_structure.m_null_label);
+			new_assignment = part_label;
+		}
 		else
 			new_assignment = parts_structure.m_null_label;
 
@@ -355,9 +366,6 @@ int PointSegmentation::segmentPoints(PartsStructure & parts_structure,
 			changed_count++;
 	}
 
-	QVector<int> new_point_assignments = QVector<int>::fromStdVector(output_labels);
-	//emit pointSegmentationDone(new_point_assignments);
-	QVector<int> old_point_assignments = QVector<int>::fromStdVector(parts_structure.m_points_assignments);
 
 	/* Reassign points to the parts */
 	std::vector<PAPart *> all_parts = parts_structure.get_all_parts();
@@ -367,19 +375,24 @@ int PointSegmentation::segmentPoints(PartsStructure & parts_structure,
 		(*it)->clearVertices();
 
 	/* Reassign */
-	for (int point_index = 0; point_index < new_point_assignments.size(); point_index++)
+	for (int point_index = 0; point_index < output_labels.size(); point_index++)
 	{
-		int point_assignment = new_point_assignments[point_index];
+		int point_assignment = output_labels[point_index];
+
 		PAPoint point = parts_structure.get_point(point_index);
-		point.setLabel(point_assignment);
 
 		if (point_assignment >= 0 && point_assignment < num_cuboids)
 		{
 			all_parts[point_assignment]->addVertex(point_index, point.getPosition(), point.getNormal());
-			parts_structure.m_points_assignments[point_index] = all_parts[point_assignment]->getLabel();
+			int new_label = all_parts[point_assignment]->getLabel();
+			parts_structure.m_points_assignments[point_index] = new_label;
+			parts_structure.get_point(point_index).setLabel(new_label);
 		}
 		else
+		{
 			parts_structure.m_points_assignments[point_index] = parts_structure.m_null_label;
+			parts_structure.get_point(point_index).setLabel(parts_structure.m_null_label);
+		}
 	}
 
 	/* Update the samples of the parts and the samples correspondences */
@@ -387,17 +400,17 @@ int PointSegmentation::segmentPoints(PartsStructure & parts_structure,
 	{
 		(*part_it)->updateOBB();
 		(*part_it)->samplePoints();
-		(*part_it)->update_sample_correspondences();
+		//(*part_it)->update_sample_correspondences();
 	}
 
 	point_assignments_segmented = QVector<int>::fromStdVector(parts_structure.m_points_assignments);
 
-	std::ofstream ass_out("../data/point_assignments/assignments.csv");
+	/*std::ofstream ass_out("../data/point_assignments/assignments.csv");
 	for (int i = 0; i < point_assignments_segmented.size(); i++)
 	{
 		ass_out << point_assignments_segmented[i] << endl;
 	}
-	ass_out.close();
+	ass_out.close();*/
 
 	//emit pointSegmentationDone(returned_point_assignments);
 

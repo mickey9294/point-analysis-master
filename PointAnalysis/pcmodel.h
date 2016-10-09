@@ -15,16 +15,11 @@
 #include <string>
 #include <pcl/point_types.h>
 #include <pcl/features/normal_3d.h>
-#include "Seb.h"
 #include "model.h"
 #include "utils.h"
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/jet_estimate_normals.h>
 #include <CGAL/mst_orient_normals.h>
-
-typedef Seb::Point<float> MiniPoint;
-typedef std::vector<MiniPoint> PointVector;
-typedef Seb::Smallest_enclosing_ball<float> Miniball;
 
 // kernel
 //typedef CGAL::Exact_predicates_inexact_constructions_kernel Kernel;

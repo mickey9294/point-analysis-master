@@ -22,6 +22,9 @@ OBB::OBB(Eigen::Vector3f xAxis, Eigen::Vector3f yAxis, Eigen::Vector3f zAxis, Ei
 	x_axis = xAxis;
 	y_axis = yAxis;
 	z_axis = zAxis;
+	x_axis.normalize();
+	y_axis.normalize();
+	z_axis.normalize();
 
 	x_length = xLength;
 	y_length = yLength;
@@ -611,16 +614,19 @@ QVector3D OBB::eigen_vector3f_to_qvector3d(Eigen::Vector3f vec)
 void OBB::setXAxis(Vector3f xAxis)
 {
 	x_axis = xAxis;
+	x_axis.normalize();
 }
 
 void OBB::setYAxis(Vector3f yAxis)
 {
 	y_axis = yAxis;
+	y_axis.normalize();
 }
 
 void OBB::setZAxis(Vector3f zAxis)
 {
 	z_axis = zAxis;
+	z_axis.normalize();
 }
 
 void OBB::setCentroid(Vector3f centroid)
@@ -631,16 +637,19 @@ void OBB::setCentroid(Vector3f centroid)
 void OBB::setXAxis(Vector3d xAxis)
 {
 	x_axis = Vector3f((float)xAxis.x(), (float)xAxis.y(), (float)xAxis.z());
+	x_axis.normalize();
 }
 
 void OBB::setYAxis(Vector3d yAxis)
 {
 	y_axis = Vector3f((float)yAxis.x(), (float)yAxis.y(), (float)yAxis.z());
+	y_axis.normalize();
 }
 
 void OBB::setZAxis(Vector3d zAxis)
 {
 	z_axis = Vector3f((float)zAxis.x(), (float)zAxis.y(), (float)zAxis.z());
+	z_axis.normalize();
 }
 
 void OBB::setAxes(std::array<Vector3f, 3> new_axes)
@@ -648,6 +657,9 @@ void OBB::setAxes(std::array<Vector3f, 3> new_axes)
 	x_axis = new_axes[0];
 	y_axis = new_axes[1];
 	z_axis = new_axes[2];
+	x_axis.normalize();
+	y_axis.normalize();
+	z_axis.normalize();
 
 	computeFaceNormals();
 }
@@ -657,6 +669,9 @@ void OBB::setAxes(Matrix3d new_axes)
 	x_axis = new_axes.col(0).cast<float>();
 	y_axis = new_axes.col(1).cast<float>();
 	z_axis = new_axes.col(2).cast<float>();
+	x_axis.normalize();
+	y_axis.normalize();
+	z_axis.normalize();
 
 	computeFaceNormals();
 }
@@ -962,6 +977,9 @@ void OBB::transform(Matrix4f transform_mat, PointCloud<PointXYZ>::Ptr cloud)
 	x_axis = axes.block<3, 1>(0, 0);
 	y_axis = axes.block<3, 1>(0, 1);
 	z_axis = axes.block<3, 1>(0, 2);
+	x_axis.normalize();
+	y_axis.normalize();
+	z_axis.normalize();
 	m_centroid = centroid_aug.block<3, 1>(0, 0);
 
 	m_vertices.clear();

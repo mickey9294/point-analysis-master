@@ -30,7 +30,7 @@ MeshModel::MeshModel(const char *file_path)
 {
 	m_input_filepath = std::string(file_path);
 	load_from_file(file_path);
-	rotate(-90, 1.0, 0.0, 0.0);
+	rotate(90, 1.0, 0.0, 0.0);
 	if (faceCount() > 0 && vertexCount() > 0)
 		samplePoints();
 }
@@ -40,7 +40,7 @@ MeshModel::MeshModel(std::string file_path)
 {
 	m_input_filepath = file_path;
 	load_from_file(file_path.c_str());
-	rotate(-90, 1.0, 0.0, 0.0);
+	rotate(90, 1.0, 0.0, 0.0);
 	if (faceCount() > 0 && vertexCount() > 0)
 		samplePoints();
 }
@@ -68,6 +68,16 @@ QVector<Vector3f> MeshModel::getVerticesNormals() const
 QVector<Vector3f> MeshModel::getFacesNormals() const
 {
 	return m_faces_normals;
+}
+
+Vector3f & MeshModel::getVertex(int index)
+{
+	return m_vertices_list[index];
+}
+
+Vector3i & MeshModel::getFace(int index)
+{
+	return m_faces_list[index];
 }
 
 using namespace std;
@@ -549,7 +559,7 @@ void MeshModel::output(const char *file_path)
 	if (mesh_out.is_open())
 	{
 		string file_format = Utils::getFileFormat(file_path);
-		if (file_format.compare("OFF") == 0)
+		if (file_format.compare("OFF") == 0 || file_format.compare("off") == 0)
 		{
 			/* Write the header */
 			mesh_out << "OFF" << endl;

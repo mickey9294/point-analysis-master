@@ -13,15 +13,10 @@
 #include <QtOpenGL>
 #include <qset.h>
 #include <qalgorithms.h>
-#include "Seb.h"
 #include "utils.h"
 #include "model.h"
 #include <utils_sampling.h>
 #include "SamplePoint.h"
-
-typedef Seb::Point<float> MiniPoint;
-typedef std::vector<MiniPoint> PointVector;
-typedef Seb::Smallest_enclosing_ball<float> Miniball;
 
 typedef QMap<int, QVector<SamplePoint>> Parts_Samples;
 
@@ -40,6 +35,8 @@ public:
 	QVector<Eigen::Vector3i> getFaces() const;
 	QVector<Eigen::Vector3f> getVerticesNormals() const;
 	QVector<Eigen::Vector3f> getFacesNormals() const;
+	Eigen::Vector3f & getVertex(int index);
+	Eigen::Vector3i & getFace(int index);
 	int vertexCount() const;
 	int sampleCount() const;
 	int faceCount();

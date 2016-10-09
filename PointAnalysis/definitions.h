@@ -8,8 +8,8 @@
 typedef QVector<PAPart *> Parts_Vector;
 Q_DECLARE_METATYPE(Parts_Vector)
 
-typedef QVector<PAPart> Part_Candidates;
-Q_DECLARE_METATYPE(Part_Candidates)
+typedef QVector<PAPart *> Part_Candidates;
+//Q_DECLARE_METATYPE(Part_Candidates)
 
 typedef unsigned int LabelIndex;
 typedef unsigned int SamplePointIndex;

@@ -4,6 +4,7 @@
 #include <QVector>
 #include <Eigen/Core>
 #include "constants.h"
+#include "Seb.h"
 
 /* Define 11 different colors */
 const float COLORS[11][3] = {
@@ -20,12 +21,17 @@ const float COLORS[11][3] = {
 	{ 0.5, 0.5, 0.5 }     /* »ÒÉ« */
 };
 
+typedef Seb::Point<float> MiniPoint;
+typedef std::vector<MiniPoint> PointVector;
+typedef Seb::Smallest_enclosing_ball<float> Miniball;
+
 class Model
 {
 public:
 	enum ModelType{
 		Mesh,
-		PointCloud
+		PointCloud,
+		MeshPointCloud
 	};
 
 	Model();
@@ -44,6 +50,7 @@ public:
 	virtual Eigen::Vector3f getCentroid() const = 0;
 	virtual int numOfClasses() = 0;
 	virtual double getRadius() const = 0;
+	virtual void setLabels(QVector<int> labels);
 
 protected:
 	ModelType m_type;

@@ -436,13 +436,17 @@ void StructureAnalyser::predict()
 		/* Compute symmetry groups */
 		m_parts_structure.compute_symmetry_groups();
 
+		cout << "Before points segmentation, # of all parts = " << m_parts_structure.num_of_parts() << endl;
 		segmentPoints();
+		cout << "After points segmentation, # of all parts = " << m_parts_structure.num_of_parts() << endl;
 
 		//emit sendPartsStructure(Parts_Structure_Pointer(&m_parts_structure));
 		//m_parts_structure.output_samples();
 
 		m_parts_solver->optimizeAttributes(m_parts_structure, joint_normal_predictor, param_opt_single_energy_term_weight,
 			param_opt_symmetry_energy_term_weight, 5, false);
+
+		cout << "After first nonlinear optimization, # of all parts = " << m_parts_structure.num_of_parts() << endl;
 
 		const bool use_symmetry = !(disable_symmetry_terms);
 		if (use_symmetry)
@@ -453,19 +457,26 @@ void StructureAnalyser::predict()
 				param_opt_symmetry_energy_term_weight, 5, use_symmetry);
 		}
 
-		emit sendPartsStructure(Parts_Structure_Pointer(&m_parts_structure));
+		cout << "After second nonlinear optimization, # of all parts = " << m_parts_structure.num_of_parts() << endl;
+
+		emit sendPartsStructure(&m_parts_structure);
+
+		cout << "After showing part_structure, # of all parts = " << m_parts_structure.num_of_parts() << endl;
 
 		m_iteration++;
-		if (m_iteration < 0)
+		if (m_iteration < 10)
 		{
 			std::vector<PAPart *> all_parts = m_parts_structure.get_all_parts();
 			part_candidates.clear();
+			part_candidates.reserve(all_parts.size());
 			for (int i = 0; i < all_parts.size(); i++)
-				part_candidates.push_back(PAPart(*(all_parts[i])));
+				part_candidates.push_back(all_parts[i]);
 		}
 		else
 			break;
 
+
+		sleep(10000);
 	}
 }
 
@@ -483,8 +494,14 @@ void StructureAnalyser::predictPartLabelsAndOrientations(const Part_Candidates &
 	else
 		m_parts_predictor->setUseSymmetry(false);
 
+	cout << "Before prediction in iteration_" << m_iteration << ", # of all parts = " << m_parts_structure.num_of_parts() << "; " << endl;
+	cout << "And part_candidates has " << part_candidates.size() << " parts in total." << endl;
+
 	bool first_run = (m_iteration < 1);
 	m_parts_predictor->predictLabelsAndOrientations(part_candidates, label_names, parts_picked, candidate_labels, m_energy_functions, first_run);
+
+	cout << "After prediction in iteration_" << m_iteration << ", # of all parts = " << m_parts_structure.num_of_parts() << ";" << endl;
+	cout << "And part_candidates has " << part_candidates.size() << " parts in total." << endl;
 
 	int numLabels = m_label_names.size();
 	QMap<int, OBB *> obbs;
@@ -496,13 +513,14 @@ void StructureAnalyser::predictPartLabelsAndOrientations(const Part_Candidates &
 	m_parts_structure.clear_parts_only();
 
 	for (QMap<int, int>::iterator it = parts_picked.begin(); it != parts_picked.end(); ++it)
-	{
 		cout << "Part label " << it.key() << " correspondes to Candidate-" << it.value() << endl;
 
+	for (QMap<int, int>::iterator it = parts_picked.begin(); it != parts_picked.end(); ++it)
+	{
 		int label = it.key();
-
+		
 		int candidate_idx = it.value();
-		PAPart *part = new PAPart(part_candidates[candidate_idx]);
+		PAPart *part = part_candidates[candidate_idx];
 		part->setLabel(label);
 
 		OBB * obb = part->getOBB();
@@ -548,6 +566,7 @@ void StructureAnalyser::predictPartLabelsAndOrientations(const Part_Candidates &
 
 void StructureAnalyser::segmentPoints()
 {
+	cout << "Start to segment point cloud." << endl;
 	QVector<int> point_assignments_segmented;
 
 	bool first_run = (m_iteration < 1);

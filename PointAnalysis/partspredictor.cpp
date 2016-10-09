@@ -64,13 +64,13 @@ void PartsPredictor::predictLabelsAndOrientations(const Part_Candidates & part_c
 		{
 			u_out << i << endl;
 
-			PAPart cand = part_candidates[i];
-			string unary_str = "Node_" + to_string(cand.getClusterNo()) + "_" + to_string(i) + ": ";
+			PAPart *cand = part_candidates[i];
+			string unary_str = "Node_" + to_string(cand->getClusterNo()) + "_" + to_string(i) + ": ";
 
 			Eigen::VectorXf unary_vec(labelNum);
 			for (int j = 0; j < labelNum; j++)
 			{
-				D[j] = m_energy_functions->Epnt(&cand, j, m_use_symmetry);
+				D[j] = m_energy_functions->Epnt(cand, j, m_use_symmetry);
 				unary_vec[j] = D[j];
 
 				if (j < labelNum - 1)
@@ -91,13 +91,13 @@ void PartsPredictor::predictLabelsAndOrientations(const Part_Candidates & part_c
 		cout << "Set pairwise potentials." << endl;
 		for (int i = 0; i < nodeNum; i++)
 		{
-			PAPart cand1 = part_candidates[i];
-			int point_cluster_no_1 = cand1.getClusterNo();
+			PAPart *cand1 = part_candidates[i];
+			int point_cluster_no_1 = cand1->getClusterNo();
 
 			for (int j = i + 1; j < nodeNum; j++)
 			{
-				PAPart cand2 = part_candidates[j];
-				int point_cluster_no_2 = cand2.getClusterNo();
+				PAPart *cand2 = part_candidates[j];
+				int point_cluster_no_2 = cand2->getClusterNo();
 
 				PAPartRelation relation(cand1, cand2);
 
@@ -225,7 +225,7 @@ void PartsPredictor::predictLabelsAndOrientations(const Part_Candidates & part_c
 			candidate_labels[*pick_it] = pick_it.key();
 
 		/* Output the winner parts indicese to local files */
-		Utils::savePredictionResult(parts_picked, "../data/winners/" + m_modelClassName + ".txt");
+		//Utils::savePredictionResult(parts_picked, "../data/winners/" + m_modelClassName + ".txt");
 
 		cout << "Part labels and orientations prediction done." << endl;
 	}
@@ -334,17 +334,17 @@ double PartsPredictor::computeEnergy(const QMap<int, int> & combination, const P
 
 	/* Add unary energies */
 	for (QMap<int, int>::const_iterator it = combination.begin(); it != combination.end(); ++it)
-		energy += energy_functions->Epnt(&part_candidates[it.value()], it.key(), m_use_symmetry);
+		energy += energy_functions->Epnt(part_candidates[it.value()], it.key(), m_use_symmetry);
 
 	/* Add pairwise energies */
 	for (QMap<int, int>::const_iterator it_1 = combination.begin(); it_1 != combination.end(); ++it_1)
 	{
 		for (QMap<int, int>::const_iterator it_2 = combination.begin(); it_2 != combination.end(); ++it_2)
 		{
-			PAPart cand1 = part_candidates[it_1.value()];
-			PAPart cand2 = part_candidates[it_2.value()];
+			PAPart *cand1 = part_candidates[it_1.value()];
+			PAPart *cand2 = part_candidates[it_2.value()];
 			PAPartRelation relation(cand1, cand2);
-			energy += energy_functions->Epair(relation, cand1.getClusterNo(), cand2.getClusterNo(), it_1.key(), it_2.key());
+			energy += energy_functions->Epair(relation, cand1->getClusterNo(), cand2->getClusterNo(), it_1.key(), it_2.key());
 		}
 	}
 

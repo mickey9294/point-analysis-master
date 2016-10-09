@@ -30,6 +30,8 @@ void MyGLWidget::setModel(Model *model)
 	m_model = model;
 	if (model->getType() == Model::ModelType::PointCloud)
 		connect((PCModel *)m_model, SIGNAL(onLabelsChanged()), this, SLOT(updateLabels()));
+	else if (model->getType() == Model::ModelType::MeshPointCloud)
+		connect((MeshPcModel *)m_model, SIGNAL(onLabelsChanged()), this, SLOT(updateLabels()));
 
 	/* Clear the current oriented bounding boxes */
 	for (int i = 0; i < m_OBBs.size(); i++)
@@ -160,7 +162,7 @@ void MyGLWidget::draw()
 			//obb->drawSamples(m);
 		}
 	}
-	else if (!m_parts_structure.isNull())
+	else if (m_parts_structure != NULL)
 		m_parts_structure->draw(m);
 
 	glPopMatrix();
@@ -369,12 +371,12 @@ void MyGLWidget::setPartsStructure(Parts_Structure_Pointer parts_structure)
 	cout << "Set parts structure." << endl;
 	m_parts_structure = parts_structure;
 
-	for (QVector<OBB *>::iterator obb_it = m_OBBs.begin(); obb_it != m_OBBs.end(); ++obb_it)
+	/*for (QVector<OBB *>::iterator obb_it = m_OBBs.begin(); obb_it != m_OBBs.end(); ++obb_it)
 	{
 		delete(*obb_it);
 		*obb_it = NULL;
 	}
-	m_OBBs.clear();
+	m_OBBs.clear();*/
 
 	show_parts_structure = true;
 

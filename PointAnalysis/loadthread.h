@@ -8,6 +8,7 @@
 #include "pcmodel.h"
 #include "model.h"
 #include "meshmodel.h"
+#include "meshpcmodel.h"
 #include "utils.h"
 
 class LoadThread : public QThread

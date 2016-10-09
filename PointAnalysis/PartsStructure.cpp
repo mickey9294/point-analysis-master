@@ -91,10 +91,7 @@ void PartsStructure::clear_parts_only()
 {
 	for (std::vector<std::vector<PAPart *>>::iterator it = m_label_parts.begin();
 		it != m_label_parts.end(); ++it)
-	{
-		for (std::vector<PAPart *>::iterator jt = it->begin(); jt != it->end(); ++jt)
-			delete(*jt);
-	}
+		it->clear();
 
 	m_label_parts.clear();
 	m_label_parts.resize(num_of_labels());

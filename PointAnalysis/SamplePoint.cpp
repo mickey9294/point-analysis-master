@@ -22,12 +22,14 @@ SamplePoint::SamplePoint(const SamplePoint &sample)
 	m_visibility = sample.visibility();
 	m_corner_weights = sample.getCornerWeights();
 	m_face_index = sample.getFaceIndex();
+	m_bary = sample.getBary();
 }
 
-SamplePoint::SamplePoint(Vector3f vertex, Vector3f normal)
+SamplePoint::SamplePoint(Vector3f vertex, Vector3f normal, Eigen::Vector3f bary)
 {
 	m_vertex = vertex;
 	m_normal = normal;
+	m_bary = bary;
 	m_visibility = 1.0;
 	m_face_index = -1;
 }
@@ -141,6 +143,11 @@ Vector3f SamplePoint::getNormal() const
 	return m_normal;
 }
 
+Vector3f SamplePoint::getBary() const
+{
+	return m_bary;
+}
+
 void SamplePoint::setVertex(Vector3f vertex)
 {
 	m_vertex[0] = vertex[0];
@@ -153,6 +160,13 @@ void SamplePoint::setNormal(Vector3f normal)
 	m_normal[0] = normal[0];
 	m_normal[1] = normal[1];
 	m_normal[2] = normal[2];
+}
+
+void SamplePoint::setBary(float bx, float by, float bz)
+{
+	m_bary[0] = bx;
+	m_bary[1] = by;
+	m_bary[2] = bz;
 }
 
 double SamplePoint::visibility() const
@@ -199,6 +213,11 @@ void SamplePoint::setCornerWeights(std::array<Real, 8> corner_weights)
 int SamplePoint::getFaceIndex() const
 {
 	return m_face_index;
+}
+
+void SamplePoint::setFaceIndex(int face_index)
+{
+	m_face_index = face_index;
 }
 
 std::string SamplePoint::toString()

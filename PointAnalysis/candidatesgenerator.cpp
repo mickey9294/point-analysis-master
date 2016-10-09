@@ -213,7 +213,7 @@ void CandidatesGenerator::generateCandidates(std::string model_name, QSharedPoin
 				}
 
 				/* For each connected component, generate 24 candidate OBBs */
-				QVector<PAPart> candidates;
+				QVector<PAPart *> candidates;
 
 				cout << "Part-" << label_name << ": Generating candidates..." << endl;
 
@@ -283,8 +283,8 @@ void CandidatesGenerator::generateCandidates(std::string model_name, QSharedPoin
 							/* Create PAPart object from OBB */
 							cout << "Part-" << label_name << ": Create a part for OBB-" << cluster_count << "-" << num_of_candidates << " as a candidate." << endl;
 
-							PAPart candidate(cand_obbs[k]);
-							candidate.setClusterNo(cluster_count);  /* Set the cluster number to the index of the current connected component */
+							PAPart *candidate = new PAPart(cand_obbs[k]);
+							candidate->setClusterNo(cluster_count);  /* Set the cluster number to the index of the current connected component */
 
 							/* Set the indices of points assigned to this part to the PAPart object */
 							QList<int> vertices_indices = components_indices[j];
@@ -302,18 +302,18 @@ void CandidatesGenerator::generateCandidates(std::string model_name, QSharedPoin
 								normals[index++] = point.getNormal();
 								if (overall_cand_count == 0 && (*point_idx_it) == 1914)
 								cout << "debug: " << vertices[index].transpose() << endl;*/
-								candidate.addVertex(*point_idx_it, point.getPosition(), point.getNormal());
+								candidate->addVertex(*point_idx_it, point.getPosition(), point.getNormal());
 							}
 							//candidate.setVertices(vertices);
 							//candidate.setVerticesNormals(normals);
 
 							//cout << "Run ICP procedure to adjust the OBB" << endl;
-							candidate.ICP_adjust_OBB();
+							candidate->ICP_adjust_OBB();
 							//cout << "done." << endl;
 
 							candidates.push_back(candidate);
 							/* Save the candidate to local file */
-							candidate.saveToFile(model_name + "/" + std::to_string(overall_cand_count++));
+							candidate->saveToFile(model_name + "/" + std::to_string(overall_cand_count++));
 
 							num_of_candidates++;
 						}
@@ -353,17 +353,17 @@ int CandidatesGenerator::loadCandidatesFromFiles(std::string model_name, int npo
 	{
 		part_in.close();
 
-		PAPart cand(cand_path);
+		PAPart *cand = new PAPart(cand_path);
 		candidates.push_back(cand);
 
 		/* Set the point cluster number for each point */
 		if (index % 24 == 0)  /* Set only once for one point cluster (which generates 24 candidates) */
 		{
-			for (vector<int>::iterator point_index_it = cand.vertices_begin(); point_index_it != cand.vertices_end();
+			for (vector<int>::iterator point_index_it = cand->vertices_begin(); point_index_it != cand->vertices_end();
 				++point_index_it)
 				point_cluster_map[*point_index_it] = index / 24;
 
-			obbs_to_show.push_back(new OBB(cand.getOBB()));
+			obbs_to_show.push_back(new OBB(cand->getOBB()));
 		}
 
 		index++;

@@ -47,7 +47,7 @@ FeatureEstimator::FeatureEstimator(Model *model, PHASE phase, QObject *parent)
 		}
 		std::cout << "4" << std::endl;
 	}
-	else    /* If it is a testing point cloud model */
+	else if(model->getType() == Model::ModelType::PointCloud)   /* If it is a testing point cloud model */
 	{
 		std::cout << "5" << std::endl;
 		PCModel *pc = (PCModel *)model;
@@ -65,6 +65,24 @@ FeatureEstimator::FeatureEstimator(Model *model, PHASE phase, QObject *parent)
 			m_pointcloud->at(vertex_idx).setPosition(vertex_it->x(), vertex_it->y(), vertex_it->z());
 			m_pointcloud->at(vertex_idx).setNormal(normal_it->x(), normal_it->y(), normal_it->z());
 			m_pointcloud->at(vertex_idx++).setLabel(10);
+		}
+	}
+	else  /* it is a mesh point cloud */
+	{
+		MeshPcModel * meshpc = (MeshPcModel *)model;
+		meshpc->rotate(-90, 1.0, 0, 0);
+		m_pointcloud = new PAPointCloud(meshpc->sampleCount());
+
+		int sample_idx = 0;
+		for (QVector<SamplePoint>::iterator sample_it = meshpc->samples_begin(); sample_it != meshpc->samples_end(); ++sample_it)
+		{
+			pcl::PointXYZ p(sample_it->x(), sample_it->y(), sample_it->z());
+			m_cloud->push_back(p);
+			pcl::Normal normal(sample_it->nx(), sample_it->ny(), sample_it->nz());
+			m_normals->push_back(normal);
+			m_pointcloud->at(sample_idx).setPosition(sample_it->x(), sample_it->y(), sample_it->z());
+			m_pointcloud->at(sample_idx).setNormal(sample_it->nx(), sample_it->ny(), sample_it->nz());
+			m_pointcloud->at(sample_idx++).setLabel(10);
 		}
 	}
 	std::cout << "7" << std::endl;
@@ -130,7 +148,7 @@ void FeatureEstimator::reset(Model *model)
 			}
 		}
 	}
-	else    /* If it is a testing point cloud model */
+	else if (model->getType() == Model::ModelType::PointCloud)   /* If it is a testing point cloud model */
 	{
 		PCModel *pc = (PCModel *)model;
 		m_pointcloud = new PAPointCloud(pc->vertexCount());
@@ -147,6 +165,24 @@ void FeatureEstimator::reset(Model *model)
 			m_pointcloud->at(vertex_idx).setPosition(vertex_it->x(), vertex_it->y(), vertex_it->z());
 			m_pointcloud->at(vertex_idx).setNormal(normal_it->x(), normal_it->y(), normal_it->z());
 			m_pointcloud->at(vertex_idx++).setLabel(10);
+		}
+	}
+	else  /* it is a mesh point cloud */
+	{
+		MeshPcModel * meshpc = (MeshPcModel *)model;
+		meshpc->rotate(-90, 1.0, 0, 0);
+		m_pointcloud = new PAPointCloud(meshpc->sampleCount());
+
+		int sample_idx = 0;
+		for (QVector<SamplePoint>::iterator sample_it = meshpc->samples_begin(); sample_it != meshpc->samples_end(); ++sample_it)
+		{
+			pcl::PointXYZ p(sample_it->x(), sample_it->y(), sample_it->z());
+			m_cloud->push_back(p);
+			pcl::Normal normal(sample_it->nx(), sample_it->ny(), sample_it->nz());
+			m_normals->push_back(normal);
+			m_pointcloud->at(sample_idx).setPosition(sample_it->x(), sample_it->y(), sample_it->z());
+			m_pointcloud->at(sample_idx).setNormal(sample_it->nx(), sample_it->ny(), sample_it->nz());
+			m_pointcloud->at(sample_idx++).setLabel(10);
 		}
 	}
 
@@ -242,7 +278,7 @@ void FeatureEstimator::receiveFeatures(int sid, QVector<QVector<double>> points_
 	/* If all the subthread have finished, send the result out */
 	if (finish_count == 0)
 	{
-		std::string out_path = "../data/features_test/" + m_model_name + ".csv";
+		std::string out_path = "..\\data\\features_test\\" + m_model_name + ".csv";
 		m_pointcloud->writeToFile(out_path.c_str());
 
 		emit estimateCompleted(m_pointcloud);

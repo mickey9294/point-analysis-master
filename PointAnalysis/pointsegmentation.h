@@ -18,6 +18,9 @@ public:
 	~PointSegmentation();
 	
 	int segmentPoints(PartsStructure & parts_structure, const QVector<int> & label_names, QVector<int> &point_assignments_segmented, bool first_run);
+
+private:
+	int m_iteration;
 };
 
 #endif // POINTSEGMENTATION_H

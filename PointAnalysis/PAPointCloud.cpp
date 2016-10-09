@@ -110,3 +110,22 @@ std::vector<PAPoint>::iterator PAPointCloud::end()
 {
 	return pointList.end();
 }
+
+void PAPointCloud::outputConfidences(const char *file)
+{
+	ofstream out(file);
+
+	if (out.is_open())
+	{
+		for (std::vector<PAPoint>::iterator point_it = pointList.begin(); point_it != pointList.end(); ++point_it)
+		{
+			const QMap<int, float> distribution = point_it->getClassConfidences();
+			for (QMap<int, float>::const_iterator dis_it = distribution.begin(); dis_it != distribution.end(); ++dis_it)
+				out << *dis_it << ",";
+
+			out << endl;
+		}
+
+		out.close();
+	}
+}
