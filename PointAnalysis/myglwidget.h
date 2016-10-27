@@ -34,6 +34,12 @@ public:
 	void resetView();
 	Model * getModel() { return m_model; }
 
+	public slots:
+	void setDrawSymmetryPlanes(int state);
+	void setDrawSymmetryAxes(int state);
+	void setDrawOBBs(int state);
+	void setDrawOBBsAxes(int state);
+
 signals:
 	void xRotationChanged(int angle);
 	void yRotationChanged(int angle);
@@ -50,6 +56,7 @@ signals:
 	void updateLabels();
 	void setSamples(Samples_Vec samples);
 	void setPartsStructure(Parts_Structure_Pointer structure);
+	void rotateModel(float angle, float x, float y, float z);
 
 protected:
 	void initializeGL();
@@ -85,6 +92,7 @@ private:
 
 	QPoint m_lastPos;
 	bool clickEvent;
+	bool m_draw_obbs;
 };
 
 #endif // MYGLWIDGET_H

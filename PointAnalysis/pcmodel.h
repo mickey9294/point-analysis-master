@@ -20,6 +20,9 @@
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/jet_estimate_normals.h>
 #include <CGAL/mst_orient_normals.h>
+#include <CGAL/Simple_cartesian.h>
+#include <CGAL/wlop_simplify_and_regularize_point_set.h>
+#include "CuboidSymmetryGroup.h"
 
 // kernel
 //typedef CGAL::Exact_predicates_inexact_constructions_kernel Kernel;
@@ -30,6 +33,12 @@
 //// Point with normal vector stored in a std::pair.
 //typedef std::pair<Point3, Vector> PointVectorPair;
 //typedef std::vector<PointVectorPair> PointList;
+// types
+typedef CGAL::Simple_cartesian<double> SC_Kernel;
+typedef SC_Kernel::Point_3 SC_Point;
+typedef SC_Kernel::Vector_3 SC_Vector;
+// Point with normal vector stored in a std::pair.
+typedef std::pair<SC_Point, SC_Vector> SC_PointVectorPair;
 
 class PCModel : public QObject, public Model
 {
@@ -62,6 +71,9 @@ public:
 	QVector<Eigen::Vector3f>::iterator normals_begin() { return m_normals_list.begin(); }
 	QVector<Eigen::Vector3f>::iterator normals_end() { return m_normals_list.end(); }
 
+	Eigen::Vector3f getBBoxCenter() const;
+	Eigen::Vector3f getBBoxSize() const;
+
 	QVector<Eigen::Vector3f> getVertices() const;
 	QVector<Eigen::Vector3f> getNormals() const;
 	Eigen::Vector3f getVertex(int index);
@@ -70,9 +82,19 @@ public:
 	Eigen::Vector3f & operator[](int index);
 	Eigen::Vector3f at(int index);
 
+	void normalize();
+
+	void outputVerticesLabels(const char *file_path);
+	void downSample();
+
+	bool isDrawSymmetryPlanes() const { return m_draw_sym_planes; }
+	bool isDrawSymmetryAxes() const { return m_draw_sym_axes; }
+
 	public slots:
 	void setLabels(QVector<int> labels);
 	void receiveSignalTest();
+	void setDrawSymmetryPlanes(int state);
+	void setDrawSymmetryAxes(int state);
 
 signals:
 	void outputProgressReport(int progress);
@@ -91,8 +113,18 @@ private:
 	QVector<Eigen::Vector3f> m_vertices_list;
 	QVector<Eigen::Vector3f> m_normals_list;
 
+	QVector<QVector<float>> m_points_label_confidences;
+
+	QList<CuboidReflectionSymmetryGroup> m_reflection_symmetry;
+	QList<CuboidRotationSymmetryGroup> m_rotation_symmetry;
+
+	Eigen::Vector3f m_bbox_center;
+	Eigen::Vector3f m_bbox_size;
+
+	bool m_draw_sym_planes;
+	bool m_draw_sym_axes;
+
 	//void add(const QVector3D &v, const QVector3D &n, const QVector3D &c);
-	void normalize();
 	void load_from_file(const char *file_path, int normals_estimation_normals);
 	//void saveNormals();
 };

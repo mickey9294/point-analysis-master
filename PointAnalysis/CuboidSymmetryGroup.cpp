@@ -512,12 +512,12 @@ void CuboidReflectionSymmetryGroup::get_reflection_plane_corners(
 	Eigen::Vector3f center = _point - n_.dot(_point) * n_ + t_ * n_;
 
 	// Find random two axes of plane.
-	Eigen::Vector3f axes[2];
+	std::vector<Eigen::Vector3f> axes(2);
 
-	axes[0] = Eigen::Vector3f(0.0);
+	axes[0] = Eigen::Vector3f::Zero();
 	for (unsigned int i = 0; i < 3; ++i)
 	{
-		Eigen::Vector3f temp(0.0);
+		Eigen::Vector3f temp = Eigen::Vector3f::Zero();
 		temp[i] = 1.0;
 		axes[0] = n_.cross(temp);
 		if (axes[0].norm() > 0.1)
@@ -587,6 +587,19 @@ CuboidRotationSymmetryGroup* CuboidRotationSymmetryGroup::constructor(
 		group = NULL;
 	}
 	return group;
+}
+
+CuboidRotationSymmetryGroup::CuboidRotationSymmetryGroup(
+	const CuboidSymmetryGroupInfo &_info,
+	const Eigen::Vector3f &n, 
+	const Eigen::Vector3f &t)
+	: CuboidSymmetryGroup(_info)
+{
+	for (int i = 0; i < 3; i++)
+	{
+		n_[i] = n[i];
+		t_[i] = t[i];
+	}
 }
 
 CuboidRotationSymmetryGroup::CuboidRotationSymmetryGroup(

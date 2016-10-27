@@ -13,12 +13,14 @@
 #include <QtWidgets/QAction>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QButtonGroup>
+#include <QtWidgets/QCheckBox>
 #include <QtWidgets/QHeaderView>
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QMainWindow>
 #include <QtWidgets/QMenu>
 #include <QtWidgets/QMenuBar>
 #include <QtWidgets/QProgressBar>
+#include <QtWidgets/QPushButton>
 #include <QtWidgets/QStatusBar>
 #include <QtWidgets/QTextEdit>
 #include <QtWidgets/QToolBar>
@@ -47,17 +49,33 @@ public:
     QAction *actionStructure_Inference;
     QAction *actionDebug_Parts_Relations;
     QAction *actionCheck_Models;
+    QAction *actionSave_Vertices_Labels;
+    QAction *actionDownsample;
     QWidget *centralWidget;
     MyGLWidget *displayGLWidget;
     QProgressBar *mainProgressBar;
     QLabel *mainProgressMessage;
     QTextEdit *debugTextEdit;
+    QCheckBox *symPlaneCheckBox;
+    QCheckBox *symAxisCheckBox;
+    QTextEdit *angleInput;
+    QLabel *label;
+    QLabel *label_2;
+    QTextEdit *xAxisInput;
+    QTextEdit *yAxisInput;
+    QTextEdit *zAxisInput;
+    QLabel *label_3;
+    QLabel *label_4;
+    QPushButton *rotateButton;
+    QCheckBox *drawOBBCheckBox;
+    QCheckBox *drawOBBAxesCheckBox;
     QMenuBar *menuBar;
     QMenu *menuFile;
     QMenu *menuHelp;
     QMenu *menuFeature;
     QMenu *menuTest;
     QMenu *menuInference;
+    QMenu *menuEdit;
     QToolBar *mainToolBar;
     QStatusBar *statusBar;
 
@@ -100,6 +118,10 @@ public:
         actionDebug_Parts_Relations->setObjectName(QStringLiteral("actionDebug_Parts_Relations"));
         actionCheck_Models = new QAction(PointAnalysisClass);
         actionCheck_Models->setObjectName(QStringLiteral("actionCheck_Models"));
+        actionSave_Vertices_Labels = new QAction(PointAnalysisClass);
+        actionSave_Vertices_Labels->setObjectName(QStringLiteral("actionSave_Vertices_Labels"));
+        actionDownsample = new QAction(PointAnalysisClass);
+        actionDownsample->setObjectName(QStringLiteral("actionDownsample"));
         centralWidget = new QWidget(PointAnalysisClass);
         centralWidget->setObjectName(QStringLiteral("centralWidget"));
         displayGLWidget = new MyGLWidget(centralWidget);
@@ -107,7 +129,7 @@ public:
         displayGLWidget->setGeometry(QRect(10, 10, 821, 551));
         mainProgressBar = new QProgressBar(centralWidget);
         mainProgressBar->setObjectName(QStringLiteral("mainProgressBar"));
-        mainProgressBar->setGeometry(QRect(680, 730, 161, 20));
+        mainProgressBar->setGeometry(QRect(20, 740, 161, 20));
         mainProgressBar->setValue(0);
         mainProgressBar->setTextVisible(false);
         mainProgressMessage = new QLabel(centralWidget);
@@ -116,8 +138,51 @@ public:
         mainProgressMessage->setAlignment(Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter);
         debugTextEdit = new QTextEdit(centralWidget);
         debugTextEdit->setObjectName(QStringLiteral("debugTextEdit"));
-        debugTextEdit->setGeometry(QRect(10, 570, 661, 181));
+        debugTextEdit->setGeometry(QRect(10, 570, 451, 161));
         debugTextEdit->setReadOnly(true);
+        symPlaneCheckBox = new QCheckBox(centralWidget);
+        symPlaneCheckBox->setObjectName(QStringLiteral("symPlaneCheckBox"));
+        symPlaneCheckBox->setGeometry(QRect(480, 570, 141, 31));
+        symPlaneCheckBox->setChecked(true);
+        symAxisCheckBox = new QCheckBox(centralWidget);
+        symAxisCheckBox->setObjectName(QStringLiteral("symAxisCheckBox"));
+        symAxisCheckBox->setGeometry(QRect(480, 590, 141, 41));
+        symAxisCheckBox->setChecked(true);
+        angleInput = new QTextEdit(centralWidget);
+        angleInput->setObjectName(QStringLiteral("angleInput"));
+        angleInput->setGeometry(QRect(520, 690, 61, 31));
+        label = new QLabel(centralWidget);
+        label->setObjectName(QStringLiteral("label"));
+        label->setGeometry(QRect(480, 700, 31, 16));
+        label_2 = new QLabel(centralWidget);
+        label_2->setObjectName(QStringLiteral("label_2"));
+        label_2->setGeometry(QRect(480, 740, 31, 16));
+        xAxisInput = new QTextEdit(centralWidget);
+        xAxisInput->setObjectName(QStringLiteral("xAxisInput"));
+        xAxisInput->setGeometry(QRect(520, 730, 41, 31));
+        yAxisInput = new QTextEdit(centralWidget);
+        yAxisInput->setObjectName(QStringLiteral("yAxisInput"));
+        yAxisInput->setGeometry(QRect(580, 730, 41, 31));
+        zAxisInput = new QTextEdit(centralWidget);
+        zAxisInput->setObjectName(QStringLiteral("zAxisInput"));
+        zAxisInput->setGeometry(QRect(640, 730, 41, 31));
+        label_3 = new QLabel(centralWidget);
+        label_3->setObjectName(QStringLiteral("label_3"));
+        label_3->setGeometry(QRect(570, 740, 10, 16));
+        label_4 = new QLabel(centralWidget);
+        label_4->setObjectName(QStringLiteral("label_4"));
+        label_4->setGeometry(QRect(630, 740, 10, 16));
+        rotateButton = new QPushButton(centralWidget);
+        rotateButton->setObjectName(QStringLiteral("rotateButton"));
+        rotateButton->setGeometry(QRect(710, 730, 71, 31));
+        drawOBBCheckBox = new QCheckBox(centralWidget);
+        drawOBBCheckBox->setObjectName(QStringLiteral("drawOBBCheckBox"));
+        drawOBBCheckBox->setGeometry(QRect(480, 630, 191, 21));
+        drawOBBCheckBox->setChecked(true);
+        drawOBBAxesCheckBox = new QCheckBox(centralWidget);
+        drawOBBAxesCheckBox->setObjectName(QStringLiteral("drawOBBAxesCheckBox"));
+        drawOBBAxesCheckBox->setGeometry(QRect(480, 660, 181, 16));
+        drawOBBAxesCheckBox->setChecked(true);
         PointAnalysisClass->setCentralWidget(centralWidget);
         menuBar = new QMenuBar(PointAnalysisClass);
         menuBar->setObjectName(QStringLiteral("menuBar"));
@@ -132,6 +197,8 @@ public:
         menuTest->setObjectName(QStringLiteral("menuTest"));
         menuInference = new QMenu(menuBar);
         menuInference->setObjectName(QStringLiteral("menuInference"));
+        menuEdit = new QMenu(menuBar);
+        menuEdit->setObjectName(QStringLiteral("menuEdit"));
         PointAnalysisClass->setMenuBar(menuBar);
         mainToolBar = new QToolBar(PointAnalysisClass);
         mainToolBar->setObjectName(QStringLiteral("mainToolBar"));
@@ -144,10 +211,12 @@ public:
         menuBar->addAction(menuFeature->menuAction());
         menuBar->addAction(menuTest->menuAction());
         menuBar->addAction(menuInference->menuAction());
+        menuBar->addAction(menuEdit->menuAction());
         menuBar->addAction(menuHelp->menuAction());
         menuFile->addAction(actionOpen);
         menuFile->addAction(actionSave);
         menuFile->addAction(actionSave_As);
+        menuFile->addAction(actionSave_Vertices_Labels);
         menuFile->addSeparator();
         menuFile->addAction(actionExit);
         menuHelp->addAction(actionAbout);
@@ -163,6 +232,7 @@ public:
         menuTest->addAction(actionTest_Data);
         menuTest->addAction(actionTest_PointCloud);
         menuInference->addAction(actionStructure_Inference);
+        menuEdit->addAction(actionDownsample);
 
         retranslateUi(PointAnalysisClass);
 
@@ -189,12 +259,44 @@ public:
         actionStructure_Inference->setText(QApplication::translate("PointAnalysisClass", "Structure Inference", 0));
         actionDebug_Parts_Relations->setText(QApplication::translate("PointAnalysisClass", "Debug Parts Relations", 0));
         actionCheck_Models->setText(QApplication::translate("PointAnalysisClass", "Check Models", 0));
+        actionSave_Vertices_Labels->setText(QApplication::translate("PointAnalysisClass", "Save Vertices Labels", 0));
+        actionDownsample->setText(QApplication::translate("PointAnalysisClass", "Downsample", 0));
         mainProgressMessage->setText(QApplication::translate("PointAnalysisClass", "<html><head/><body><p align=\"right\"><br/></p></body></html>", 0));
+        symPlaneCheckBox->setText(QApplication::translate("PointAnalysisClass", "Draw symmetry planes", 0));
+        symAxisCheckBox->setText(QApplication::translate("PointAnalysisClass", "Draw symmetry axes", 0));
+        angleInput->setHtml(QApplication::translate("PointAnalysisClass", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
+"<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
+"p, li { white-space: pre-wrap; }\n"
+"</style></head><body style=\" font-family:'SimSun'; font-size:9pt; font-weight:400; font-style:normal;\">\n"
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">90</p></body></html>", 0));
+        label->setText(QApplication::translate("PointAnalysisClass", "Angle", 0));
+        label_2->setText(QApplication::translate("PointAnalysisClass", "Axis", 0));
+        xAxisInput->setHtml(QApplication::translate("PointAnalysisClass", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
+"<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
+"p, li { white-space: pre-wrap; }\n"
+"</style></head><body style=\" font-family:'SimSun'; font-size:9pt; font-weight:400; font-style:normal;\">\n"
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">1</p></body></html>", 0));
+        yAxisInput->setHtml(QApplication::translate("PointAnalysisClass", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
+"<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
+"p, li { white-space: pre-wrap; }\n"
+"</style></head><body style=\" font-family:'SimSun'; font-size:9pt; font-weight:400; font-style:normal;\">\n"
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">0</p></body></html>", 0));
+        zAxisInput->setHtml(QApplication::translate("PointAnalysisClass", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
+"<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
+"p, li { white-space: pre-wrap; }\n"
+"</style></head><body style=\" font-family:'SimSun'; font-size:9pt; font-weight:400; font-style:normal;\">\n"
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">0</p></body></html>", 0));
+        label_3->setText(QApplication::translate("PointAnalysisClass", ",", 0));
+        label_4->setText(QApplication::translate("PointAnalysisClass", ",", 0));
+        rotateButton->setText(QApplication::translate("PointAnalysisClass", "Rotate", 0));
+        drawOBBCheckBox->setText(QApplication::translate("PointAnalysisClass", "Draw oritend bounding boxes", 0));
+        drawOBBAxesCheckBox->setText(QApplication::translate("PointAnalysisClass", "Draw axes of OBBs", 0));
         menuFile->setTitle(QApplication::translate("PointAnalysisClass", "File", 0));
         menuHelp->setTitle(QApplication::translate("PointAnalysisClass", "Help", 0));
         menuFeature->setTitle(QApplication::translate("PointAnalysisClass", "Train", 0));
         menuTest->setTitle(QApplication::translate("PointAnalysisClass", "Test", 0));
         menuInference->setTitle(QApplication::translate("PointAnalysisClass", "Inference", 0));
+        menuEdit->setTitle(QApplication::translate("PointAnalysisClass", "Edit", 0));
     } // retranslateUi
 
 };

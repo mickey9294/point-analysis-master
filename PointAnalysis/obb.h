@@ -59,6 +59,7 @@ public:
 	QVector<Eigen::Vector3i> getFaces() const;
 	QVector<Eigen::Vector3f> getFacesNormals() const;
 	QVector<SamplePoint> getSamples() const;
+	bool isDrawAxes() const { return m_draw_axes; }
 	SamplePoint getSample(int index);
 	SamplePoint & getSampleReference(int index);
 	void setLabel(int label) { m_label = label; }
@@ -82,7 +83,9 @@ public:
 	void setCorners(std::array<Eigen::Vector3f, k_num_corners> new_corners);
 	void setScale(Eigen::Vector3d scale);
 	void setNumOfSamples(int num) { m_num_of_samples = num; }
+	void setDrawAxes(bool draw_axes) { m_draw_axes = draw_axes; }
 	void draw(float scale);
+	void drawCuboid(float scale);
 	void drawSamples(float scale);
 	void translate(float x, float y, float z);
 	void rotate(float angle, float x, float y, float z);
@@ -95,6 +98,7 @@ public:
 	QVector<Eigen::Vector3f>::iterator vertices_begin();
 	QVector<Eigen::Vector3f>::iterator vertices_end();
 	void normalize(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);  /* used to adjust the obb to have the consensus orientation in training process */
+	void normalize(Eigen::Vector3f centroid, double radius);
 	double getFaceArea(int face_index);
 	void updateCorners();
 	void writeToFile(std::ofstream &  out);
@@ -118,6 +122,8 @@ private:
 	QVector<Eigen::Vector3f> m_faces_normals;
 	QVector<SamplePoint> m_samples;
 	int m_num_of_samples;
+
+	bool m_draw_axes;
 
 	//void add(QVector3D v0, QVector3D v1, QVector3D v2, Eigen::Vector3f normal);
 	QVector3D eigen_vector3f_to_qvector3d(Eigen::Vector3f vec);

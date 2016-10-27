@@ -1,7 +1,7 @@
 ﻿#include "myglwidget.h"
 
 MyGLWidget::MyGLWidget(QWidget *parent)
-	: QOpenGLWidget(parent), m_parts_structure(NULL), show_parts_structure(false)
+	: QOpenGLWidget(parent), m_parts_structure(NULL), show_parts_structure(false), m_draw_obbs(true)
 {
 	m = 3;
 	m_model = new PCModel();
@@ -34,12 +34,13 @@ void MyGLWidget::setModel(Model *model)
 		connect((MeshPcModel *)m_model, SIGNAL(onLabelsChanged()), this, SLOT(updateLabels()));
 
 	/* Clear the current oriented bounding boxes */
-	for (int i = 0; i < m_OBBs.size(); i++)
+	/*for (int i = 0; i < m_OBBs.size(); i++)
 	{
 		delete(m_OBBs[i]);
 		m_OBBs.remove(i);
-	}
-	m_OBBs.clear();
+	}*/
+	
+	//m_OBBs.clear();
 
 	delete(temp);
 	temp = NULL;
@@ -95,7 +96,7 @@ void MyGLWidget::init_light()
 	glEnable(GL_LIGHT4);
 	//glEnable(GL_LIGHT5);
 	//glEnable(GL_LIGHT6);
-	//glEnable(GL_LIGHT7);
+	glEnable(GL_LIGHT7);
 }
 
 void MyGLWidget::paintGL()
@@ -154,12 +155,15 @@ void MyGLWidget::draw()
 		}
 
 		/* Draw the oriented bounding boxes of the parts */
-		for (QVector<OBB *>::iterator obb_it = m_OBBs.begin(); obb_it != m_OBBs.end(); ++obb_it)
+		if (m_draw_obbs)
 		{
-			OBB *obb = *obb_it;
-			/* Draw the oriented box */
-			obb->draw(m);
-			//obb->drawSamples(m);
+			for (QVector<OBB *>::iterator obb_it = m_OBBs.begin(); obb_it != m_OBBs.end(); ++obb_it)
+			{
+				OBB *obb = *obb_it;
+				/* Draw the oriented box */
+				obb->draw(m);
+				//obb->drawSamples(m);
+			}
 		}
 	}
 	else if (m_parts_structure != NULL)
@@ -264,7 +268,7 @@ void MyGLWidget::setOBBs(QVector<OBB *> obbs)
 
 	/* Delete all the OBB in current m_OBBs */
 	for (int i = 0; i < m_OBBs.size(); i++)
-	{
+	{ 
 		delete(m_OBBs[i]);
 		m_OBBs.remove(i);
 	}
@@ -277,6 +281,8 @@ void MyGLWidget::setOBBs(QVector<OBB *> obbs)
 
 	//m_parts_structure.clear();
 	show_parts_structure = false;
+
+	std::cout << "Now m_OBBs have " << m_OBBs.size() << " OBBs." << std::endl;
 
 	update();
 	std::cout << "Set OBBs done." << std::endl;
@@ -291,15 +297,16 @@ void MyGLWidget::updateLabels()
 {
 	emit addDebugText("Update the labels of points in GLWidget.");
 	/* Clear all oriented boxes first */
-	for (QVector<OBB *>::iterator obb_it = m_OBBs.begin(); obb_it != m_OBBs.end(); ++obb_it)
+	/*for (QVector<OBB *>::iterator obb_it = m_OBBs.begin(); obb_it != m_OBBs.end(); ++obb_it)
 	{
 		if (*obb_it != NULL)
 		{
 			delete(*obb_it);
 			*obb_it = NULL;
 		}
-	}
-	m_OBBs.clear();
+	}*/
+	
+	//m_OBBs.clear();
 
 	update();
 }
@@ -382,4 +389,57 @@ void MyGLWidget::setPartsStructure(Parts_Structure_Pointer parts_structure)
 
 	//update();
 	cout << "Set done." << endl;
+}
+
+void MyGLWidget::setDrawSymmetryPlanes(int state)
+{
+	if (m_model != NULL && m_model->getType() == Model::ModelType::PointCloud)
+		((PCModel *)m_model)->setDrawSymmetryPlanes(state);
+	update();
+}
+
+void MyGLWidget::setDrawSymmetryAxes(int state)
+{
+	if (m_model != NULL && m_model->getType() == Model::ModelType::PointCloud)
+	{
+		((PCModel *)m_model)->setDrawSymmetryAxes(state);
+
+		update();
+	}
+}
+
+void MyGLWidget::rotateModel(float angle, float x, float y, float z)
+{
+	if (m_model != NULL)
+	{
+		m_model->rotate(angle, x, y, z);
+		update();
+	}
+}
+
+void MyGLWidget::setDrawOBBs(int state)
+{
+	if (state == Qt::Unchecked)
+		m_draw_obbs = false;
+	else if (state == Qt::Checked)
+		m_draw_obbs = true;
+
+	update();
+}
+
+void MyGLWidget::setDrawOBBsAxes(int state)
+{
+	bool draw_obbs_axes;
+	if (state == Qt::Unchecked)
+		draw_obbs_axes = false;
+	else if (state == Qt::Checked)
+		draw_obbs_axes = true;
+
+	for (QVector<OBB *>::iterator obb_it = m_OBBs.begin(); obb_it != m_OBBs.end(); ++obb_it)
+	{
+		if (*obb_it != NULL)
+			(*obb_it)->setDrawAxes(draw_obbs_axes);
+	}
+
+	update();
 }

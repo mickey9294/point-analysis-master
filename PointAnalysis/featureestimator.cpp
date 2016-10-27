@@ -51,6 +51,7 @@ FeatureEstimator::FeatureEstimator(Model *model, PHASE phase, QObject *parent)
 	{
 		std::cout << "5" << std::endl;
 		PCModel *pc = (PCModel *)model;
+		pc->rotate(-90, 1.0, 0, 0);
 		m_pointcloud = new PAPointCloud(pc->vertexCount());
 		std::cout << "6" << std::endl;
 		int vertex_idx = 0;

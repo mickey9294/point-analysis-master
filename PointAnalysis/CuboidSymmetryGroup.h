@@ -152,6 +152,7 @@ public:
 		const std::vector<PAPart *>& _cuboids);
 	virtual ~CuboidRotationSymmetryGroup();
 
+	CuboidRotationSymmetryGroup(const CuboidSymmetryGroupInfo &_info, const Eigen::Vector3f &n, const Eigen::Vector3f &t);
 	CuboidRotationSymmetryGroup(const CuboidSymmetryGroupInfo &_info);
 	CuboidRotationSymmetryGroup(const CuboidRotationSymmetryGroup &_other);
 

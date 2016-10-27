@@ -189,6 +189,9 @@ _Pvt_Extensions/
 ModelManifest.xml
 *.txt
 *.csv
+*.ply
 *.off
 *.sdff
 *.model
+*.arff
+*.pts

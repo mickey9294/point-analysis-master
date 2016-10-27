@@ -10,6 +10,7 @@
 #include "meshmodel.h"
 #include "meshpcmodel.h"
 #include "utils.h"
+#include "obb.h"
 
 class LoadThread : public QThread
 {
@@ -26,6 +27,7 @@ public:
 
 signals:
 	void loadPointsCompleted(Model *model);
+	void sendOBBs(QVector<OBB *> obbs);
 	void computeFeaturesCompleted();
 	void reportStatus(QString stat);
 	void addDebugText(QString text);
@@ -39,6 +41,7 @@ private:
 	int m_gap_time;
 
 	void loadPointCloud();
+	void loadOBBs(const char *file_path, QVector<OBB *> & obbs);
 };
 
 #endif // LOADTHREAD_H

@@ -425,7 +425,7 @@ void StructureAnalyser::predict()
 	generateCandidates(distribution, part_candidates, point_cluster_map);
 
 	m_iteration = 0;
-	while (true)
+	while (false)
 	{
 		QMap<int, int> parts_picked;
 		std::vector<int> candidate_labels;

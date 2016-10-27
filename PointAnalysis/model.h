@@ -51,6 +51,9 @@ public:
 	virtual int numOfClasses() = 0;
 	virtual double getRadius() const = 0;
 	virtual void setLabels(QVector<int> labels);
+	virtual void normalize();
+	virtual void outputVerticesLabels(const char *file_path);
+	virtual void downSample();
 
 protected:
 	ModelType m_type;

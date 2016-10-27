@@ -61,6 +61,9 @@ public:
 	void debugPartRelations();
 	void checkModels();
 	void checkModelsDone();
+	void saveVerticesLabels();
+	void downSample();
+	void rotateModel();
 
 private:
 	Ui::PointAnalysisClass ui;

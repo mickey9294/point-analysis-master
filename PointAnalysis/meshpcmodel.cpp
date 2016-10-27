@@ -17,11 +17,6 @@ MeshPcModel::MeshPcModel(const char * file_path, QObject *parent)
 	m_input_filepath = file_path;
 	load_from_file(file_path);
 	samplePoints();
-
-	rotate(90, 1, 0, 0);
-	std::string model_name = Utils::getModelName(m_input_filepath);
-	std::string output_path = "../data/points/" + model_name + ".pts";
-	output(output_path.c_str());
 }
 
 MeshPcModel::MeshPcModel(std::string file_path, QObject *parent)
@@ -30,11 +25,6 @@ MeshPcModel::MeshPcModel(std::string file_path, QObject *parent)
 	m_input_filepath = file_path;
 	load_from_file(file_path.c_str());
 	samplePoints();
-
-	rotate(90, 1, 0, 0);
-	std::string model_name = Utils::getModelName(m_input_filepath);
-	std::string output_path = "../data/points/" + model_name + ".pts";
-	output(output_path.c_str());
 }
 
 MeshPcModel::MeshPcModel(const MeshPcModel &other)
@@ -116,13 +106,28 @@ void MeshPcModel::output(const char * file_path)
 	std::ofstream out(file_path);
 	if (out.is_open())
 	{
-		for (QVector<SamplePoint>::iterator sample_it = m_samples.begin(); sample_it != m_samples.end(); ++sample_it)
+		QString q_file_path(file_path);
+		QString format = q_file_path.section('.', -1, -1);
+
+		if (format == "pts" || format == "PTS")
 		{
-			Vector3f bary = sample_it->getBary();
-			Vector3f point = sample_it->getVertex();
-			out << sample_it->getFaceIndex() << " "
-				<< bary[0] << " " << bary[1] << " " << bary[2] << " "
-				<< point[0] << " " << point[1] << " " << point[2] << endl;
+			for (QVector<SamplePoint>::iterator sample_it = m_samples.begin(); sample_it != m_samples.end(); ++sample_it)
+			{
+				Vector3f bary = sample_it->getBary();
+				Vector3f point = sample_it->getVertex();
+				out << sample_it->getFaceIndex() << " "
+					<< bary[0] << " " << bary[1] << " " << bary[2] << " "
+					<< point[0] << " " << point[1] << " " << point[2] << endl;
+			}
+		}
+		else if (format == "off" || format == "OFF")
+		{
+			out << "OFF" << std::endl;
+			out << m_samples.size() << " 0 0" << std::endl;
+			for (QVector<SamplePoint>::iterator sample_it = m_samples.begin(); sample_it != m_samples.end(); ++sample_it)
+			{
+				out << sample_it->x() << " " << sample_it->y() << " " << sample_it->z() << std::endl;
+			}
 		}
 
 		out.close();
@@ -195,8 +200,16 @@ void MeshPcModel::load_from_file(const char *file_path)
 			Miniball::Coordinate_iterator center_it = mb.center_begin();
 			Vector3f center(center_it[0], center_it[1], center_it[2]);
 
-			m_centroid = center;
-			m_radius = rad;
+			//m_centroid = center;
+			//m_radius = rad;
+
+			for (QVector<Eigen::Vector3f>::iterator vert_it = m_vertices_list.begin(); vert_it != m_vertices_list.end(); ++vert_it)
+			{
+				vert_it->operator-=(center);
+				vert_it->operator/=(rad);
+			}
+			m_centroid.setZero();
+			m_radius = 1.0;
 
 			/* Read faces(triangle face) and compute normals of faces */
 			QVector<QList<int>> vertex_faces_list(nvertices);   /* The i-th component is a list of the faces which contain the i-th vertex */
@@ -259,9 +272,58 @@ int MeshPcModel::sampleCount() const
 
 void MeshPcModel::samplePoints()
 {
-	createRandom(6000);
-	m_samples_labels.resize(m_samples.size());
-	m_samples_labels.fill(-1);
+	std::string model_name = Utils::getModelName(m_input_filepath);
+	std::string pts_path = "../data/points/" + model_name + ".pts";
+	std::ifstream pts_in(pts_path.c_str());
+	if (pts_in.is_open())
+	{
+		std::cout << "Load sample points from " << pts_path << std::endl;
+		char buffer[128];
+		m_samples.clear();
+
+		while (!pts_in.eof())
+		{
+			pts_in.getline(buffer, 128);
+
+			if (strlen(buffer) > 0)
+			{
+				QStringList line_list = QString(buffer).split(' ');
+
+				QStringList::iterator line_it = line_list.begin();
+				 
+				int face_index = line_it->toInt();
+				line_it++;
+
+				Eigen::Vector3f bary_coord;
+				for (int i = 0; i < 3 && line_it != line_list.end(); i++, line_it++)
+					bary_coord[i] = line_it->toFloat();
+
+				Eigen::Vector3f position;
+				for (int i = 0; i < 3 && line_it != line_list.end(); i++, line_it++)
+					position[i] = line_it->toFloat();
+
+				SamplePoint sample_point(position, Vector3f::Zero(), bary_coord);
+				m_samples.push_back(sample_point);
+			}
+		}
+
+		m_samples.squeeze();
+		m_samples_labels.resize(m_samples.size());
+		m_samples_labels.fill(10);
+		pts_in.close();
+	}
+	else
+	{
+		const int nsamples = 5000;
+		std::cout << "Sample " << nsamples << " points on the mesh." << std::endl;
+		createRandom(nsamples);
+		m_samples_labels.resize(m_samples.size());
+		m_samples_labels.fill(-1);
+
+		//rotate(90, 1, 0, 0);
+		std::string output_path = "../data/points/" + model_name + ".pts";
+		output(output_path.c_str());
+	}
 }
 
 double MeshPcModel::TriangleArea(const Eigen::Vector3f &pA, const Eigen::Vector3f &pB, const Eigen::Vector3f &pC)

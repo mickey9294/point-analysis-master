@@ -34,6 +34,7 @@ const int k_num_attributes = 24;
 const int min_num_symmetric_point_pairs = 50;
 const int param_min_num_cuboid_sample_points = 10;
 const int param_max_inference_iteration = 20;
+const int default_null_label = 8;
 
 const bool optimize_individual_reflection_symmetry_group = true;
 const bool disable_per_point_classifier_terms = false;

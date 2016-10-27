@@ -30,7 +30,7 @@ MeshModel::MeshModel(const char *file_path)
 {
 	m_input_filepath = std::string(file_path);
 	load_from_file(file_path);
-	rotate(90, 1.0, 0.0, 0.0);
+	//rotate(90, 1.0, 0.0, 0.0);
 	if (faceCount() > 0 && vertexCount() > 0)
 		samplePoints();
 }
@@ -40,7 +40,7 @@ MeshModel::MeshModel(std::string file_path)
 {
 	m_input_filepath = file_path;
 	load_from_file(file_path.c_str());
-	rotate(90, 1.0, 0.0, 0.0);
+	//rotate(90, 1.0, 0.0, 0.0);
 	if (faceCount() > 0 && vertexCount() > 0)
 		samplePoints();
 }
@@ -102,139 +102,147 @@ void MeshModel::load_from_file(const char *file_path)
 		/* Load the vertices and triangle faces from .off file */
 		char buffer[128];
 
-		mesh_in.getline(buffer, 128);
-		if (strcmp(buffer, "OFF") == 0)
+		QString q_file_path(file_path);
+		QString format = q_file_path.section('.', -1, -1);
+
+		if (format == "off" || format == "OFF")
 		{
 			mesh_in.getline(buffer, 128);
-			QString nums_str(buffer);
-			int nvertices = nums_str.section(' ', 0, 0).toInt();
-			int nfaces = nums_str.section(' ', 1, 1).toInt();
-
-			assert(nvertices > 0);
-
-			m_vertices_list.resize(nvertices);
-			m_vertices_normals.resize(nvertices);
-			m_faces_list.resize(nfaces);
-			m_faces_normals.resize(nfaces);
-
-			/* Data structure for computing the minimal bounding sphere */
-			const int dimen = 3;
-			PointVector S;
-			vector<double> coords(dimen);
-
-			/* Read vertices to the points container for bounding sphere computation */
-			for (int i = 0; i < nvertices; i++)
+			if (strcmp(buffer, "OFF") == 0)
 			{
 				mesh_in.getline(buffer, 128);
-				QStringList vertex_str = QString(buffer).split(' ');
-				float x = vertex_str[0].toFloat();
-				float y = vertex_str[1].toFloat();
-				float z = vertex_str[2].toFloat();
+				QString nums_str(buffer);
+				int nvertices = nums_str.section(' ', 0, 0).toInt();
+				int nfaces = nums_str.section(' ', 1, 1).toInt();
 
-				coords[0] = x;
-				coords[1] = y;
-				coords[2] = z;
+				assert(nvertices > 0);
 
-				S.push_back(MiniPoint(3, coords.begin()));
-			}
+				m_vertices_list.resize(nvertices);
+				m_vertices_normals.resize(nvertices);
+				m_faces_list.resize(nfaces);
+				m_faces_normals.resize(nfaces);
 
-			/* Compute the Miniball of the mesh */
-			Miniball mb(dimen, S);
-			double rad = mb.radius();
-			Miniball::Coordinate_iterator center_it = mb.center_begin();
-			Vector3f center(center_it[0], center_it[1], center_it[2]);
-			
-			/* Normalize the vertices using the minmal bounding sphere */
-			int vertex_idx = 0;
-			for (PointVector::iterator point_it = S.begin(); point_it != S.end(); ++point_it)
-			{
-				Vector3f vertex(point_it->operator[](0), point_it->operator[](1), point_it->operator[](2));
-				vertex -= center;
-				vertex /= rad;
-				m_vertices_list[vertex_idx++] = vertex;
-			}
+				/* Data structure for computing the minimal bounding sphere */
+				const int dimen = 3;
+				PointVector S;
+				vector<double> coords(dimen);
 
-			m_centroid.setZero();
-			m_radius = 1.0;
-
-			/* Read faces(triangle face) and compute normals of faces */
-			QVector<QList<int>> vertex_faces_list(nvertices);   /* The i-th component is a list of the faces which contain the i-th vertex */
-			for (int i = 0; i < nfaces; i++)
-			{
-				mesh_in.getline(buffer, 128);
-				QStringList face_str = QString(buffer).split(' ');
-				int v0 = face_str[1].toInt();
-				int v1 = face_str[2].toInt();
-				int v2 = face_str[3].toInt();
-
-				m_faces_list[i] = Vector3i(v0, v1, v2);
-
-				/* Compute the normal of the triangle face */
-				Vector3f vertex0 = m_vertices_list[v0];
-				Vector3f vertex1 = m_vertices_list[v1];
-				Vector3f vertex2 = m_vertices_list[v2];
-				Vector3f vec0 = vertex0 - vertex1;
-				Vector3f vec1 = vertex2 - vertex1;
-				Vector3f normal = vec0.cross(vec1);
-				normal.normalize();
-				m_faces_normals[i] = normal;
-
-				/* Add the face to the faces list of corresponding vertices */
-				vertex_faces_list[v0].push_back(i);
-				vertex_faces_list[v1].push_back(i);
-				vertex_faces_list[v2].push_back(i);
-			}
-
-			/* Compute the normals of vertices by computing the average of normals of faces which contain this vertex */
-			vertex_idx = 0;
-			for (QVector<QList<int>>::iterator faces_list_it = vertex_faces_list.begin(); faces_list_it != vertex_faces_list.end(); ++faces_list_it)
-			{
-				Vector3f normal = Vector3f::Zero();
-				for (QList<int>::iterator face_it = faces_list_it->begin(); face_it != faces_list_it->end(); ++face_it)
-					normal += m_faces_normals[*face_it];
-
-				normal.normalize();
-				m_vertices_normals[vertex_idx++] = normal;
-			}
-
-			/* Load labels from .seg file */
-			m_vertices_labels.resize(nvertices);
-			m_faces_labels.resize(nfaces);
-			QSet<int> labels_set;
-
-			std::string seg_file_path = Utils::getSegFilename(file_path);
-			ifstream seg_in(seg_file_path.c_str());
-			if (seg_in.is_open())
-			{
-				char buffer[8];
-
-				for (int i = 0; i < nfaces; i++)
+				/* Read vertices to the points container for bounding sphere computation */
+				for (int i = 0; i < nvertices; i++)
 				{
-					seg_in.getline(buffer, 8);
-					int label = atoi(buffer);
-					Vector3i face = m_faces_list[i];
+					mesh_in.getline(buffer, 128);
+					QStringList vertex_str = QString(buffer).split(' ');
+					float x = vertex_str[0].toFloat();
+					float y = vertex_str[1].toFloat();
+					float z = vertex_str[2].toFloat();
 
-					m_faces_labels[i] = label;
+					coords[0] = x;
+					coords[1] = y;
+					coords[2] = z;
 
-					m_vertices_labels[face.x()] = label;
-					m_vertices_labels[face.y()] = label;
-					m_vertices_labels[face.z()] = label;
-
-					if (!labels_set.contains(label))
-						labels_set.insert(label);
+					S.push_back(MiniPoint(3, coords.begin()));
 				}
 
-				/* Generate m_label_names from labels_set */
-				m_label_names.resize(labels_set.size());
-				int label_idx = 0;
-				for (QSet<int>::iterator label_it = labels_set.begin(); label_it != labels_set.end(); ++label_it)
-					m_label_names[label_idx++] = *label_it;
-				/* Sort m_label_names to ascending order */
-				qSort(m_label_names.begin(), m_label_names.end());
+				/* Compute the Miniball of the mesh */
+				Miniball mb(dimen, S);
+				double rad = mb.radius();
+				Miniball::Coordinate_iterator center_it = mb.center_begin();
+				Vector3f center(center_it[0], center_it[1], center_it[2]);
 
-				seg_in.close();
+				/* Normalize the vertices using the minmal bounding sphere */
+				int vertex_idx = 0;
+				for (PointVector::iterator point_it = S.begin(); point_it != S.end(); ++point_it)
+				{
+					Vector3f vertex(point_it->operator[](0), point_it->operator[](1), point_it->operator[](2));
+					vertex -= center;
+					vertex /= rad;
+					m_vertices_list[vertex_idx++] = vertex;
+				}
+
+				m_centroid.setZero();
+				m_radius = 1.0;
+
+				/* Read faces(triangle face) and compute normals of faces */
+				QVector<QList<int>> vertex_faces_list(nvertices);   /* The i-th component is a list of the faces which contain the i-th vertex */
+				for (int i = 0; i < nfaces; i++)
+				{
+					mesh_in.getline(buffer, 128);
+					QStringList face_str = QString(buffer).split(' ');
+					int v0 = face_str[1].toInt();
+					int v1 = face_str[2].toInt();
+					int v2 = face_str[3].toInt();
+
+					m_faces_list[i] = Vector3i(v0, v1, v2);
+
+					/* Compute the normal of the triangle face */
+					Vector3f vertex0 = m_vertices_list[v0];
+					Vector3f vertex1 = m_vertices_list[v1];
+					Vector3f vertex2 = m_vertices_list[v2];
+					Vector3f vec0 = vertex0 - vertex1;
+					Vector3f vec1 = vertex2 - vertex1;
+					Vector3f normal = vec0.cross(vec1);
+					normal.normalize();
+					m_faces_normals[i] = normal;
+
+					/* Add the face to the faces list of corresponding vertices */
+					vertex_faces_list[v0].push_back(i);
+					vertex_faces_list[v1].push_back(i);
+					vertex_faces_list[v2].push_back(i);
+				}
+
+				/* Compute the normals of vertices by computing the average of normals of faces which contain this vertex */
+				vertex_idx = 0;
+				for (QVector<QList<int>>::iterator faces_list_it = vertex_faces_list.begin(); faces_list_it != vertex_faces_list.end(); ++faces_list_it)
+				{
+					Vector3f normal = Vector3f::Zero();
+					for (QList<int>::iterator face_it = faces_list_it->begin(); face_it != faces_list_it->end(); ++face_it)
+						normal += m_faces_normals[*face_it];
+
+					normal.normalize();
+					m_vertices_normals[vertex_idx++] = normal;
+				}
+
+				/* Load labels from .seg file */
+				m_vertices_labels.resize(nvertices);
+				m_faces_labels.resize(nfaces);
+				QSet<int> labels_set;
+
+				std::string seg_file_path = Utils::getSegFilename(file_path);
+				ifstream seg_in(seg_file_path.c_str());
+				if (seg_in.is_open())
+				{
+					char buffer[8];
+
+					for (int i = 0; i < nfaces; i++)
+					{
+						seg_in.getline(buffer, 8);
+						int label = atoi(buffer);
+						Vector3i face = m_faces_list[i];
+
+						m_faces_labels[i] = label;
+
+						m_vertices_labels[face.x()] = label;
+						m_vertices_labels[face.y()] = label;
+						m_vertices_labels[face.z()] = label;
+
+						if (!labels_set.contains(label))
+							labels_set.insert(label);
+					}
+
+					/* Generate m_label_names from labels_set */
+					m_label_names.resize(labels_set.size());
+					int label_idx = 0;
+					for (QSet<int>::iterator label_it = labels_set.begin(); label_it != labels_set.end(); ++label_it)
+						m_label_names[label_idx++] = *label_it;
+					/* Sort m_label_names to ascending order */
+					qSort(m_label_names.begin(), m_label_names.end());
+
+					seg_in.close();
+				}
 			}
+			
 		}
+
 		mesh_in.close();
 	}
 }

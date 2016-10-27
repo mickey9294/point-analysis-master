@@ -33,6 +33,13 @@ PointAnalysis::PointAnalysis(QWidget *parent)
 	connect(&m_analyser, SIGNAL(sendPartsStructure(Parts_Structure_Pointer)), ui.displayGLWidget, SLOT(setPartsStructure(Parts_Structure_Pointer)));
 	connect(ui.actionDebug_Parts_Relations, SIGNAL(triggered()), this, SLOT(debugPartRelations()));
 	connect(ui.actionCheck_Models, SIGNAL(triggered()), this, SLOT(checkModels()));
+	connect(ui.actionSave_Vertices_Labels, SIGNAL(triggered()), this, SLOT(saveVerticesLabels()));
+	connect(ui.actionDownsample, SIGNAL(triggered()), this, SLOT(downSample()));
+	connect(ui.symPlaneCheckBox, SIGNAL(stateChanged(int)), ui.displayGLWidget, SLOT(setDrawSymmetryPlanes(int)));
+	connect(ui.symAxisCheckBox, SIGNAL(stateChanged(int)), ui.displayGLWidget, SLOT(setDrawSymmetryAxes(int)));
+	connect(ui.rotateButton, SIGNAL(clicked()), this, SLOT(rotateModel()));
+	connect(ui.drawOBBCheckBox, SIGNAL(stateChanged(int)), ui.displayGLWidget, SLOT(setDrawOBBs(int)));
+	connect(ui.drawOBBAxesCheckBox, SIGNAL(stateChanged(int)), ui.displayGLWidget, SLOT(setDrawOBBsAxes(int)));
 
 	fe = NULL;
 	trainThread = NULL;
@@ -65,9 +72,9 @@ void PointAnalysis::load()
 	}
 
 	/* User choose a model file by FileDialog */
-	QString filepath = QFileDialog::getOpenFileName(this, tr("Load"), 
-		"../../Data/LabeledDB/Chair", 
-		tr("Object File Format (*.off);;XYZ Point Cloud (*.xyz)"));
+	QString filepath = QFileDialog::getOpenFileName(this, tr("Load"),
+		"../../Data/LabeledDB/Chair",
+		tr("Object File Format (*.off);;XYZ Point Cloud (*.xyz);;Stanford Polygon File Format (*.ply)"));
 
 	if (filepath.length() > 0){    /* If the user choose a valid model file path */
 		filename = Utils::getModelName(filepath).toStdString();
@@ -79,6 +86,7 @@ void PointAnalysis::load()
 		/* Start LoadThread to load the model */
 		loadThread = new LoadThread(filepath.toStdString(), PHASE::TESTING, this);
 		connect(loadThread, SIGNAL(loadPointsCompleted(Model *)), this, SLOT(loadCompleted(Model *)));
+		connect(loadThread, SIGNAL(sendOBBs(QVector<OBB *>)), ui.displayGLWidget, SLOT(setOBBs(QVector<OBB *>)));
 		loadThread->start();
 	}
 }
@@ -117,7 +125,7 @@ void PointAnalysis::saveModel()
 
 	QString fileName = QFileDialog::getSaveFileName(this, tr("Save File"),
 		"../../Data",
-		tr("Object File Format (*.off);;Stanford Polygon File Format (*.ply"));
+		tr("Object File Format (*.off);;Stanford Polygon File Format (*.ply);;Sample Points File Format (*.pts)"));
 	
 	Model *model = ui.displayGLWidget->getModel();
 	if (model->getType() == Model::ModelType::Mesh)
@@ -412,4 +420,31 @@ void PointAnalysis::checkModelsDone()
 	{
 		delete(checkModelsThread);
 	}
+}
+
+void PointAnalysis::saveVerticesLabels()
+{
+	QString fileName = QFileDialog::getSaveFileName(this, tr("Save Segmentation File"),
+		"../../shape2pose/data/1_input/coseg_chairs/gt/",
+		tr("Segmentation File Format (*.seg)"));
+
+	if (fileName.length() > 0)
+	{
+		ui.displayGLWidget->getModel()->outputVerticesLabels(fileName.toStdString().c_str());
+	}
+}
+
+void PointAnalysis::downSample()
+{
+	ui.displayGLWidget->getModel()->downSample();
+}
+
+void PointAnalysis::rotateModel()
+{
+	float angle = ui.angleInput->toPlainText().toFloat();
+	float x = ui.xAxisInput->toPlainText().toFloat();
+	float y = ui.yAxisInput->toPlainText().toFloat();
+	float z = ui.zAxisInput->toPlainText().toFloat();
+
+	ui.displayGLWidget->rotateModel(angle, x, y, z);
 }

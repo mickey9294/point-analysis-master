@@ -3,7 +3,7 @@
 using namespace Eigen;
 
 OBB::OBB(QObject *parent)
-	: QObject(parent)
+	: QObject(parent), m_draw_axes(true)
 {
 	x_axis = Vector3f(1.0, 0, 0);
 	y_axis = Vector3f(0, 1.0, 0);
@@ -17,7 +17,7 @@ OBB::OBB(QObject *parent)
 
 OBB::OBB(Eigen::Vector3f xAxis, Eigen::Vector3f yAxis, Eigen::Vector3f zAxis, Eigen::Vector3f centroid,
 	double xLength, double yLength, double zLength, int label, QObject *parent)
-	: QObject(parent)
+	: QObject(parent), m_draw_axes(true)
 {
 	x_axis = xAxis;
 	y_axis = yAxis;
@@ -67,6 +67,7 @@ OBB::OBB(const OBB &obb)
 	m_faces_normals = obb.getFacesNormals();
 	m_samples = obb.getSamples();
 	m_num_of_samples = obb.getNumOfSamples();
+	m_draw_axes = obb.isDrawAxes();
 }
 
 OBB::OBB(const OBB * obb)
@@ -86,9 +87,11 @@ OBB::OBB(const OBB * obb)
 	m_faces_normals = obb->getFacesNormals();
 	m_samples = obb->getSamples();
 	m_num_of_samples = obb->getNumOfSamples();
+	m_draw_axes = obb->isDrawAxes();
 }
 
 OBB::OBB(std::ifstream & in)
+	: m_draw_axes(true)
 {
 	char buffer[256];
 	/* Laod the axes */
@@ -730,8 +733,9 @@ void OBB::draw(float scale)
 	if (m_vertices.size() < 3)
 		triangulate();
 
-	glColor4f(COLORS[m_label][0], COLORS[m_label][1], COLORS[m_label][2], 1.0);
-	/*glBegin(GL_TRIANGLES);
+	glColor4f(COLORS[m_label][0], COLORS[m_label][1], COLORS[m_label][2], 0.3);
+	
+	glBegin(GL_TRIANGLES);
 	assert(m_faces.size() == m_faces_normals.size());
 	QVector<Vector3i>::iterator face_it;
 	QVector<Vector3f>::iterator normal_it;
@@ -747,8 +751,10 @@ void OBB::draw(float scale)
 		glVertex3f(scale * v1.x(), scale * v1.y(), scale * v1.z());
 		glVertex3f(scale * v2.x(), scale * v2.y(), scale * v2.z());
 	}
-	glEnd();*/
-	glLineWidth(2.0);
+	glEnd();
+
+	glColor4f(0, 0, 0, 1);
+	glLineWidth(3.0);
 	glBegin(GL_LINES);
 	drawLine(0, 1, scale);
 	drawLine(1, 5, scale);
@@ -766,28 +772,36 @@ void OBB::draw(float scale)
 
 
 	/* Draw the local system axes */
-	/* draw x axis */
-	glColor4f(COLORS[0][0], COLORS[0][1], COLORS[0][2], 1.0);
-	glLineWidth(1.0);
-	glBegin(GL_LINES);
-	glVertex3f(scale * m_centroid.x(), scale * m_centroid.y(), scale * m_centroid.z());
-	Vector3f x_end = m_centroid + x_axis;
-	glVertex3f(scale * x_end.x(), scale * x_end.y(), scale * x_end.z());
-	glEnd();
-	/* draw y axis */
-	glColor4f(COLORS[1][0], COLORS[1][1], COLORS[1][2], 1.0);
-	glBegin(GL_LINES);
-	glVertex3f(scale * m_centroid.x(), scale * m_centroid.y(), scale * m_centroid.z());
-	Vector3f y_end = m_centroid + y_axis;
-	glVertex3f(scale * y_end.x(), scale * y_end.y(), scale * y_end.z());
-	glEnd();
-	/* draw z axis */
-	glColor4f(COLORS[2][0], COLORS[2][1], COLORS[2][2], 1.0);
-	glBegin(GL_LINES);
-	glVertex3f(scale * m_centroid.x(), scale * m_centroid.y(), scale * m_centroid.z());
-	Vector3f z_end = m_centroid + z_axis;
-	glVertex3f(scale * z_end.x(), scale * z_end.y(), scale * z_end.z());
-	glEnd();
+	if (m_draw_axes)
+	{
+		/* draw x axis */
+		glColor4f(COLORS[0][0], COLORS[0][1], COLORS[0][2], 1.0);
+		glLineWidth(2.5);
+		glBegin(GL_LINES);
+		glVertex3f(scale * m_centroid.x(), scale * m_centroid.y(), scale * m_centroid.z());
+		Vector3f x_end = m_centroid + 0.5 * x_axis;
+		glVertex3f(scale * x_end.x(), scale * x_end.y(), scale * x_end.z());
+		glEnd();
+		/* draw y axis */
+		glColor4f(COLORS[1][0], COLORS[1][1], COLORS[1][2], 1.0);
+		glBegin(GL_LINES);
+		glVertex3f(scale * m_centroid.x(), scale * m_centroid.y(), scale * m_centroid.z());
+		Vector3f y_end = m_centroid + 0.5 * y_axis;
+		glVertex3f(scale * y_end.x(), scale * y_end.y(), scale * y_end.z());
+		glEnd();
+		/* draw z axis */
+		glColor4f(COLORS[2][0], COLORS[2][1], COLORS[2][2], 1.0);
+		glBegin(GL_LINES);
+		glVertex3f(scale * m_centroid.x(), scale * m_centroid.y(), scale * m_centroid.z());
+		Vector3f z_end = m_centroid + 0.5 * z_axis;
+		glVertex3f(scale * z_end.x(), scale * z_end.y(), scale * z_end.z());
+		glEnd();
+	}
+}
+
+void OBB::drawCuboid(float scale)
+{
+
 }
 
 void OBB::drawSamples(float scale)
@@ -1164,6 +1178,31 @@ void OBB::normalize(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud)
 
 	Vector3f local_centroid((max[0] + min[0]) / 2.0, (max[1] + min[1]) / 2.0, (max[2] + min[2]) / 2.0);
 	m_centroid = local_axes_mat * local_centroid;
+
+	triangulate();
+}
+
+void OBB::normalize(Eigen::Vector3f centroid, double radius)
+{
+	assert(radius > 0);
+	//for (QVector<Eigen::Vector3f>::iterator corner_it = m_vertices.begin(); corner_it != m_vertices.end(); ++corner_it)
+	//{
+	//	*corner_it = *corner_it - centroid;
+	//	*corner_it = *corner_it / radius;
+	//}
+
+	for (QVector<SamplePoint>::iterator sample_it = m_samples.begin(); sample_it != m_samples.end(); ++sample_it)
+	{
+		sample_it->setVertex(sample_it->getVertex() - centroid);
+		sample_it->setVertex(sample_it->getVertex() / radius);
+	}
+
+	m_centroid -= centroid;
+	m_centroid /= radius;
+
+	x_length /= radius;
+	y_length /= radius;
+	z_length /= radius;
 
 	triangulate();
 }

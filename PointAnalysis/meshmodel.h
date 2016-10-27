@@ -54,6 +54,9 @@ public:
 	void rotate(float angle, float x, float y, float z);
 	void output(const char *file_path);
 	int numOfClasses();
+
+	void normalize();
+
 	QVector<Eigen::Vector3f>::iterator vertices_begin() { return m_vertices_list.begin(); }
 	QVector<Eigen::Vector3f>::iterator vertices_end() { return m_vertices_list.end(); }
 	QVector<Eigen::Vector3f>::iterator vertices_normals_begin() { return m_vertices_normals.begin(); }
@@ -80,8 +83,6 @@ private:
 	double m_radius;
 
 	void load_from_file(const char * file_path);
-	void normalize();
-	
 };
 
 #endif // MESHMODEL_H
