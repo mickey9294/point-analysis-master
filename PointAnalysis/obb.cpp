@@ -734,41 +734,20 @@ void OBB::draw(float scale)
 		triangulate();
 
 	glColor4f(COLORS[m_label][0], COLORS[m_label][1], COLORS[m_label][2], 0.3);
-	
-	glBegin(GL_TRIANGLES);
-	assert(m_faces.size() == m_faces_normals.size());
-	QVector<Vector3i>::iterator face_it;
-	QVector<Vector3f>::iterator normal_it;
-	for (face_it = m_faces.begin(), normal_it = m_faces_normals.begin(); 
-		face_it != m_faces.end() && normal_it != m_faces_normals.end(); ++face_it, ++normal_it)
-	{
-		glNormal3f(normal_it->x(), normal_it->y(), normal_it->z());
-		Vector3f v0 = m_vertices[face_it->x()];
-		Vector3f v1 = m_vertices[face_it->y()];
-		Vector3f v2 = m_vertices[face_it->z()];
 
-		glVertex3f(scale * v0.x(), scale * v0.y(), scale * v0.z());
-		glVertex3f(scale * v1.x(), scale * v1.y(), scale * v1.z());
-		glVertex3f(scale * v2.x(), scale * v2.y(), scale * v2.z());
-	}
-	glEnd();
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	//draw_box(cuboid->get_bbox_corners());
+	drawCuboid(scale);
+	glDisable(GL_BLEND);
 
-	glColor4f(0, 0, 0, 1);
-	glLineWidth(3.0);
-	glBegin(GL_LINES);
-	drawLine(0, 1, scale);
-	drawLine(1, 5, scale);
-	drawLine(5, 4, scale);
-	drawLine(4, 0, scale);
-	drawLine(3, 2, scale);
-	drawLine(2, 6, scale);
-	drawLine(6, 7, scale);
-	drawLine(7, 3, scale);
-	drawLine(1, 2, scale);
-	drawLine(0, 3, scale);
-	drawLine(4, 7, scale);
-	drawLine(5, 6, scale);
-	glEnd();
+	glColor4f(0.0f, 0.0f, 0.0f, 1.0f);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	glLineWidth(3.0f);
+	//draw_box(cuboid->get_bbox_corners());
+	drawCuboid(scale);
+	glLineWidth(1.0f);
 
 
 	/* Draw the local system axes */
@@ -779,21 +758,21 @@ void OBB::draw(float scale)
 		glLineWidth(2.5);
 		glBegin(GL_LINES);
 		glVertex3f(scale * m_centroid.x(), scale * m_centroid.y(), scale * m_centroid.z());
-		Vector3f x_end = m_centroid + 0.5 * x_axis;
+		Vector3f x_end = m_centroid + 0.25 * x_axis;
 		glVertex3f(scale * x_end.x(), scale * x_end.y(), scale * x_end.z());
 		glEnd();
 		/* draw y axis */
 		glColor4f(COLORS[1][0], COLORS[1][1], COLORS[1][2], 1.0);
 		glBegin(GL_LINES);
 		glVertex3f(scale * m_centroid.x(), scale * m_centroid.y(), scale * m_centroid.z());
-		Vector3f y_end = m_centroid + 0.5 * y_axis;
+		Vector3f y_end = m_centroid + 0.25 * y_axis;
 		glVertex3f(scale * y_end.x(), scale * y_end.y(), scale * y_end.z());
 		glEnd();
 		/* draw z axis */
 		glColor4f(COLORS[2][0], COLORS[2][1], COLORS[2][2], 1.0);
 		glBegin(GL_LINES);
 		glVertex3f(scale * m_centroid.x(), scale * m_centroid.y(), scale * m_centroid.z());
-		Vector3f z_end = m_centroid + 0.5 * z_axis;
+		Vector3f z_end = m_centroid + 0.25 * z_axis;
 		glVertex3f(scale * z_end.x(), scale * z_end.y(), scale * z_end.z());
 		glEnd();
 	}
@@ -801,7 +780,24 @@ void OBB::draw(float scale)
 
 void OBB::drawCuboid(float scale)
 {
+	for (unsigned int face_index = 0; face_index < k_num_faces; ++face_index)
+	{
+		Eigen::Vector3f face_normal = m_faces_normals[face_index];
 
+		glBegin(GL_QUADS);
+		glNormal3f(face_normal[0], face_normal[1], face_normal[2]);
+
+		for (unsigned int i = 0; i < k_num_face_corners; ++i)
+		{
+			unsigned int corner_index = k_face_corner_indices[face_index][i];
+			
+			glVertex3f(
+				scale * m_vertices[corner_index][0],
+				scale * m_vertices[corner_index][1],
+				scale * m_vertices[corner_index][2]);
+		}
+		glEnd();
+	}
 }
 
 void OBB::drawSamples(float scale)
@@ -1094,6 +1090,12 @@ void OBB::drawLine(int vert_no_0, int vert_no_1, float scale)
 {
 	Vector3f vert0 = m_vertices[vert_no_0];
 	Vector3f vert1 = m_vertices[vert_no_1];
+	glVertex3f(scale * vert0.x(), scale * vert0.y(), scale * vert0.z());
+	glVertex3f(scale * vert1.x(), scale * vert1.y(), scale * vert1.z());
+}
+
+void OBB::drawLine(const Eigen::Vector3f & vert0, const Eigen::Vector3f & vert1, float scale)
+{
 	glVertex3f(scale * vert0.x(), scale * vert0.y(), scale * vert0.z());
 	glVertex3f(scale * vert1.x(), scale * vert1.y(), scale * vert1.z());
 }

@@ -128,6 +128,7 @@ private:
 	//void add(QVector3D v0, QVector3D v1, QVector3D v2, Eigen::Vector3f normal);
 	QVector3D eigen_vector3f_to_qvector3d(Eigen::Vector3f vec);
 	void drawLine(int vertex_no_0, int vertex_no_1, float scale);
+	void drawLine(const Eigen::Vector3f & point_1, const Eigen::Vector3f & point_2, float scale);
 	void computeFaceNormals();
 };
 
