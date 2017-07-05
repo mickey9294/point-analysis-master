@@ -24,7 +24,9 @@
 #include "structureanalyser.h"
 #include "debugrelationthread.h"
 #include "model.h"
+//#include "openniprocessor.h"
 #include "checkmodelsthread.h"
+
 
 class PointAnalysis : public QMainWindow
 {
@@ -64,6 +66,12 @@ public:
 	void saveVerticesLabels();
 	void downSample();
 	void rotateModel();
+	void snapshot();
+	void saveParts();
+	void capturePointCloud();
+
+signals:
+	void stopCapturePointCloud();
 
 private:
 	Ui::PointAnalysisClass ui;
@@ -84,6 +92,8 @@ private:
 	std::string m_modelClassName;
 	CheckModelsThread *checkModelsThread;
 	QVector<int> m_label_names;
+	//SimpleOpenNIProcessor m_openni_processor;
+
 };
 
 #endif // POINTANALYSIS_H

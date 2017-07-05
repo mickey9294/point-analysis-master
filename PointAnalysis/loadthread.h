@@ -9,6 +9,7 @@
 #include "model.h"
 #include "meshmodel.h"
 #include "meshpcmodel.h"
+#include <boost/filesystem.hpp>
 #include "utils.h"
 #include "obb.h"
 

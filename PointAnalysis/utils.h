@@ -102,7 +102,8 @@ public:
 	static void savePredictionResult(const QMap<int, int> & parts_picked, const std::string & file_path);
 	static QMap<int, int> loadPredictionResult(const std::string & file_path);
 	static float euclideanDistance(pcl::PointXYZ, pcl::PointXYZ);
-	static void computePlane(const Eigen::Vector3f &n, double d, std::vector<Eigen::Vector3f> & triangles_vertices);
+	static void computePlane(Eigen::Vector3f &n, double d, std::vector<Eigen::Vector3f> & triangles_vertices);
+	static void computePlane(const Eigen::Vector3f & pos, Eigen::Vector3f &n, double d, std::vector<Eigen::Vector3f> & triangles_vertices);
 
 private:
 	static void sort(QList<double> &lens, QList<int> &indices, int low, int high);

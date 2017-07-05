@@ -40,6 +40,10 @@ PointAnalysis::PointAnalysis(QWidget *parent)
 	connect(ui.rotateButton, SIGNAL(clicked()), this, SLOT(rotateModel()));
 	connect(ui.drawOBBCheckBox, SIGNAL(stateChanged(int)), ui.displayGLWidget, SLOT(setDrawOBBs(int)));
 	connect(ui.drawOBBAxesCheckBox, SIGNAL(stateChanged(int)), ui.displayGLWidget, SLOT(setDrawOBBsAxes(int)));
+	connect(ui.snapshotButton, SIGNAL(clicked()), this, SLOT(snapshot()));
+	//connect(ui.actionSave_Parts, SIGNAL(triggered()), this, SLOT(saveParts()));
+	//connect(ui.captureButton, SIGNAL(clicked()), this, SLOT(capturePointCloud()));
+	//connect(ui.stopButton, SIGNAL(clicked()), &m_openni_processor, SLOT(stop_running()));
 
 	fe = NULL;
 	trainThread = NULL;
@@ -74,10 +78,11 @@ void PointAnalysis::load()
 	/* User choose a model file by FileDialog */
 	QString filepath = QFileDialog::getOpenFileName(this, tr("Load"),
 		"../../Data/LabeledDB/Chair",
-		tr("Object File Format (*.off);;XYZ Point Cloud (*.xyz);;Stanford Polygon File Format (*.ply)"));
+		tr("Object File Format (*.off);;XYZ Point Cloud (*.xyz);;Stanford Polygon File Format (*.ply);;PTS File Format (*.pts)"));
 
 	if (filepath.length() > 0){    /* If the user choose a valid model file path */
-		filename = Utils::getModelName(filepath).toStdString();
+		QString name = Utils::getModelName(filepath);
+		filename = name.toStdString();
 		/* Set the status bar to inform users it is loading now */
 		QString stat_msg = "Loading point cloud from " + filepath + "...";
 		onDebugTextAdded(stat_msg);
@@ -447,4 +452,30 @@ void PointAnalysis::rotateModel()
 	float z = ui.zAxisInput->toPlainText().toFloat();
 
 	ui.displayGLWidget->rotateModel(angle, x, y, z);
+}
+
+void PointAnalysis::snapshot()
+{
+	QString fileName = QFileDialog::getSaveFileName(this, tr("Save File"),
+		"D:\\Pictures\\experiments",
+		tr("PNG (*.png)"));
+
+	if (!fileName.isEmpty())
+	{
+		ui.displayGLWidget->slotSnapshot(fileName.toStdString());
+	}
+}
+
+void PointAnalysis::saveParts()
+{
+	QString directory = QFileDialog::getExistingDirectory(this, tr("Open Directory"), 
+		"../data", QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
+
+	if (directory.length() > 0)
+		ui.displayGLWidget->getModel()->splitOutput(directory.toStdString());
+}
+
+void PointAnalysis::capturePointCloud()
+{
+	//m_openni_processor.start();
 }

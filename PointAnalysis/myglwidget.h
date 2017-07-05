@@ -6,6 +6,7 @@
 #include <QString>
 #include <QtOpenGL>
 #include <QtGui>
+#include <QImage>
 #include "pcmodel.h"
 #include "obb.h"
 #include <Windows.h>
@@ -14,6 +15,7 @@
 #include "meshmodel.h"
 #include "meshpcmodel.h"
 #include "PartsStructure.h"
+#include <Windows.h>
 
 #ifndef PI
 #define PI 3.1415926536
@@ -39,6 +41,7 @@ public:
 	void setDrawSymmetryAxes(int state);
 	void setDrawOBBs(int state);
 	void setDrawOBBsAxes(int state);
+	void slotSnapshot(const std::string _filename);
 
 signals:
 	void xRotationChanged(int angle);
@@ -76,6 +79,8 @@ private:
 	void drawSphere(GLfloat xx, GLfloat yy, GLfloat zz, GLfloat radius, GLfloat M, GLfloat N);
 	void ProcessPicks(GLint nPicks, GLuint pickBuffer[]);
 	void drawCylinder(float x0, float y0, float z0, float x1, float y1, float z1, double radius);
+	bool open_modelview_matrix_file(const char *_filename);
+	void set_modelview_matrix(const GLdouble *matrix, bool update = true);
 	bool show_parts_structure;
 
 	static GLint _colorList[12][3];
@@ -89,6 +94,8 @@ private:
 	QVector<OBB *> m_OBBs;
 	Samples_Vec m_samples;
 	Parts_Structure_Pointer m_parts_structure;
+
+	GLdouble m_modelview_matrix[16];
 
 	QPoint m_lastPos;
 	bool clickEvent;

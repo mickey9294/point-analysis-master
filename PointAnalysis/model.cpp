@@ -37,3 +37,13 @@ void Model::downSample()
 {
 	std::cout << "This model does not implement downSample() function." << std::endl;
 }
+
+void Model::drawSymmetry(float scale)
+{
+	std::cout << "This model does not implement drawSymmetry() function." << std::endl;
+}
+
+void Model::splitOutput(const std::string output_dir)
+{
+	std::cout << "This model does not implement splitOutput() function." << std::endl;
+}

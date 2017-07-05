@@ -62,7 +62,7 @@
       <x>10</x>
       <y>570</y>
       <width>451</width>
-      <height>161</height>
+      <height>151</height>
      </rect>
     </property>
     <property name="readOnly">
@@ -266,6 +266,45 @@ p, li { white-space: pre-wrap; }
      <bool>true</bool>
     </property>
    </widget>
+   <widget class="QPushButton" name="snapshotButton">
+    <property name="geometry">
+     <rect>
+      <x>370</x>
+      <y>730</y>
+      <width>91</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Snapshot</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="captureButton">
+    <property name="geometry">
+     <rect>
+      <x>740</x>
+      <y>570</y>
+      <width>75</width>
+      <height>23</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Capture</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="stopButton">
+    <property name="geometry">
+     <rect>
+      <x>740</x>
+      <y>600</y>
+      <width>75</width>
+      <height>23</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Stop</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menuBar">
    <property name="geometry">
@@ -284,6 +323,7 @@ p, li { white-space: pre-wrap; }
     <addaction name="actionSave"/>
     <addaction name="actionSave_As"/>
     <addaction name="actionSave_Vertices_Labels"/>
+    <addaction name="actionSave_Parts"/>
     <addaction name="separator"/>
     <addaction name="actionExit"/>
    </widget>
@@ -325,6 +365,7 @@ p, li { white-space: pre-wrap; }
      <string>Edit</string>
     </property>
     <addaction name="actionDownsample"/>
+    <addaction name="actionOpenNI_Grab"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuFeature"/>
@@ -435,6 +476,16 @@ p, li { white-space: pre-wrap; }
   <action name="actionDownsample">
    <property name="text">
     <string>Downsample</string>
+   </property>
+  </action>
+  <action name="actionSave_Parts">
+   <property name="text">
+    <string>Save Parts</string>
+   </property>
+  </action>
+  <action name="actionOpenNI_Grab">
+   <property name="text">
+    <string>OpenNI Grab</string>
    </property>
   </action>
  </widget>

@@ -23,6 +23,7 @@
 #include <CGAL/Simple_cartesian.h>
 #include <CGAL/wlop_simplify_and_regularize_point_set.h>
 #include "CuboidSymmetryGroup.h"
+//#include <GL/glut.h>
 
 // kernel
 //typedef CGAL::Exact_predicates_inexact_constructions_kernel Kernel;
@@ -46,6 +47,7 @@ class PCModel : public QObject, public Model
 
 public:
 	PCModel();
+	//PCModel(pcl::PointCloud<pcl::PointXYZ>::ConstPtr pcl_cloud);
 	PCModel(const PCModel &pc);
 	PCModel(const char *file_path, int normals_estimation_method);
 	PCModel(std::string file_path, int normals_estimation_method);
@@ -65,7 +67,13 @@ public:
 	QVector<int> getLabelNames() const;
 	int numOfClasses();
 	void rotate(float angle, float x, float y, float z);
+	void transform(Eigen::Matrix4f trans_mat);
+
 	void draw(float scale);
+	void drawSymmetry(float scale);
+	void drawBBox(float scale);
+	void drawLine(const Eigen::Vector3f & point_1, const Eigen::Vector3f & point_2, float scale);
+
 	QVector<Eigen::Vector3f>::iterator vertices_begin(){ return m_vertices_list.begin(); }
 	QVector<Eigen::Vector3f>::iterator vertices_end() { return m_vertices_list.end(); }
 	QVector<Eigen::Vector3f>::iterator normals_begin() { return m_normals_list.begin(); }
@@ -83,8 +91,10 @@ public:
 	Eigen::Vector3f at(int index);
 
 	void normalize();
+	void computeBoundingBox();
 
 	void outputVerticesLabels(const char *file_path);
+	void splitOutput(const std::string output_dir);
 	void downSample();
 
 	bool isDrawSymmetryPlanes() const { return m_draw_sym_planes; }
@@ -120,6 +130,8 @@ private:
 
 	Eigen::Vector3f m_bbox_center;
 	Eigen::Vector3f m_bbox_size;
+	Eigen::Vector3f m_bbox_min;
+	Eigen::Vector3f m_bbox_max;
 
 	bool m_draw_sym_planes;
 	bool m_draw_sym_axes;

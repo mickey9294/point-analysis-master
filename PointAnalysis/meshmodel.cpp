@@ -31,8 +31,8 @@ MeshModel::MeshModel(const char *file_path)
 	m_input_filepath = std::string(file_path);
 	load_from_file(file_path);
 	//rotate(90, 1.0, 0.0, 0.0);
-	if (faceCount() > 0 && vertexCount() > 0)
-		samplePoints();
+	//if (faceCount() > 0 && vertexCount() > 0)
+		//samplePoints();
 }
 
 MeshModel::MeshModel(std::string file_path)
@@ -41,8 +41,8 @@ MeshModel::MeshModel(std::string file_path)
 	m_input_filepath = file_path;
 	load_from_file(file_path.c_str());
 	//rotate(90, 1.0, 0.0, 0.0);
-	if (faceCount() > 0 && vertexCount() > 0)
-		samplePoints();
+	//if (faceCount() > 0 && vertexCount() > 0)
+		//samplePoints();
 }
 
 MeshModel::~MeshModel()

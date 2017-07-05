@@ -8,6 +8,13 @@ MyGLWidget::MyGLWidget(QWidget *parent)
 	m_xRot = 0;
 	m_yRot = 0;
 	m_zRot = 0;
+	for (int i = 0; i < 16; i++)
+	{
+		if (i == (i * i - 1))
+			m_modelview_matrix[i] = 1.0;
+		else
+			m_modelview_matrix[i] = 0.0;
+	}
 
 	m_transparent = QCoreApplication::arguments().contains(QStringLiteral("--transparent"));
 	if (m_transparent)
@@ -64,6 +71,8 @@ void MyGLWidget::initializeGL()
 	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
 	glShadeModel(GL_SMOOTH);
 	init_light();
+
+	open_modelview_matrix_file("D:\\Projects\\structure-completion-master\\experiments\\coseg_chairs\\pose.txt");
 }
 
 void MyGLWidget::init_light()
@@ -103,7 +112,7 @@ void MyGLWidget::paintGL()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glClearColor(1.0, 1.0, 1.0, 1.0f);
-	glEnable(GL_DEPTH_TEST);
+	//glEnable(GL_DEPTH_TEST);
 	//if (m_model != NULL)
 	draw();
 	glFlush();
@@ -123,8 +132,8 @@ void MyGLWidget::draw()
 	glMaterialfv(GL_FRONT, GL_SHININESS, no_shininess);
 	glMaterialfv(GL_FRONT, GL_EMISSION, no_mat);
 
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
+	//glMatrixMode(GL_MODELVIEW);
+	//glLoadIdentity();
 
 	/*QVector4D eye = QVector4D(0.0, 0.0, m, 1.0);
 	gluLookAt(eye.x(), eye.y(), eye.z(), 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);*/
@@ -140,9 +149,26 @@ void MyGLWidget::draw()
 	glRotatef(m_zRot, 0.0, 0.0, 1.0);
 	glTranslatef(-centroid.x(), -centroid.y(), -centroid.z());
 
+	/* Draw view direction */
+	/*Eigen::Vector3f view_direction(m_modelview_matrix[2], m_modelview_matrix[6], m_modelview_matrix[10]);
+	Eigen::Vector3f start_p = Eigen::Vector3f::Zero() - view_direction;
+	Eigen::Vector3f end_p = Eigen::Vector3f::Zero() + view_direction;
+	glColor3f(1.0, 0, 0);
+	glPointSize(5.0);
+	glBegin(GL_POINTS);
+	glVertex3f(m * start_p[0], m * start_p[1], m * start_p[2]);
+	glEnd();
+	glLineWidth(4.0);
+	glBegin(GL_LINES);
+	glVertex3f(m * start_p[0], m * start_p[1], m * start_p[2]);
+	glVertex3f(m * end_p[0], m * end_p[1], m* end_p[2]);
+	glEnd();*/
+
 	/* Draw the model m_model */
 	if (!show_parts_structure)
 	{
+		
+
 		if (m_model->getType() == Model::ModelType::PointCloud)
 		{
 			glPointSize(2.0);
@@ -165,6 +191,8 @@ void MyGLWidget::draw()
 				//obb->drawSamples(m);
 			}
 		}
+
+		m_model->drawSymmetry(m);
 	}
 	else if (m_parts_structure != NULL)
 		m_parts_structure->draw(m);
@@ -442,4 +470,125 @@ void MyGLWidget::setDrawOBBsAxes(int state)
 	}
 
 	update();
+}
+
+void MyGLWidget::slotSnapshot(const std::string _filename)
+{
+	QImage image;
+	size_t w(width()), h(height());
+	GLenum buffer(GL_BACK);
+
+	try
+	{
+		image = QImage(w, h, QImage::Format_RGB32);
+
+		std::vector<GLubyte> fbuffer(3 * w*h);
+
+		qApp->processEvents();
+		makeCurrent();
+		update();
+		glFinish();
+
+		glReadBuffer(buffer);
+		glPixelStorei(GL_PACK_ALIGNMENT, 1);
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		paintGL();
+		glReadPixels(0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, &fbuffer[0]);
+
+		unsigned int x, y, offset;
+
+		for (y = 0; y<h; ++y) {
+			for (x = 0; x<w; ++x) {
+				offset = 3 * (y*w + x);
+				image.setPixel(x, h - y - 1, qRgb(fbuffer[offset],
+					fbuffer[offset + 1],
+					fbuffer[offset + 2]));
+			}
+		}
+
+
+		//		QString name = "snapshot-";
+		//#if defined(_MSC_VER)
+		//		{
+		//			std::stringstream s;
+		//			QDateTime         dt = QDateTime::currentDateTime();
+		//			s << dt.date().year()
+		//				<< std::setw(2) << std::setfill('0') << dt.date().month()
+		//				<< std::setw(2) << std::setfill('0') << dt.date().day()
+		//				<< std::setw(2) << std::setfill('0') << dt.time().hour()
+		//				<< std::setw(2) << std::setfill('0') << dt.time().minute()
+		//				<< std::setw(2) << std::setfill('0') << dt.time().second();
+		//			name += QString(s.str().c_str());
+		//		}
+		//#else
+		//		name += QDateTime::currentDateTime().toString("yyMMddhhmmss");
+		//#endif
+		QString name = _filename.c_str();
+		name += ".png";
+
+		image.save(name, "PNG");
+	}
+	catch (std::bad_alloc&)
+	{
+		qWarning("Mem Alloc Error");
+	}
+}
+
+bool MyGLWidget::open_modelview_matrix_file(const char* _filename)
+{
+	assert(_filename);
+	std::ifstream file(_filename);
+	if (!file)
+	{
+		std::cerr << "Can't open file: \"" << _filename << "\"" << std::endl;
+		return false;
+	}
+	std::cout << "Loading " << _filename << "..." << std::endl;
+
+	char buffer[256];
+	unsigned int count = 0;
+	float var = 0;
+
+	GLdouble matrix[16];
+	unsigned int num_values = 16;
+
+	for (; !file.eof(); count++)
+	{
+		if (count >= num_values)
+		{
+			//std::cout << "Warning: Too many values." << std::endl;
+			break;
+		}
+
+		file.getline(buffer, 256);
+
+		int ret = sscanf(buffer, "%f\n", &var);
+		if (ret < 1) continue;
+
+		matrix[count] = var;
+	}
+
+	if (count < num_values)
+	{
+		std::cout << "Error: Number of values are not enough." << std::endl;
+		return false;
+	}
+
+	file.close();
+	set_modelview_matrix(matrix);
+	std::cout << "Done." << std::endl;
+	return true;
+}
+
+void MyGLWidget::set_modelview_matrix(const GLdouble *matrix, bool update_)
+{
+	for (unsigned int i = 0; i < 16; i++)
+		m_modelview_matrix[i] = matrix[i];
+
+	makeCurrent();
+	glLoadIdentity();
+	glMultMatrixd(m_modelview_matrix);
+	
+	if (update_)
+		update();
 }

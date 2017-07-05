@@ -12,22 +12,52 @@ PCModel::PCModel()
 	m_bbox_size.setZero();
 }
 
+//PCModel::PCModel(pcl::PointCloud<pcl::PointXYZ>::ConstPtr pcl_cloud)
+//	: Model(Model::ModelType::PointCloud),
+//	m_draw_sym_planes(true), m_draw_sym_axes(true)
+//{
+//	m_centroid.setZero();
+//	m_bbox_center.setZero();
+//	m_bbox_size.setZero();
+//
+//}
+
 PCModel::PCModel(const char *file_path, int normals_estimation_method)
 	: Model(Model::ModelType::PointCloud), m_draw_sym_planes(true), m_draw_sym_axes(true)
 {
+	m_bbox_center.setZero();
+	m_bbox_size.setZero();
 	load_from_file(file_path, normals_estimation_method);
 	m_input_filepath = std::string(file_path);
-	if (m_labels.isEmpty())
-		rotate(90, 1, 0, 0);
+
+	/*Eigen::Matrix4f mat;
+	mat << 1.0, 0.09, 0.03, 0,
+		-0.09, 0.95, 0.31, 0,
+		0, -0.31, 0.95, 0,
+		0, 0, 0, 1.0;
+	transform(mat);*/
+
+	/*if (m_labels.isEmpty())
+		rotate(90, 1, 0, 0);*/
 }
 
 PCModel::PCModel(std::string file_path, int normals_estimation_method)
 	: Model(Model::ModelType::PointCloud), m_draw_sym_planes(true), m_draw_sym_axes(true)
 {
+	m_bbox_center.setZero();
+	m_bbox_size.setZero();
 	load_from_file(file_path.c_str(), normals_estimation_method);
 	m_input_filepath = file_path;
-	if (m_labels.isEmpty())
-		rotate(90, 1, 0, 0);
+	
+	/*Eigen::Matrix4f mat;
+	mat << 1.0, 0.09, 0.03, 0,
+		-0.09, 0.95, 0.31, 0,
+		0, -0.31, 0.95, 0,
+		0, 0, 0, 1.0;
+	transform(mat);*/
+
+	/*if (m_labels.isEmpty())
+		rotate(90, 1, 0, 0);*/
 }
 
 PCModel::PCModel(const PCModel &pc)
@@ -231,7 +261,7 @@ void PCModel::load_from_file(const char *file_path, int normals_estimation_metho
 					}
 				}
 
-				output(modified_path.c_str());
+				//output(modified_path.c_str());
 			}
 			else if (format == "ply" || format == "PLY")
 			{
@@ -259,8 +289,6 @@ void PCModel::load_from_file(const char *file_path, int normals_estimation_metho
 						pc_in.getline(buffer, 128);
 					}
 
-					Eigen::Vector3f bbox_min, bbox_max;  /* used for computing bounding box */
-
 					/* Load the vertices and their normals */
 					for (int i = 0; i < nvertices; i++)
 					{
@@ -272,32 +300,22 @@ void PCModel::load_from_file(const char *file_path, int normals_estimation_metho
 
 						for (int j = 0; j < 3; j++)
 							vertex[j] = line_list[j].toFloat();
-
-						for (int j = 0; j < 3; j++)
-							normal[j] = line_list[3 + j].toFloat();
-
 						m_vertices_list[i] = vertex;
-						m_normals_list[i] = normal;
+
+						if (line_list.size() >= 6)
+						{
+							for (int j = 0; j < 3; j++)
+								normal[j] = line_list[3 + j].toFloat();
+							m_normals_list[i] = normal;
+						}
+						else
+							m_normals_list[i] = Vector3f(0, 0, 0);
 
 						coords[0] = vertex[0];
 						coords[1] = vertex[1];
 						coords[2] = vertex[2];
 
 						S.push_back(MiniPoint(3, coords.begin()));
-
-						/* for computing bounding box */
-						if (vertex[0] > bbox_max[0])
-							bbox_max[0] = vertex[0];
-						if (vertex[1] > bbox_max[1])
-							bbox_max[1] = vertex[1];
-						if (vertex[2] > bbox_max[2])
-							bbox_max[2] = vertex[2];
-						if (vertex[0] < bbox_min[0])
-							bbox_min[0] = vertex[0];
-						if (vertex[1] < bbox_min[1])
-							bbox_min[1] = vertex[1];
-						if (vertex[2] < bbox_min[2])
-							bbox_min[2] = vertex[2];
 					}
 
 					if (S.size() > 0)    /* If the vertices are loaded successfully */
@@ -316,10 +334,6 @@ void PCModel::load_from_file(const char *file_path, int normals_estimation_metho
 						m_radius = 1.0;
 						m_centroid.setZero();
 					}
-
-					/* Compute bounding box */
-					m_bbox_center = 0.5 * (bbox_min + bbox_max);
-					m_bbox_size = bbox_max - bbox_min;
 
 					/* Decide whether the label file exists */
 					QString q_label_path = q_file_dir + "/" + QString::fromStdString(model_name) + "_label.arff";
@@ -406,6 +420,10 @@ void PCModel::load_from_file(const char *file_path, int normals_estimation_metho
 								n[i] = line_it->toFloat();
 
 							double t = line_it->toDouble();
+							line_it++;
+
+							for (int i = 0; i < 3 && line_it != line_list.end(); i++, line_it++)
+								m_bbox_center[i] = line_it->toFloat();
 
 							CuboidReflectionSymmetryGroup reflection_sym(n, t);
 							m_reflection_symmetry.push_back(reflection_sym);
@@ -422,6 +440,9 @@ void PCModel::load_from_file(const char *file_path, int normals_estimation_metho
 							for (int i = 0; i < 3 && line_it != line_list.end(); i++, line_it++)
 								t[i] = line_it->toFloat();
 
+							for (int i = 0; i < 3 && line_it != line_list.end(); i++, line_it++)
+								m_bbox_center[i] = line_it->toFloat();
+
 							CuboidSymmetryGroupInfo info(CuboidSymmetryGroupType::RotationSymmetryType, 0);
 							CuboidRotationSymmetryGroup rotation_sym(info, n, t);
 							m_rotation_symmetry.push_back(rotation_sym);
@@ -429,6 +450,147 @@ void PCModel::load_from_file(const char *file_path, int normals_estimation_metho
 					}
 
 					sym_in.close();
+				}
+			}
+			else if (format == "pts")
+			{
+				/* Data structure for computing the minimal bounding sphere */
+				const int dimen = 3;
+				PointVector S;
+				vector<double> coords(dimen);
+
+				m_vertices_list.clear();
+
+				while (!pc_in.eof())
+				{
+					pc_in.getline(buffer, 128);
+					if (strlen(buffer) > 0)
+					{
+						QStringList line_split = QString(buffer).split(" ");
+						float x, y, z;
+						if (line_split.size() > 3)
+						{
+							x = line_split[4].toFloat();
+							y = line_split[5].toFloat();
+							z = line_split[6].toFloat();
+						}
+						else
+						{
+							x = line_split[0].toFloat();
+							y = line_split[1].toFloat();
+							z = line_split[2].toFloat();
+						}
+
+						Eigen::Vector3f vert(x, y, z);
+						m_vertices_list.push_back(vert);
+
+						coords[0] = x;
+						coords[1] = y;
+						coords[2] = z;
+
+						S.push_back(MiniPoint(3, coords.begin()));
+					}
+				}
+
+				int nvertices = m_vertices_list.size();
+				m_normals_list.resize(nvertices);
+				m_normals_list.fill(Eigen::Vector3f(0, 1, 0));
+
+				if (S.size() > 0)    /* If the vertices are loaded successfully */
+				{
+					/* Compute the Miniball of the mesh */
+					Miniball mb(dimen, S);
+					double rad = mb.radius();
+					Miniball::Coordinate_iterator center_it = mb.center_begin();
+					m_radius = rad;
+
+					for (int index = 0; index < 3; index++)
+						m_centroid[index] = center_it[index];
+				}
+				else
+				{
+					m_radius = 1.0;
+					m_centroid.setZero();
+				}
+
+				/* Decide whether the label file exists */
+				QString q_label_path = q_file_dir + "/" + QString::fromStdString(model_name) + "_label.arff";
+				std::ifstream label_in(q_label_path.toStdString().c_str());
+				if (label_in.is_open())  /* The label file exists */
+				{
+					QVector<int> vertices_labels(nvertices);
+					vertices_labels.fill(default_null_label);
+
+					m_points_label_confidences.resize(nvertices);
+
+					int i;
+					while (i < nvertices && !label_in.eof())
+					{
+						label_in.getline(buffer, 128);
+						if (buffer[0] == '@' || strlen(buffer) <= 0)  /* Skip header and empty line */
+							continue;
+
+						QStringList str_list = QString(buffer).split(',');
+
+						QVector<float> label_confidences(str_list.size());
+
+						float max_prob = 0;
+						int max_label = 0;
+						int label_idx = 0;
+						for (QStringList::iterator label_str_it = str_list.begin(); label_str_it != str_list.end(); label_str_it++)
+						{
+							float label_prob = label_str_it->toFloat();
+							/*if (label_prob > 0.7)
+							{
+							vertices_labels[i] = label_idx;
+							break;
+							}*/
+							label_confidences[label_idx] = label_prob;
+
+							if (label_prob > max_prob)
+							{
+								max_prob = label_prob;
+								max_label = label_idx;
+							}
+
+							label_idx++;
+						}
+						vertices_labels[i] = max_label;
+
+						m_points_label_confidences[i] = label_confidences;
+
+						i++;
+					}
+
+					setLabels(vertices_labels);
+
+					label_in.close();
+				}
+				else
+				{
+					q_label_path = q_file_dir + "/../gt/" + QString::fromStdString(model_name) + ".seg";
+					label_in.open(q_label_path.toStdString().c_str());
+					if (label_in.is_open())
+					{
+						QVector<int> vertices_labels(nvertices);
+						vertices_labels.fill(default_null_label);
+
+						char buffer[3];
+						int idx = 0;
+						while (!label_in.eof())
+						{
+							label_in.getline(buffer, 3);
+							if (strlen(buffer) > 0)
+							{
+								int label = std::atoi(buffer);
+								vertices_labels[idx] = label;
+								idx++;
+							}
+						}
+
+						setLabels(vertices_labels);
+						label_in.close();
+					}
 				}
 			}
 
@@ -493,6 +655,10 @@ void PCModel::draw(float scale)
 {
 	assert(m_vertices_list.size() == m_normals_list.size());
 
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glPointSize(2.0);
 	glBegin(GL_POINTS);
 	int label_idx = 0;
 	QVector<Vector3f>::iterator vertex_it, normal_it;
@@ -501,16 +667,18 @@ void PCModel::draw(float scale)
 	{
 		float transp = 1.0;
 
-		int label = label_idx < m_labels.size() ? m_labels[label_idx] : 10;
+		int label = label_idx < m_labels.size() ? m_labels[label_idx] : default_null_label;
 	
-		if (label >= default_null_label)
+		if (label > default_null_label)
 			transp = 0.1;
 		else
 		{
-			if (m_points_label_confidences[label_idx][label] > 0.7)
+			if (label_idx < m_points_label_confidences.size() && 
+				label < m_points_label_confidences[label_idx].size() && 
+				m_points_label_confidences[label_idx][label] > 0.7)
 				transp = 1.0;
 			else
-				transp = 0.35;
+				transp = 1.0;
 		}
 
 		glColor4f(COLORS[label][0], COLORS[label][1], COLORS[label][2], transp);
@@ -529,6 +697,93 @@ void PCModel::draw(float scale)
 		glVertex3f(vertex.x(), vertex.y(), vertex.z());
 	}*/
 	glEnd();
+	glDisable(GL_BLEND);
+
+	/* Draw the bounding box of the point cloud */
+	//drawBBox(scale);
+}
+
+void PCModel::drawBBox(float scale)
+{
+	QVector<Eigen::Vector3f> corners(8);
+
+	corners[0] = m_bbox_max;
+	corners[1] = m_bbox_max - m_bbox_size[0] * Eigen::Vector3f(1.0, 0, 0);
+	corners[2] = m_bbox_max - m_bbox_size[1] * Eigen::Vector3f(0, 1.0, 0);
+	corners[3] = m_bbox_max - m_bbox_size[0] * Eigen::Vector3f(1.0, 0, 0) - m_bbox_size[1] * Eigen::Vector3f(0, 1.0, 0);
+	corners[4] = m_bbox_min;
+	corners[5] = m_bbox_min + m_bbox_size[0] * Eigen::Vector3f(1.0, 0, 0);
+	corners[6] = m_bbox_min + m_bbox_size[1] * Eigen::Vector3f(0, 1.0, 0);
+	corners[7] = m_bbox_min + m_bbox_size[0] * Eigen::Vector3f(1.0, 0, 0) + m_bbox_size[1] * Eigen::Vector3f(0, 1.0, 0);
+
+	glLineWidth(3.0);
+	glColor4f(0, 0, 0, 1.0);
+	glBegin(GL_LINES);
+	drawLine(corners[0], corners[1], scale);
+	drawLine(corners[0], corners[2], scale);
+	drawLine(corners[3], corners[1], scale);
+	drawLine(corners[3], corners[2], scale);
+	drawLine(corners[4], corners[5], scale);
+	drawLine(corners[4], corners[6], scale);
+	drawLine(corners[7], corners[5], scale);
+	drawLine(corners[7], corners[6], scale);
+	drawLine(corners[1], corners[6], scale);
+	drawLine(corners[0], corners[7], scale);
+	drawLine(corners[3], corners[4], scale);
+	drawLine(corners[2], corners[5], scale);
+	glEnd();
+
+	glPointSize(10.0);
+	
+	glBegin(GL_POINTS);
+	glColor3f(1, 0, 0);
+	glVertex3f(scale * m_bbox_max[0], scale * m_bbox_max[1], scale * m_bbox_max[2]);
+	glVertex3f(scale * m_bbox_min[0], scale * m_bbox_min[1], scale * m_bbox_min[2]);
+	glColor3f(0, 0, 0);
+	glVertex3f(scale * m_bbox_center[0], scale * m_bbox_center[1], scale * m_bbox_center[2]);
+	glEnd();
+}
+
+void PCModel::drawLine(const Eigen::Vector3f & vert0, const Eigen::Vector3f & vert1, float scale)
+{
+	glVertex3f(scale * vert0.x(), scale * vert0.y(), scale * vert0.z());
+	glVertex3f(scale * vert1.x(), scale * vert1.y(), scale * vert1.z());
+}
+
+void PCModel::drawSymmetry(float scale)
+{
+	if (!m_rotation_symmetry.isEmpty())
+	{
+		if (m_draw_sym_axes)
+		{
+			for (QList<CuboidRotationSymmetryGroup>::iterator sym_it = m_rotation_symmetry.begin(); sym_it != m_rotation_symmetry.end(); ++sym_it)
+			{
+				/*Eigen::Vector3f n;
+				Eigen::Vector3f t;
+				sym_it->get_rotation_axis(n, t);
+
+				Eigen::Vector3f axis_center = m_bbox_center + t;
+				Eigen::Vector3f axis_start = axis_center - n.normalized();
+				Eigen::Vector3f axis_end = axis_center + n.normalized();
+
+				glColor4f(COLORS[0][0], COLORS[0][1], COLORS[0][2], 1.0);
+				glLineWidth(3.0);
+				glBegin(GL_LINES);
+				glVertex3f(scale * axis_start[0], scale * axis_start[1], scale * axis_start[2]);
+				glVertex3f(scale * axis_end[0], scale * axis_end[1], scale * axis_end[2]);
+				glEnd();*/
+
+				std::array<Eigen::Vector3f, 2> corners;
+				sym_it->get_rotation_axis_corners(m_bbox_center, 2 * m_radius, corners);
+				glColor4f(COLORS[0][0], COLORS[0][1], COLORS[0][2], 1.0);
+				glLineWidth(3.0);
+				glBegin(GL_LINES);
+				glVertex3f(scale * corners[0][0], scale * corners[0][1], scale * corners[0][2]);
+				glVertex3f(scale * corners[1][0], scale * corners[1][1], scale * corners[1][2]);
+				glEnd();
+			}
+		}
+	}
 
 	/* Draw symmetry planes and symmetry axes */
 	if (!m_reflection_symmetry.isEmpty())
@@ -537,33 +792,29 @@ void PCModel::draw(float scale)
 		{
 			for (QList<CuboidReflectionSymmetryGroup>::iterator sym_it = m_reflection_symmetry.begin(); sym_it != m_reflection_symmetry.end(); ++sym_it)
 			{
-				//Eigen::Vector3f n;
-				//double t;
-				//sym_it->get_reflection_plane(n, t);
+				/*Eigen::Vector3f n;
+				double t;
+				sym_it->get_reflection_plane(n, t);
 
-				//std::vector<Eigen::Vector3f> triangles_vertices;
-				//Utils::computePlane(n, t, triangles_vertices);
+				std::vector<Eigen::Vector3f> triangles_vertices;
+				Utils::computePlane(m_bbox_center, n, t, triangles_vertices);
 
-				//Eigen::Vector3f n_start = Eigen::Vector3f::Zero() - t * n.normalized();
-				//Eigen::Vector3f n_end = n_start + 2.0 * n.normalized();
-				///*glColor4f(0.0, 0.0, 0.0, 1.0);
-				//glLineWidth(2.0);
-				//glBegin(GL_LINES);
-				//glVertex3f(n_start[0], n_start[1], n_start[2]);
-				//glVertex3f(n_end[0], n_end[1], n_end[2]);
-				//glEnd()*/;
+				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+				glEnable(GL_BLEND);
+				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-				//glColor4f(COLORS[9][0], COLORS[9][1], COLORS[9][2], 0.3);
-				//glBegin(GL_TRIANGLES);
-				//for (int i = 0; i < 6; i++)
-				//{
-				//	glNormal3f(n.x(), n.y(), n.z());
-				//	glVertex3f(scale * triangles_vertices[i].x(), scale * triangles_vertices[i].y(), scale * triangles_vertices[i].z());
-				//}
-				//glEnd();
+				glColor4f(COLORS[9][0], COLORS[9][1], COLORS[9][2], 0.3);
+				glBegin(GL_TRIANGLES);
+				for (int i = 0; i < 6; i++)
+				{
+					glNormal3f(n.x(), n.y(), n.z());
+					glVertex3f(scale * triangles_vertices[i].x(), scale * triangles_vertices[i].y(), scale * triangles_vertices[i].z());
+				}
+				glEnd();
+				glDisable(GL_BLEND);*/
 
 				std::array<Eigen::Vector3f, 4> corners;
-				sym_it->get_reflection_plane_corners(m_bbox_center, m_radius, corners);
+				sym_it->get_reflection_plane_corners(m_bbox_center, 2 * m_radius, corners);
 
 				glColor4f(192.0f / 256.0f, 0.0f / 256.0f, 0.0f / 256.0f, 0.3f);
 				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -572,7 +823,7 @@ void PCModel::draw(float scale)
 
 				glBegin(GL_QUADS);
 				for (unsigned int i = 0; i < 4; ++i)
-					glVertex3f(corners[i][0], corners[i][1], corners[i][2]);
+					glVertex3f(scale * corners[i][0], scale * corners[i][1], scale * corners[i][2]);
 				glEnd();
 
 				glDisable(GL_BLEND);
@@ -583,31 +834,10 @@ void PCModel::draw(float scale)
 
 				glBegin(GL_QUADS);
 				for (unsigned int i = 0; i < 4; ++i)
-					glVertex3f(corners[i][0], corners[i][1], corners[i][2]);
+					glVertex3f(scale * corners[i][0], scale * corners[i][1], scale * corners[i][2]);
 				glEnd();
 
 				glLineWidth(1.0f);
-			}
-		}
-		
-		if (m_draw_sym_axes)
-		{
-			for (QList<CuboidRotationSymmetryGroup>::iterator sym_it = m_rotation_symmetry.begin(); sym_it != m_rotation_symmetry.end(); ++sym_it)
-			{
-				Eigen::Vector3f n;
-				Eigen::Vector3f t;
-				sym_it->get_rotation_axis(n, t);
-
-				Eigen::Vector3f axis_center = Eigen::Vector3f::Zero() + t;
-				Eigen::Vector3f axis_start = axis_center - n.normalized();
-				Eigen::Vector3f axis_end = axis_center + n.normalized();
-
-				glColor4f(COLORS[0][0], COLORS[0][1], COLORS[0][2], 1.0);
-				glLineWidth(1.6);
-				glBegin(GL_LINES);
-				glVertex3f(scale * axis_start[0], scale * axis_start[1], scale * axis_start[2]);
-				glVertex3f(scale * axis_end[0], scale * axis_end[1], scale * axis_end[2]);
-				glEnd();
 			}
 		}
 	}
@@ -624,10 +854,18 @@ void PCModel::output(const char *filename)
 
 		if (file_format.compare("ply") == 0 || file_format.compare("PLY") == 0)
 		{
+			/* Count the number of actual points with high confidence */
+			int nvertices = 0;
+			for (int i = 0; i < vertexCount(); i++)
+			{
+				if (m_points_label_confidences[i][m_labels[i]] > 0.7)
+					nvertices++;
+			}
+
 			/* Write the header */
 			out << "ply" << std::endl;
 			out << "format ascii 1.0" << std::endl;
-			string pointsNum = std::to_string(vertexCount());
+			string pointsNum = std::to_string(nvertices);
 			string elementVertex = "element vertex " + pointsNum;
 			out << elementVertex << std::endl;
 			out << "property float x" << std::endl;
@@ -643,6 +881,9 @@ void PCModel::output(const char *filename)
 			progress_count = 1;
 			for (int i = 0; i < vertexCount(); i++)
 			{
+				if (m_points_label_confidences[i][m_labels[i]] <= 0.7)
+					continue;
+
 				if (i >= onePercent * progress_count)
 				{
 					emit(outputProgressReport(progress_count));
@@ -733,8 +974,13 @@ void PCModel::normalize()
 		vertex_it->operator/=(m_radius);
 	}
 
+	m_bbox_center -= m_centroid;
+	m_bbox_center /= m_radius;
+
 	m_centroid.setZero();
 	m_radius = 1.0;
+
+	//computeBoundingBox();
 }
 
 void PCModel::setInputFilename(const char *name)
@@ -835,6 +1081,34 @@ void PCModel::rotate(float angle, float x, float y, float z)
 		*norm_it = rotation * (*norm_it);
 
 	m_centroid = rotation * m_centroid;
+}
+
+void PCModel::transform(Eigen::Matrix4f mat)
+{
+	for (QVector<Vector3f>::iterator vertex_it = m_vertices_list.begin(); vertex_it != m_vertices_list.end(); ++vertex_it)
+	{
+		Vector4f vert_aug;
+		vert_aug.head(3) = *vertex_it;
+		vert_aug[3] = 1.0;
+
+		vert_aug = mat * vert_aug;
+		vertex_it->head(3) = vert_aug.head(3);
+	}
+
+	for (QVector<Vector3f>::iterator norm_it = m_normals_list.begin(); norm_it != m_normals_list.end(); ++norm_it)
+	{
+		Vector4f norm_aug = Vector4f::Zero();
+		norm_aug.head(3) = *norm_it;
+
+		norm_aug = mat * norm_aug;
+		norm_it->head(3) = norm_aug.head(3);
+	}
+
+	Vector4f center_aug;
+	center_aug.head(3) = m_centroid;
+	center_aug[3] = 1.0;
+	center_aug = mat * center_aug;
+	m_centroid.head(3) = center_aug.head(3);
 }
 
 QVector<Vector3f> PCModel::getVertices() const
@@ -1010,4 +1284,102 @@ Eigen::Vector3f PCModel::getBBoxCenter() const
 Eigen::Vector3f PCModel::getBBoxSize() const
 {
 	return m_bbox_size;
+}
+
+void PCModel::computeBoundingBox()
+{
+	m_bbox_min.setZero();
+	m_bbox_max.setZero();
+
+	for (QVector<Eigen::Vector3f>::iterator vert_it = m_vertices_list.begin();
+		vert_it != m_vertices_list.end(); ++vert_it)
+	{
+		/* for computing bounding box */
+		if (vert_it->operator[](0) > m_bbox_max[0])
+			m_bbox_max[0] = vert_it->operator[](0);
+		if (vert_it->operator[](1) > m_bbox_max[1])
+			m_bbox_max[1] = vert_it->operator[](1);
+		if (vert_it->operator[](2) > m_bbox_max[2])
+			m_bbox_max[2] = vert_it->operator[](2);
+		if (vert_it->operator[](0) < m_bbox_min[0])
+			m_bbox_min[0] = vert_it->operator[](0);
+		if (vert_it->operator[](1) < m_bbox_min[1])
+			m_bbox_min[1] = vert_it->operator[](1);
+		if (vert_it->operator[](2) < m_bbox_min[2])
+			m_bbox_min[2] = vert_it->operator[](2);
+	}
+
+	/* Compute bounding box */
+	m_bbox_center = 0.5 * (m_bbox_min + m_bbox_max);
+	m_bbox_size = m_bbox_max - m_bbox_min;
+}
+
+void PCModel::splitOutput(const std::string output_dir)
+{
+	QMap<int, int> label_indices;  /* indicate the index of the label in m_label_names */
+
+	int idx = 0;
+	for (QVector<int>::iterator it = m_label_names.begin(); it != m_label_names.end(); ++it)
+	{
+		label_indices.insert(*it, idx);
+		idx++;
+	}
+	
+	/* Count the number of points in each part */
+	QVector<int> part_points_count(m_label_names.size());
+	for (int i = 0; i < vertexCount(); i++)
+	{
+		int label = m_labels[i];
+		float prob = m_points_label_confidences[i][label];
+		if (prob > 0.7)
+			part_points_count[label_indices[label]]++;
+	}
+
+	/* Write the headers for each part ply file */
+	std::vector<std::ofstream> outputs(m_label_names.size());
+	idx = 0;
+	for (int i = 0; i < outputs.size(); i++)
+	{
+		std::ofstream &out = outputs[i];
+
+		std::string output_path = output_dir + "/" + std::to_string(m_label_names[i]) + ".ply";
+		out.open(output_path.c_str());
+
+		if (out.is_open())
+		{
+			out << "ply" << std::endl;
+			out << "format ascii 1.0" << std::endl;
+			string pointsNum = std::to_string(part_points_count[i]);
+			string elementVertex = "element vertex " + pointsNum;
+			out << elementVertex << std::endl;
+			out << "property float x" << std::endl;
+			out << "property float y" << std::endl;
+			out << "property float z" << std::endl;
+			out << "property float nx" << std::endl;
+			out << "property float ny" << std::endl;
+			out << "property float nz" << std::endl;
+			out << "end_header" << std::endl;
+		}
+	}
+
+	/* Write the vertices to each part ply file */
+	for (int i = 0; i < vertexCount(); i++)
+	{
+		int label = m_labels[i];
+		float prob = m_points_label_confidences[i][label];
+		if (prob > 0.7)
+		{
+			int label_index = label_indices[label];
+			std::ofstream & out = outputs[label_index];
+
+			Eigen::Vector3f &vertex = m_vertices_list[i];
+			Eigen::Vector3f &normal = m_normals_list[i];
+			
+			out << vertex[0] << " " << vertex[1] << " " << vertex[2] << " "
+				<< normal[0] << " " << normal[1] << " " << normal[2] << std::endl;
+		}
+	}
+
+	for (std::vector<std::ofstream>::iterator out_it = outputs.begin(); out_it != outputs.end(); ++out_it)
+		out_it->close();
 }

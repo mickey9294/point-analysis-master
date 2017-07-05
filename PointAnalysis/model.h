@@ -39,6 +39,7 @@ public:
 	Model(ModelType type);
 	ModelType getType();
 	virtual void draw(float scale) = 0;
+	virtual void drawSymmetry(float scale);
 	virtual void rotate(float angle, float x, float y, float z) = 0;
 	virtual std::string getInputFilepath() const = 0;
 	virtual QVector<Eigen::Vector3f> getVertices() const = 0;
@@ -47,6 +48,7 @@ public:
 	virtual QVector<int> getVerticesLabels() const = 0;
 	virtual QVector<int> getLabelNames() const = 0;
 	virtual void output(const char *file_path) = 0;
+	virtual void splitOutput(const std::string output_dir);
 	virtual Eigen::Vector3f getCentroid() const = 0;
 	virtual int numOfClasses() = 0;
 	virtual double getRadius() const = 0;

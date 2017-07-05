@@ -680,7 +680,7 @@ bool CuboidRotationSymmetryGroup::compute_symmetry_axis(const std::vector<PAPart
 	for (unsigned int i = 0; i < 3; ++i) n_[i] = n[i];
 	n_.normalize();
 
-	t_ = Eigen::Vector3f(0.0);
+	t_ = Eigen::Vector3f(0);
 	for (std::list<Eigen::Vector3f>::const_iterator it = aligned_centers.begin();
 		it != aligned_centers.end(); ++it)
 		t_ += (*it);
